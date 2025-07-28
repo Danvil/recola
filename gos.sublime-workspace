@@ -1,0 +1,1917 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"BloodVess",
+				"BloodVesselPrefab"
+			],
+			[
+				"Bl",
+				"BloodConfig"
+			],
+			[
+				"Heart",
+				"HeartRateBpm"
+			],
+			[
+				"Hear",
+				"HeartRateBpm"
+			],
+			[
+				"H",
+				"HeartPumpVolume"
+			],
+			[
+				"en",
+				"entity_from_id"
+			],
+			[
+				"lun",
+				"lung_1"
+			],
+			[
+				"ene",
+				"entity_named"
+			],
+			[
+				"En",
+				"EntityView"
+			],
+			[
+				"blu",
+				"blue_in"
+			],
+			[
+				"rou",
+				"red_out"
+			],
+			[
+				"hear",
+				"heart_chamber_fn"
+			],
+			[
+				"defau",
+				"default_chunk"
+			],
+			[
+				"ho",
+				"hemoglobin_saturation"
+			],
+			[
+				"hom",
+				"hemoglobin_concentration"
+			],
+			[
+				"Blo",
+				"BloodChunk"
+			],
+			[
+				"He",
+				"HeartRate"
+			],
+			[
+				"Hea",
+				"HeartState"
+			],
+			[
+				"vol",
+				"volume"
+			],
+			[
+				"Bloo",
+				"BloodChunk"
+			],
+			[
+				"wa",
+				"wall_thickness"
+			],
+			[
+				"pre",
+				"pressure"
+			],
+			[
+				"nom",
+				"nominal_volume"
+			],
+			[
+				"BloodVe",
+				"BloodVesselStats"
+			],
+			[
+				"le",
+				"length"
+			],
+			[
+				"no",
+				"nominal_count"
+			],
+			[
+				"part",
+				"part_vessel"
+			],
+			[
+				"in",
+				"inflow_alloc"
+			],
+			[
+				"war",
+				"warmup_request"
+			],
+			[
+				"sum",
+				"sum_debt"
+			],
+			[
+				"with",
+				"with_round_op_threshold"
+			],
+			[
+				"ass",
+				"assert_eq\tassert_eq!(…, …)"
+			],
+			[
+				"c",
+				"capacity"
+			],
+			[
+				"d",
+				"demand"
+			],
+			[
+				"Fai",
+				"FairAlloc"
+			],
+			[
+				"Fa",
+				"FairAlloc"
+			],
+			[
+				"trans",
+				"transfer_count"
+			],
+			[
+				"Vess",
+				"VesselToHeart"
+			],
+			[
+				"Lung",
+				"LungOxygenAbsorption"
+			],
+			[
+				"Mod",
+				"ModifierKind"
+			],
+			[
+				"Modif",
+				"ModifierBase"
+			],
+			[
+				"Ori",
+				"OrganEfficiencyMod"
+			],
+			[
+				"Cu",
+				"CurrentBloodOxygen"
+			],
+			[
+				"ciri",
+				"critical_blood_oxygen_organ_eff_range"
+			],
+			[
+				"res",
+				"rescale_01"
+			],
+			[
+				"De",
+				"DecimalRange"
+			],
+			[
+				"Dec",
+				"Decimal"
+			],
+			[
+				"Bre",
+				"BreathingSettings"
+			],
+			[
+				"Cur",
+				"CurrentBloodOxygen"
+			],
+			[
+				"s",
+				"system"
+			],
+			[
+				"Mo",
+				"Modifier"
+			],
+			[
+				"sec",
+				"sec_sub"
+			],
+			[
+				"S",
+				"SECONDARY_TO_PRIMARY_SATIATION_CONVERSION_RATE"
+			],
+			[
+				"primsub",
+				"prim_sub_actual"
+			],
+			[
+				"pr",
+				"primary"
+			],
+			[
+				"prim",
+				"prim_sub_max"
+			],
+			[
+				"inv",
+				"inventory_item_command"
+			],
+			[
+				"In",
+				"InventoryItemCommands"
+			],
+			[
+				"Vie",
+				"ViewKind"
+			],
+			[
+				"sele",
+				"selection"
+			],
+			[
+				"se",
+				"selection_index"
+			],
+			[
+				"sor",
+				"sorting_criteria_cycle"
+			],
+			[
+				"Inve",
+				"InventorySortingCriteria"
+			],
+			[
+				"Dire",
+				"Direction1"
+			],
+			[
+				"ta",
+				"table_state"
+			],
+			[
+				"Inv",
+				"InventoryView"
+			],
+			[
+				"sort",
+				"sort_by"
+			],
+			[
+				"play",
+				"player_entity"
+			],
+			[
+				"tabl",
+				"table_state"
+			],
+			[
+				"set_",
+				"set_second"
+			],
+			[
+				"pl",
+				"player_inventory"
+			],
+			[
+				"oxy",
+				"oxygen_absorption_mod"
+			],
+			[
+				"po",
+				"pollution_absorption"
+			],
+			[
+				"jac",
+				"jack_inv"
+			],
+			[
+				"Consu",
+				"ConsumeOp"
+			],
+			[
+				"Cont",
+				"ContainedBy"
+			],
+			[
+				"Con",
+				"ContainedBy"
+			],
+			[
+				"main",
+				"main_impl"
+			],
+			[
+				"Wor",
+				"WorldApi"
+			],
+			[
+				"spin",
+				"spin_threshold"
+			],
+			[
+				"sl",
+				"sleep_time"
+			],
+			[
+				"ste",
+				"steam_client"
+			],
+			[
+				"thr",
+				"throttle"
+			],
+			[
+				"co",
+				"connection_time"
+			],
+			[
+				"steam",
+				"steam_id"
+			],
+			[
+				"stea",
+				"steam_server"
+			],
+			[
+				"Gam",
+				"GameServerMessage"
+			],
+			[
+				"Auth",
+				"AuthConnectionStatus"
+			],
+			[
+				"thre",
+				"thread_1"
+			],
+			[
+				"re",
+				"requests"
+			],
+			[
+				"Log",
+				"LoginServerConfig"
+			],
+			[
+				"Conn",
+				"ConnectionStatus"
+			],
+			[
+				"conn",
+				"connections"
+			],
+			[
+				"Cli",
+				"ClientRequest"
+			],
+			[
+				"M",
+				"MarketListing"
+			],
+			[
+				"hand",
+				"handle_request"
+			],
+			[
+				"requ",
+				"requests"
+			],
+			[
+				"disc",
+				"disc_id"
+			],
+			[
+				"COnn",
+				"ConnectionStatus"
+			],
+			[
+				"han",
+				"handle_connections"
+			],
+			[
+				"con",
+				"connections"
+			],
+			[
+				"Tc",
+				"TcpStream"
+			],
+			[
+				"ori",
+				"origin_axis_gizmo_mesh"
+			],
+			[
+				"Cam",
+				"CameraUniformGroup"
+			],
+			[
+				"Tran",
+				"TransformDef"
+			],
+			[
+				"tra",
+				"transform_buf"
+			],
+			[
+				"tran",
+				"transform_buf"
+			],
+			[
+				"Prim",
+				"PrimKind"
+			],
+			[
+				"egui",
+				"egui_renderer"
+			],
+			[
+				"Cub",
+				"CubeApp"
+			],
+			[
+				"on",
+				"on_setup"
+			],
+			[
+				"appli",
+				"application"
+			],
+			[
+				"Te",
+				"TextureSource"
+			],
+			[
+				"wire",
+				"wire_geo"
+			],
+			[
+				"sr",
+				"src_geo"
+			],
+			[
+				"bo",
+				"borrow_mut"
+			],
+			[
+				"ne",
+				"new_rlings"
+			],
+			[
+				"Stora",
+				"StorageIter"
+			],
+			[
+				"Sto",
+				"StorageIter"
+			],
+			[
+				"Win",
+				"WindowDef"
+			],
+			[
+				"Window",
+				"WindowEntity"
+			],
+			[
+				"pu",
+				"push_tri"
+			],
+			[
+				"Tra",
+				"TransformBufferChunk"
+			],
+			[
+				"w",
+				"write_buffer"
+			],
+			[
+				"Tr",
+				"TransformBufferChunk"
+			],
+			[
+				"Ver",
+				"VertexSource"
+			],
+			[
+				"Verte",
+				"VertexSource"
+			],
+			[
+				"devi",
+				"device_buf"
+			]
+		]
+	},
+	"buffers":
+	[
+	],
+	"build_system": "",
+	"build_system_choices":
+	[
+		[
+			[
+				[
+					"Packages/Python/Python.sublime-build",
+					""
+				],
+				[
+					"Packages/Python/Python.sublime-build",
+					"Syntax Check"
+				]
+			],
+			[
+				"Packages/Python/Python.sublime-build",
+				""
+			]
+		],
+		[
+			[
+				[
+					"Packages/Rust Enhanced/RustEnhanced.sublime-build",
+					""
+				],
+				[
+					"Packages/Rust Enhanced/RustEnhanced.sublime-build",
+					"Automatic"
+				],
+				[
+					"Packages/Rust Enhanced/RustEnhanced.sublime-build",
+					"Run"
+				],
+				[
+					"Packages/Rust Enhanced/RustEnhanced.sublime-build",
+					"Run (with args)..."
+				],
+				[
+					"Packages/Rust Enhanced/RustEnhanced.sublime-build",
+					"Check"
+				],
+				[
+					"Packages/Rust Enhanced/RustEnhanced.sublime-build",
+					"Test"
+				],
+				[
+					"Packages/Rust Enhanced/RustEnhanced.sublime-build",
+					"Test (with args)..."
+				],
+				[
+					"Packages/Rust Enhanced/RustEnhanced.sublime-build",
+					"Bench"
+				],
+				[
+					"Packages/Rust Enhanced/RustEnhanced.sublime-build",
+					"Clean"
+				],
+				[
+					"Packages/Rust Enhanced/RustEnhanced.sublime-build",
+					"Document"
+				],
+				[
+					"Packages/Rust Enhanced/RustEnhanced.sublime-build",
+					"Clippy"
+				],
+				[
+					"Packages/Rust Enhanced/RustEnhanced.sublime-build",
+					"Script"
+				]
+			],
+			[
+				"Packages/Rust Enhanced/RustEnhanced.sublime-build",
+				""
+			]
+		],
+		[
+			[
+				[
+					"Packages/Rust/Rust.sublime-build",
+					""
+				],
+				[
+					"Packages/Rust/Rust.sublime-build",
+					"Run"
+				],
+				[
+					"Packages/Rust/Rust.sublime-build",
+					"Build & Run"
+				]
+			],
+			[
+				"Packages/Rust/Rust.sublime-build",
+				"Run"
+			]
+		]
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"snake",
+				"Convert Case: snake_case"
+			],
+			[
+				"lower",
+				"Convert Case: lowerCamelCase"
+			],
+			[
+				"package",
+				"Package Control: List Packages"
+			],
+			[
+				"upp",
+				"Convert Case: Upper Case"
+			],
+			[
+				"cam",
+				"Convert Case: UpperCamelCase"
+			],
+			[
+				"trail",
+				"Trailing Spaces: Delete Trailing Spaces"
+			],
+			[
+				"sna",
+				"Convert Case: snake_case"
+			],
+			[
+				"loc",
+				"Convert Case: Lower Case"
+			],
+			[
+				"packa",
+				"Package Control: Install Package"
+			],
+			[
+				"install",
+				"Package Control: Install Package"
+			],
+			[
+				"inst",
+				"Package Control: Install Package"
+			],
+			[
+				"Package Control: remo",
+				"Package Control: Remove Package"
+			],
+			[
+				"Package Control: list",
+				"Package Control: List Packages"
+			],
+			[
+				"upper",
+				"Convert Case: Upper Case"
+			],
+			[
+				"list",
+				"Package Control: List Packages"
+			],
+			[
+				"package lis",
+				"Package Control: List Packages"
+			],
+			[
+				"list pac",
+				"Package Control: List Packages"
+			],
+			[
+				"mark",
+				"OmniMarkupPreviewer: Preview Current Markup in Browser"
+			],
+			[
+				"install package",
+				"Package Control: Install Package"
+			],
+			[
+				"theme",
+				"UI: Select Theme"
+			],
+			[
+				"pack inst",
+				"Package Control: Install Package"
+			],
+			[
+				"rust",
+				"RustFmt: Format Buffer"
+			],
+			[
+				"pack remo",
+				"Package Control: Remove Package"
+			],
+			[
+				"rustf",
+				"RustFormat: Enable Format on Save"
+			],
+			[
+				"packinst",
+				"Package Control: Install Package"
+			],
+			[
+				"rustfmt",
+				"RustFmt: Format Buffer"
+			],
+			[
+				"resource",
+				"PackageResourceViewer: Open Resource"
+			],
+			[
+				"resour",
+				"PackageResourceViewer: Extract Package"
+			],
+			[
+				"package resour",
+				"PackageResourceViewer: Open Resource"
+			],
+			[
+				"insta",
+				"Package Control: Install Package"
+			],
+			[
+				"tra",
+				"Trailing Spaces: Delete Trailing Spaces"
+			],
+			[
+				"python",
+				"Set Syntax: Python"
+			],
+			[
+				"trai",
+				"Trailing Spaces: Delete Trailing Spaces"
+			],
+			[
+				"run",
+				"Build With: RustEnhanced - Run"
+			],
+			[
+				"instal",
+				"Package Control: Install Package"
+			],
+			[
+				"terminus open",
+				"Terminus: Open Default Shell in Tab (View)"
+			],
+			[
+				"terminuopen",
+				"Terminus: Open Default Shell in Panel"
+			],
+			[
+				"package ins",
+				"Package Control: Install Package"
+			],
+			[
+				"tril",
+				"Trim Trailing White Space"
+			],
+			[
+				"tri",
+				"Trim Trailing White Space"
+			],
+			[
+				"lower c",
+				"Convert Case: Lower Case"
+			],
+			[
+				"tr",
+				"Trailing Spaces: Delete Trailing Spaces"
+			],
+			[
+				"alignm",
+				"Preferences: Alignment Key Bindings – Default"
+			],
+			[
+				"align",
+				"Preferences: Alignment Key Bindings – Default"
+			],
+			[
+				"buil",
+				"Build With: Python"
+			],
+			[
+				"build",
+				"Build With: Python"
+			],
+			[
+				"test",
+				"Build With: RustEnhanced - Test"
+			],
+			[
+				"terminu",
+				"Terminus: Open Default Shell in Tab (View)"
+			],
+			[
+				"upper ca",
+				"Convert Case: Upper Case"
+			],
+			[
+				"terminus",
+				"Terminus: Open Default Shell in Tab (View)"
+			],
+			[
+				"termin open",
+				"Terminus: Open Default Shell in Tab (View)"
+			],
+			[
+				"pack",
+				"Preferences: Browse Packages"
+			],
+			[
+				"run test",
+				"Build With: RustEnhanced - Test"
+			],
+			[
+				"install pack",
+				"Package Control: Install Package"
+			],
+			[
+				"pack ins",
+				"Package Control: Install Package"
+			],
+			[
+				"rust build",
+				"Build With: RustEnhanced"
+			],
+			[
+				"rust run",
+				"Build With: RustEnhanced - Run"
+			],
+			[
+				"spac",
+				"Indentation: Convert to Spaces"
+			],
+			[
+				"space",
+				"Indentation: Convert to Spaces"
+			],
+			[
+				"white",
+				"Trim Trailing White Space"
+			],
+			[
+				"doxygen sett",
+				"Preferences: DoxyDoxygen Settings"
+			],
+			[
+				"trailing",
+				"Trailing Spaces: Delete Trailing Spaces"
+			],
+			[
+				"dox",
+				"Preferences: DoxyDoxygen Settings"
+			],
+			[
+				"doxy",
+				"Preferences: DoxyDoxygen Settings"
+			],
+			[
+				"spa",
+				"Trailing Spaces: Delete Trailing Spaces"
+			],
+			[
+				"trailin",
+				"Trailing Spaces: Delete Trailing Spaces"
+			],
+			[
+				"to space",
+				"Indentation: Convert to Spaces"
+			],
+			[
+				"termin",
+				"Terminus: List Shells"
+			],
+			[
+				"open",
+				"Terminus: Open Default Shell in Tab (View)"
+			],
+			[
+				"termin uti",
+				"Terminus Utilities: Select Theme"
+			],
+			[
+				"termin oepn",
+				"Terminus: Open Default Shell in Tab (View)"
+			],
+			[
+				"temrin ope",
+				"Terminus: Open Default Shell in Tab (View)"
+			],
+			[
+				"temrin",
+				"Terminal: Open"
+			],
+			[
+				"spaces",
+				"Indentation: Convert to Spaces"
+			]
+		],
+		"width": 0.0
+	},
+	"console":
+	{
+		"height": 391.0,
+		"history":
+		[
+			"ls",
+			"dir",
+			"ls"
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"expanded_folders":
+	[
+		"/I/Ikabur/gos",
+		"/I/Ikabur/gos/assets",
+		"/I/Ikabur/gos/crates",
+		"/I/Ikabur/gos/crates/gems",
+		"/I/Ikabur/gos/crates/gems/src",
+		"/I/Ikabur/gos/crates/gos_common",
+		"/I/Ikabur/gos/crates/gos_common/src",
+		"/I/Ikabur/gos/crates/goscl",
+		"/I/Ikabur/gos/crates/goscl/src",
+		"/I/Ikabur/gos/crates/goscl/src/controller",
+		"/I/Ikabur/gos/crates/goscl/src/model",
+		"/I/Ikabur/gos/crates/goscl/src/view",
+		"/I/Ikabur/gos/crates/gosim",
+		"/I/Ikabur/gos/crates/gosim/examples",
+		"/I/Ikabur/gos/crates/gosim/src",
+		"/I/Ikabur/gos/crates/gosim/src/utils",
+		"/I/Ikabur/gos/crates/gosrv",
+		"/I/Ikabur/gos/crates/gosrv/src",
+		"/I/Ikabur/gos/deploy",
+		"/I/Ikabur/gos/deploy/main",
+		"/I/Ikabur/gos/flecs_crash",
+		"/I/Ikabur/gos/flecs_crash/src"
+	],
+	"file_history":
+	[
+		"/I/Ikabur/gos/flecs_crash/Cargo.toml",
+		"/I/Ikabur/gos/crates/gosim/src/agent.rs",
+		"/I/Ikabur/gos/crates/gosrv/src/main.rs",
+		"/I/Ikabur/gos/crates/gosrv/src/game_server.rs",
+		"/I/Ikabur/gos/crates/gosim/src/lib.rs",
+		"/I/Ikabur/gos/crates/gosim/src/utils/stats.rs",
+		"/I/Ikabur/gos/crates/gosim/src/utils/flecs_query_relation_helpers.rs",
+		"/I/Ikabur/gos/crates/gems/Cargo.toml",
+		"/I/Ikabur/gos/crates/gosim/src/waterfront.rs",
+		"/I/Ikabur/gos/crates/goscl/src/view/inventory_view.rs",
+		"/I/Ikabur/gos/crates/gosim/src/utils/newtype_decimal_component.rs",
+		"/I/Ikabur/gos/crates/gosim/src/breathing.rs",
+		"/I/Ikabur/gos/crates/gems/src/dec.rs",
+		"/I/Ikabur/gos/crates/gems/src/modifier.rs",
+		"/C/Users/dtw/Downloads/flecs (1).c",
+		"/I/Ikabur/gos/crates/gosim/examples/gosim_test1.rs",
+		"/I/Ikabur/gos/crates/gosim/src/blood.rs",
+		"/I/Ikabur/gos/flecs_crash/src/module_phantom.rs",
+		"/I/Ikabur/gos/flecs_crash/src/main.rs",
+		"/I/Ikabur/gos/flecs_crash/src/prefab_tree.rs",
+		"/I/Ikabur/gos/crates/gems/src/fair_alloc.rs",
+		"/I/Ikabur/gos/crates/gosim/Cargo.toml",
+		"/I/Ikabur/gos/Cargo.toml",
+		"/C/Users/dtw/Downloads/flecs.c",
+		"/I/Ikabur/gos/crates/goscl/src/controller/inventory_item_command_controller.rs",
+		"/I/Ikabur/gos/crates/goscl/src/view/inventory_item_command_view.rs",
+		"/I/Ikabur/gos/crates/gosim/src/hunger.rs",
+		"/I/Ikabur/gos/crates/gosim/src/toxicity.rs",
+		"/I/Ikabur/gos/crates/gosim/src/map.rs",
+		"/I/Ikabur/gos/crates/gosim/src/ops.rs",
+		"/I/Ikabur/gos/crates/goscl/src/view/mod.rs",
+		"/I/Ikabur/gos/crates/gosim/src/inventory.rs",
+		"/I/Ikabur/gos/crates/gosim/src/weight.rs",
+		"/I/Ikabur/gos/crates/gems/src/rescale.rs",
+		"/I/Ikabur/gos/crates/gosim/src/utils/mod.rs",
+		"/I/Ikabur/gos/crates/gosim/src/market.rs",
+		"/I/Ikabur/gos/crates/gos_common/src/protocol.rs",
+		"/I/Ikabur/gos/crates/gos_common/Cargo.toml",
+		"/I/Ikabur/gos/crates/gos_common/src/lib.rs",
+		"/I/Ikabur/gos/crates/goscl/src/view/launcher.rs",
+		"/I/Ikabur/gos/crates/goscl/src/controller/mod.rs",
+		"/I/Ikabur/gos/crates/goscl/src/controller/inventory_controller.rs",
+		"/I/Ikabur/gos/crates/goscl/src/client.rs",
+		"/I/Ikabur/gos/crates/goscl/src/common.rs",
+		"/I/Ikabur/gos/crates/goscl/src/main.rs",
+		"/I/Ikabur/gos/crates/goscl/src/controller/dispatch.rs",
+		"/I/Ikabur/gos/crates/gems/src/cycle.rs",
+		"/I/Ikabur/gos/crates/gems/src/lib.rs",
+		"/I/Ikabur/gos/crates/goscl/src/model/mod.rs",
+		"/I/Ikabur/gos/crates/gosim/src/consumption.rs",
+		"/I/Ikabur/gos/crates/gosim/src/utils.rs",
+		"/I/Ikabur/gos/crates/goscl/Cargo.toml",
+		"/I/Ikabur/gos/crates/gos_common/src/market.rs",
+		"/I/Ikabur/gos/crates/gos_common/src/player.rs",
+		"/I/Ikabur/gos/crates/goscl/src/view/player_inventory_view.rs",
+		"/I/Ikabur/gos/rustfmt.toml",
+		"/I/Ikabur/gos/crates/gosim/src/sim.rs",
+		"/I/Ikabur/gos/crates/gosim/src/knowledge.rs",
+		"/I/Ikabur/gos/justfile",
+		"/I/Ikabur/gos/crates/gems/src/tau.rs",
+		"/I/Ikabur/gos/crates/gosim/src/oxygen.rs",
+		"/I/Ikabur/gos/crates/gosim/examples/test1.rs",
+		"/I/Ikabur/gos/crates/gos_common/src/tau.rs",
+		"/I/Ikabur/gos/crates/gos_common/src/world.rs",
+		"/I/Ikabur/gos/crates/gosim/.gitignore",
+		"/I/Ikabur/gos/scripts/app_build_3893320.vdf",
+		"/I/Ikabur/gos/crates/gosrv/src/connect_server.rs",
+		"/I/Ikabur/gos/crates/gosrv/Cargo.toml",
+		"/I/Ikabur/gos/crates/gosrv/src/login_server.rs",
+		"/I/Ikabur/gos/crates/gosrv/src/connection.rs",
+		"/I/Ikabur/gos/crates/gosrv/src/internal_messages.rs",
+		"/I/Ikabur/gos/scripts/deploy_gosrv.ps1",
+		"/I/Ikabur/gos/steamworks_sdk/steamworks_sdk_162/sdk/tools/ContentBuilder/scripts/simple_app_build.vdf",
+		"/I/Ikabur/gos/scripts/deploy_goscl.ps1",
+		"/I/Ikabur/gos/assets/steam_appid.txt",
+		"/I/Ikabur/gos/scripts/depot_build_3893321.vdf",
+		"/I/Ikabur/gos/steamworks_sdk/steamworks_sdk_162/sdk/tools/ContentBuilder/scripts/app_build_3893320.vdf",
+		"/I/Ikabur/gos/steamworks_sdk/steamworks_sdk_162/sdk/tools/ContentBuilder/scripts/depot_build_3893321.vdf",
+		"/I/Ikabur/gos/steamworks_sdk/steamworks_sdk_162/sdk/tools/ContentBuilder/scripts/app_build_1000.vdf",
+		"/I/Ikabur/gos/steamworks_sdk/steamworks_sdk_162/sdk/tools/ContentBuilder/run_build.bat",
+		"/I/Ikabur/gos/steamworks_sdk/steamworks_sdk_162/sdk/tools/ContentBuilder/readme.txt",
+		"/I/Ikabur/gos/crates/gosrv/src/throttle.rs",
+		"/I/Ikabur/gos/scripts/deploy_goscl.sh",
+		"/I/Ikabur/gos/scripts/deploy.ps1",
+		"/I/Ikabur/gos/scripts/deploy.sh",
+		"/I/Ikabur/gos/deploy/main/steam_appid.txt",
+		"/I/Ikabur/gos/steamworks_sdk/steamworks_sdk_162/sdk/Readme.txt",
+		"/I/hand/fibs/crates/candy/src/renderer.rs",
+		"/I/hand/fibs/crates/candy/examples/cube.rs",
+		"/I/hand/fibs/crates/geo/src/lib.rs",
+		"/I/hand/fibs/crates/geo/src/mesh.rs",
+		"/I/hand/fibs/crates/forge/src/model/axis_gizmo.rs",
+		"/I/hand/fibs/justfile",
+		"/I/hand/fibs/crates/forge/src/view/mod.rs",
+		"/I/hand/fibs/crates/forge/src/forge_app.rs",
+		"/I/hand/fibs/crates/candy/src/backend.rs",
+		"/I/hand/fibs/crates/candy/src/engine.rs",
+		"/I/hand/fibs/crates/candy/src/window.rs",
+		"/I/hand/fibs/crates/forge/src/main.rs",
+		"/I/hand/fibs/crates/fibs/src/topt/wire_strain_energy.rs",
+		"/I/hand/fibs/crates/candy/src/egui_renderer.rs",
+		"/I/hand/fibs/crates/forge/src/forge_view.rs",
+		"/I/hand/fibs/crates/forge/Cargo.toml",
+		"/I/hand/fibs/crates/forge/src/renderer/renderer.rs",
+		"/I/hand/fibs/crates/magi_color/src/lib.rs",
+		"/I/hand/fibs/crates/magi_color/src/color2.rs",
+		"/I/hand/fibs/crates/magi_color/Cargo.toml",
+		"/I/hand/fibs/crates/magi_color/src/color.rs",
+		"/I/hand/fibs/Cargo.toml",
+		"/I/hand/fibs/crates/candy/src/lib.rs",
+		"/I/hand/fibs/crates/geo/src/color.rs",
+		"/I/hand/fibs/crates/candy/src/transform.rs",
+		"/I/hand/fibs/crates/candy/src/camera.rs",
+		"/I/hand/fibs/crates/forge/src/forge_model.rs",
+		"/I/hand/fibs/crates/candy/src/vertex_buffer_pool.rs",
+		"/I/hand/fibs/crates/forge/src/forge_controller.rs",
+		"/I/hand/fibs/crates/forge/src/model/user_settings.rs",
+		"/I/hand/fibs/crates/forge/src/controller/cli.rs",
+		"/I/hand/fibs/crates/forge/src/renderer/pipelines.rs",
+		"/I/hand/fibs/crates/candy/src/app.rs",
+		"/I/hand/fibs/crates/ens/src/ensemble.rs",
+		"/I/hand/fibs/crates/forge/src/renderer/mod.rs",
+		"/I/hand/fibs/crates/candy/src/world.rs",
+		"/I/hand/fibs/crates/forge/src/model/translation_gizmo.rs",
+		"/I/hand/fibs/crates/candy/shaders/particle.wgsl",
+		"/I/hand/fibs/crates/candy/src/window_renderer_resources.rs",
+		"/I/hand/fibs/crates/candy/src/vertex.rs",
+		"/I/hand/fibs/crates/forge/src/renderer/egui_renderer.rs"
+	],
+	"find":
+	{
+		"height": 41.0
+	},
+	"find_in_files":
+	{
+		"height": 187.0,
+		"where_history":
+		[
+			"*.rs",
+			""
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": true,
+		"find_history":
+		[
+			"module_phantom",
+			"flecs_module_phantom",
+			"self",
+			"output",
+			"intake",
+			"/* ",
+			"target",
+			"red",
+			"entity_named",
+			"create_blood_vessel",
+			"entity_from_id",
+			"HeartPrefabParts",
+			"pub",
+			"EntityView",
+			"<'a>",
+			"slot_of",
+			"Entity",
+			",",
+			"red",
+			"Red",
+			"rust_decimal::dec",
+			"dec",
+			"Decimal",
+			"ModifierKind",
+			"StatMods<T>",
+			"<T>",
+			"T",
+			"$name",
+			"DummModule",
+			"HeartRateBpm",
+			"add",
+			"Clone",
+			"Base",
+			"HeartRateBpm",
+			"f32",
+			"gems::Decimal",
+			"$name",
+			"HeartRateBpm",
+			"Weight",
+			"world",
+			"*cre",
+			"connect_entities",
+			"connect_by_id",
+			"entity_from_id",
+			"a",
+			"Entity",
+			"lung",
+			"connect_by_id",
+			"lung_2",
+			"lung_1",
+			");",
+			"add",
+			"create_blood_vessel",
+			": *",
+			"set",
+			"create_blood_vessel",
+			"add",
+			"vessel_fn",
+			": *",
+			"EntityView",
+			"heart_chamber_fn",
+			"vessel_fn",
+			"lung",
+			"red",
+			"format",
+			"blue",
+			"blue_output",
+			"blue_intake",
+			"create_human",
+			"Mods",
+			"HeartRateBpm",
+			"HeartRate",
+			"**rate",
+			"PopChunks",
+			"exclus",
+			"explicit",
+			"VesselToHeart",
+			"HeartBloodChunkPumpCount",
+			"partial",
+			"tmp",
+			"stats",
+			"usize",
+			"nominal_count",
+			"chunks.len",
+			"chunks",
+			"count",
+			"            .build()\n",
+			"query",
+			"VesselToHeart",
+			"entity",
+			"with_capacity",
+			"FlowDebt",
+			"FairAllocItem",
+			"demand",
+			"FairAlloc",
+			"capacity",
+			"N",
+			"5",
+			"sum_x",
+			"sum_d",
+			"BodyTox",
+			"FairAllocItemState",
+			"FairAlloc",
+			"FairAllocState",
+			"newtype_component",
+			"part_capacity",
+			"capacity",
+			"part_pressure",
+			"total_outflow_capacity",
+			"total_inflow_pressure",
+			"pressure",
+			"QueryTermBuilderImpl",
+			"flecs_query_relation_helpers",
+			"modifier",
+			"DecimalExt",
+			"BloodVesselPressure",
+			"to_usize_or_0",
+			"desire",
+			"pressure",
+			"part_pressure",
+			"total_input_pressure",
+			"total_output_pressure",
+			"vessels",
+			"BloodVessel",
+			"VesselToHeart",
+			"VesselFromHeart",
+			"VesselsFromHeart",
+			"dst_space"
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+		],
+		"reverse": false,
+		"scrollbar_highlights": true,
+		"show_context": true,
+		"use_buffer2": true,
+		"use_gitignore": true,
+		"whole_word": true,
+		"wrap": true
+	},
+	"folders":
+	[
+		{
+			"path": "I:\\Ikabur\\gos"
+		}
+	],
+	"groups":
+	[
+		{
+			"sheets":
+			[
+			]
+		},
+		{
+			"sheets":
+			[
+			]
+		},
+		{
+			"sheets":
+			[
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 29.0
+	},
+	"input":
+	{
+		"height": 62.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			],
+			[
+				1,
+				0,
+				2,
+				1
+			],
+			[
+				2,
+				0,
+				3,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			0.33,
+			0.692555459522,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.Terminus":
+	{
+		"height": 371.0
+	},
+	"output.Terminus 2":
+	{
+		"height": 126.0
+	},
+	"output.exec":
+	{
+		"height": 171.0
+	},
+	"output.find_results":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"output.unsaved_changes":
+	{
+		"height": 126.0,
+		"history":
+		[
+		]
+	},
+	"pinned_build_system": "Packages/Python/Python.sublime-build",
+	"project": "",
+	"replace":
+	{
+		"height": 54.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"ensembl",
+				"crates\\ens\\src\\ensemble.rs"
+			],
+			[
+				"trime",
+				"crates\\geo\\src\\tri_mesh.rs"
+			],
+			[
+				"trimesh",
+				"crates\\geo\\src\\tri_mesh.rs"
+			],
+			[
+				"pers",
+				"crates\\ens\\src\\persistence.rs"
+			],
+			[
+				"rop",
+				"crates\\fibs\\examples\\rope.rs"
+			],
+			[
+				"driver",
+				"crates\\nopt\\src\\driver.rs"
+			],
+			[
+				"chain",
+				"crates\\magi\\src\\chain.rs"
+			],
+			[
+				"fabricoptjob",
+				"crates\\fibs\\src\\fabric_opt_job.rs"
+			],
+			[
+				"fabric opt job",
+				"crates\\forge\\src\\model\\fabric_opt_job.rs"
+			],
+			[
+				"rope",
+				"crates\\fibs\\examples\\rope.rs"
+			],
+			[
+				"rope.rs",
+				"crates\\fibs\\examples\\rope.rs"
+			],
+			[
+				"dynv",
+				"crates\\magi_vec\\src\\dyn_vec.rs"
+			],
+			[
+				"vec_n.rs",
+				"crates\\geo\\src\\vec_n.rs"
+			],
+			[
+				"plane.rs",
+				"crates\\geo\\src\\plane.rs"
+			],
+			[
+				"gui.r",
+				"crates\\forge\\src\\controller\\gui.rs"
+			],
+			[
+				"ens",
+				"crates\\ens\\src\\ensemble.rs"
+			],
+			[
+				"user_",
+				"crates\\forge\\src\\model\\user_settings.rs"
+			],
+			[
+				"camera",
+				"crates\\forge\\src\\components\\camera.rs"
+			],
+			[
+				"tri_me",
+				"crates\\geo\\src\\tri_mesh.rs"
+			],
+			[
+				"trim",
+				"crates\\geo\\src\\tri_mesh.rs"
+			],
+			[
+				"volum",
+				"crates\\geo\\src\\volume.rs"
+			],
+			[
+				"rng.rs",
+				"gems\\src\\rng.rs"
+			],
+			[
+				"rng",
+				"gems\\src\\rng.rs"
+			],
+			[
+				"render.rs",
+				"candy_wgpu\\src\\renderer.rs"
+			],
+			[
+				"renderer",
+				"candy_wgpu\\src\\renderer.rs"
+			],
+			[
+				"framework",
+				"candy_wgpu\\src\\framework.rs"
+			],
+			[
+				"render",
+				"ephr_core\\src\\game\\renderer.rs"
+			],
+			[
+				"rng.r",
+				"gems\\src\\rng.rs"
+			],
+			[
+				"grid",
+				"gems\\src\\grid.rs"
+			],
+			[
+				"gaia.rs",
+				"gaia\\src\\bin\\gaia.rs"
+			],
+			[
+				"gaia lib.rs",
+				"gaia\\src\\lib.rs"
+			],
+			[
+				"just",
+				"justfile"
+			],
+			[
+				"atom_mol.rs",
+				"atom_mol\\src\\lib.rs"
+			],
+			[
+				"atom singl",
+				"atom\\src\\singleton.rs"
+			],
+			[
+				"enumera",
+				"gems\\src\\enumerable.rs"
+			],
+			[
+				"world_setting",
+				"warmind\\src\\modes\\campaign\\world_settings.rs"
+			],
+			[
+				"enum_vec",
+				"gems\\src\\enum_vec.rs"
+			],
+			[
+				"terrain_settin",
+				"warmind\\assets\\map\\terrain_settings.ron"
+			],
+			[
+				"combat repor",
+				"warmind\\src\\combat\\report.rs"
+			],
+			[
+				"fuzzy",
+				"gems\\src\\fuzzy.rs"
+			],
+			[
+				"dog.ron",
+				"warmind\\assets\\dog.ron"
+			],
+			[
+				"perlin",
+				"gesso\\src\\simplex_perlin_noise.rs"
+			],
+			[
+				"tags.rs",
+				"warmind\\src\\codex\\tags.rs"
+			],
+			[
+				"tags.ron",
+				"warmind\\assets\\sprites\\tags.ron"
+			],
+			[
+				"campaign ren",
+				"warmind\\src\\modes\\campaign\\campaign_renderer.rs"
+			],
+			[
+				"dog",
+				"gems\\src\\dog.rs"
+			],
+			[
+				"tags.",
+				"warmind\\src\\codex\\tags.rs"
+			],
+			[
+				"path_trade",
+				"warmind\\src\\humania\\ops\\path_trade_value_op.rs"
+			],
+			[
+				"camino astar.r",
+				"camino\\src\\astar.rs"
+			],
+			[
+				"camino mod.rs",
+				"warmind\\src\\modes\\campaign\\mod.rs"
+			],
+			[
+				"default_pip",
+				"candy_wgpu_pipelines\\src\\default_pipeline\\mod.rs"
+			],
+			[
+				"gizmo",
+				"warmind\\src\\modes\\gizmo.rs"
+			],
+			[
+				"terrain hei rend",
+				"warmind\\src\\modes\\campaign\\terrain_heighfield_renderling.rs"
+			],
+			[
+				"blup",
+				"warmind\\src\\modes\\blueprint_mol.rs"
+			],
+			[
+				"texturesou",
+				"candy_wgpu_pipelines\\src\\default_pipeline\\texture_resources.rs"
+			],
+			[
+				"texture_resour",
+				"candy_wgpu_pipelines\\src\\common\\texture_resource.rs"
+			],
+			[
+				"bluep",
+				"warmind\\src\\modes\\blueprint_mol.rs"
+			],
+			[
+				"gems rng",
+				"gems\\src\\rng.rs"
+			],
+			[
+				"blueprint",
+				"warmind\\src\\modes\\blueprint_mol.rs"
+			],
+			[
+				"instan",
+				"candy_wgpu_pipelines\\src\\common\\instance_buffer.rs"
+			],
+			[
+				"legacy_",
+				"candy_mol\\src\\legacy_onion_soup.rs"
+			],
+			[
+				"pixie2.rs",
+				"pixie2\\src\\lib.rs"
+			],
+			[
+				"scene_tree transform.rs",
+				"scene_tree\\src\\transform.rs"
+			],
+			[
+				"blueprin",
+				"warmind\\src\\modes\\blueprint_mol.rs"
+			],
+			[
+				"decals_pip",
+				"candy_wgpu_pipelines\\src\\decal_pipeline\\decals_pipeline.rs"
+			],
+			[
+				"scene_tree mol.rs",
+				"scene_tree\\src\\mol.rs"
+			],
+			[
+				"blue",
+				"warmind\\src\\modes\\blueprint_mol.rs"
+			],
+			[
+				"gems math.rs",
+				"gems\\src\\math.rs"
+			],
+			[
+				"candy_mol.rs",
+				"candy_mol\\src\\mol.rs"
+			],
+			[
+				"legaci",
+				"candy_mol\\src\\legacy_onion_soup.rs"
+			],
+			[
+				"command",
+				"atom\\src\\commands.rs"
+			],
+			[
+				"legacy ",
+				"candy_mol\\src\\legacy_onion_soup.rs"
+			],
+			[
+				"terrain_hei",
+				"warmind\\src\\modes\\campaign\\terrain_heighfield.rs"
+			],
+			[
+				"screen_",
+				"warmind\\src\\modes\\screen_saver.rs"
+			],
+			[
+				"modes labro",
+				"warmind\\src\\modes\\laboratory.rs"
+			],
+			[
+				"labor",
+				"warmind\\src\\gui\\laboratory.rs"
+			],
+			[
+				"spawn",
+				"warmind\\src\\humania\\ops\\spawn_player_op.rs"
+			],
+			[
+				"spawn_garr",
+				"warmind\\src\\humania\\ops\\spawn_garrison_op.rs"
+			],
+			[
+				"tile_det",
+				"warmind\\src\\gui\\tile_details.rs"
+			],
+			[
+				"decals.wg",
+				"candy_wgpu_pipelines\\assets\\decals.wgsl"
+			],
+			[
+				"uniform",
+				"candy_wgpu_pipelines\\assets\\uniforms.wgsl"
+			],
+			[
+				"starkind.js",
+				"warmind\\assets\\sprites\\starkind.json"
+			],
+			[
+				"atlas.",
+				"warmind\\assets\\sprites\\atlas.json"
+			],
+			[
+				"gizm",
+				"warmind\\src\\modes\\gizmo.rs"
+			],
+			[
+				"sprite_col",
+				"pixie2\\src\\sprite_collection.rs"
+			],
+			[
+				"so3",
+				"gems\\src\\so3.rs"
+			],
+			[
+				"transform",
+				"scene_tree\\src\\transform.rs"
+			],
+			[
+				"candy.rs",
+				"warmind\\src\\modes\\candy.rs"
+			],
+			[
+				"mesh",
+				"candy_wgpu_pipelines\\src\\default_pipeline\\mesh_resources.rs"
+			],
+			[
+				"onion sou",
+				"pixie2\\src\\onion_soup.rs"
+			],
+			[
+				"onion_soup",
+				"pixie2\\src\\onion_soup.rs"
+			],
+			[
+				"astar",
+				"camino\\src\\astar.rs"
+			],
+			[
+				"astar.",
+				"camino\\src\\astar.rs"
+			],
+			[
+				"gaia src op.rs",
+				"gaia\\src\\op.rs"
+			],
+			[
+				"atlas",
+				"warmind\\assets\\sprites\\atlas.json"
+			],
+			[
+				"biome",
+				"gaia\\src\\biome.rs"
+			],
+			[
+				"so2",
+				"gems\\src\\so2.rs"
+			],
+			[
+				"bin/",
+				"gaia\\src\\bin\\gaia.rs"
+			],
+			[
+				"sprite pip",
+				"candy_wgpu_pipelines\\src\\sprite_pipeline.rs"
+			],
+			[
+				"gizmo.",
+				"warmind\\src\\modes\\gizmo.rs"
+			],
+			[
+				"camera_mod",
+				"warmind\\src\\modes\\camera\\camara_mode.rs"
+			],
+			[
+				"gaia terrain",
+				"gaia\\src\\terrain.rs"
+			],
+			[
+				"color",
+				"gems\\src\\color.rs"
+			],
+			[
+				"rect",
+				"gems\\src\\rect.rs"
+			],
+			[
+				"color.rs",
+				"gems\\src\\color.rs"
+			],
+			[
+				"human poll",
+				"warmind\\src\\humania\\layers\\pollution.rs"
+			],
+			[
+				"biome.r",
+				"gaia\\src\\biome.rs"
+			],
+			[
+				"campaign rend",
+				"warmind\\src\\modes\\campaign\\campaign_renderer.rs"
+			],
+			[
+				"grid.",
+				"gems\\src\\grid.rs"
+			],
+			[
+				"system",
+				"atom\\src\\system.rs"
+			],
+			[
+				"muli",
+				"gems\\src\\multi_grid.rs"
+			],
+			[
+				"dog.rs",
+				"gems\\src\\dog.rs"
+			],
+			[
+				"atom_mol lib.rs",
+				"atom_mol\\src\\lib.rs"
+			],
+			[
+				"scene_tree utils",
+				"scene_tree\\src\\utils.rs"
+			],
+			[
+				"fabric",
+				"atom\\src\\fabric.rs"
+			],
+			[
+				"deploy squad",
+				"warmind\\src\\modes\\battle\\squad_deployment.rs"
+			],
+			[
+				"battle arena.rs",
+				"warmind\\src\\modes\\battle\\arena.rs"
+			],
+			[
+				"scene_tree sys",
+				"scene_tree\\src\\layers.rs"
+			],
+			[
+				"copendiu",
+				"warmind\\src\\codex\\copendium.rs"
+			],
+			[
+				"copend",
+				"warmind\\src\\codex\\copendium.rs"
+			],
+			[
+				"scenetree mol.r",
+				"scene_tree\\src\\mol.rs"
+			],
+			[
+				"transform_sys",
+				"ephr_core\\src\\systems\\transform_system.rs"
+			],
+			[
+				"system.rs",
+				"atom\\src\\system.rs"
+			],
+			[
+				"mol ",
+				"camino_mol\\src\\mol.rs"
+			],
+			[
+				"cocktail",
+				"cocktail\\src\\cocktail.rs"
+			],
+			[
+				"squad del wid",
+				"warmind\\src\\gui\\squad_details.rs"
+			],
+			[
+				"copendium",
+				"warmind\\src\\codex\\copendium.rs"
+			],
+			[
+				"singl",
+				"atom\\src\\singleton.rs"
+			]
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 323.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 592.0
+	},
+	"selected_group": 1,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": false,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 307.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+		"max_columns": 1
+	}
+}

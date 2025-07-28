@@ -1,0 +1,18 @@
+[package]
+name = "goscl"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bincode = { workspace = true }
+env_logger = { workspace = true }
+eyre = { workspace = true }
+flecs_ecs = { workspace = true }
+gems = { workspace = true }
+gos_common = { workspace = true }
+gosim = { workspace = true }
+log = { workspace = true }
+num-traits = { workspace = true }
+ratatui = { workspace = true }
+steamworks = { workspace = true }
+tui-popup = { workspace = true }
