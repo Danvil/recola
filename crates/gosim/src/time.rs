@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 #[derive(Component)]
 pub struct TimeModule;
 
-#[derive(Component)]
+#[derive(Component, Clone)]
 pub struct Time {
     /// Current system time
     pub walltime: Instant,
@@ -24,6 +24,10 @@ pub struct Time {
 impl Time {
     pub fn sim_dt_f64(&self) -> f64 {
         self.sim_dt.as_secs_f64()
+    }
+
+    pub fn sim_frame_to_sim_time_f64(&self, frame: u64) -> f64 {
+        frame as f64 * self.sim_dt.as_secs_f64()
     }
 }
 

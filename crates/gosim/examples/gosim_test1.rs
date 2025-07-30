@@ -93,14 +93,14 @@ fn main() {
         //     });
 
         world
-            .query::<(Option<&BodyPart>, &BloodStats, &BloodVessel, &PipeFlowState)>()
+            .query::<(Option<&BodyPart>, &BloodStats, &BloodVessel, &PipeFlowStats)>()
             .build()
             .each_entity(|e, (part, blood, pipe, state)| {
                 println!(
                     "Blood {:<16} [{:>12}]: P: {:4.0} mmHg, V: {:5.2} L, SO2: {:5.1} %, PO2: {:5.0} mmHg",
                     e.name(),
                     part.map_or_else(|| String::new(), |x| format!("{x:?}")),
-                    state.pressure() / 133.322,
+                    0., //FIXME state.total_pressure() / 133.322,
                     pipe.volume(),
                     100. * blood.so2,
                     blood.po2

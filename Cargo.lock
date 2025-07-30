@@ -524,6 +524,7 @@ name = "gems"
 version = "0.1.0"
 dependencies = [
  "approx",
+ "num-traits",
 ]
 
 [[package]]
@@ -573,6 +574,7 @@ dependencies = [
 name = "gosim"
 version = "0.1.0"
 dependencies = [
+ "approx",
  "env_logger",
  "eyre",
  "flecs_ecs",

@@ -88,7 +88,10 @@ impl View for BodyView {
                             ),
                             (
                                 "Blood Flow".into(),
-                                Line::from(format!("{:4.0} ml/s", 1000. * pstats.flow.value())),
+                                Line::from(format!(
+                                    "{:4.0} ml/s",
+                                    1000. /* * pstats.flow.value() */
+                                )),
                             ),
                             (
                                 "Tissue O2 saturation".into(),

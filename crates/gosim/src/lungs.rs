@@ -1,6 +1,6 @@
 use crate::{
     create_blood_vessel, create_tissue, stat_component, Air, BloodModule, BloodProperties,
-    BloodVessel, FlecsQueryRelationHelpers, FluidFlowLink, Time, TimeModule,
+    BloodVessel, FlecsQueryRelationHelpers, Time, TimeModule,
 };
 use flecs_ecs::prelude::*;
 
@@ -86,8 +86,9 @@ pub fn create_lungs<'a>(world: &'a World, lungs: EntityView<'a>) -> LungsSlots<'
 
     let bronchial_out = create_blood_vessel(&world, part_f("bronchial_out"), 0.100);
 
-    bronchial_in.add((FluidFlowLink, bronchial));
-    bronchial.add((FluidFlowLink, bronchial_out));
+    todo!();
+    // bronchial_in.add((FluidFlowLink, bronchial));
+    // bronchial.add((FluidFlowLink, bronchial_out));
 
     LungsSlots {
         lungs,

@@ -1,7 +1,7 @@
 use crate::{
     stat_component, utils::FlecsQueryRelationHelpers, BloodConfig, BloodModule, BloodOxygenContent,
-    BloodProperties, BloodStats, FluidChunk, HemoglobinOxygenSaturationHill, Pipe, PipeFlowState,
-    PipeStats, Time, TimeModule,
+    BloodProperties, BloodStats, EntityBuilder, HemoglobinOxygenSaturationHill, PipeBuilder,
+    PipeGeometry, Time, TimeModule,
 };
 use flecs_ecs::prelude::*;
 
@@ -102,27 +102,36 @@ impl Module for BodyPartModule {
     }
 }
 
+pub struct BloodVesselBuilder<'a> {
+    pub geometry: &'a PipeGeometry,
+}
+
+impl EntityBuilder for BloodVesselBuilder<'_> {
+    fn build<'a>(&self, world: &'a World, entity: EntityView<'a>) -> EntityView<'a> {
+        let blood_config = world.cloned::<&BloodConfig>();
+        PipeBuilder {
+            geometry: self.geometry,
+            data: &BloodProperties::new(&blood_config, 0.45, 0.200, 0.850),
+            target_pressure: 100. * 133.,
+        }
+        .build(world, entity)
+    }
+}
+
 pub fn create_blood_vessel_aux<'a>(
     world: &'a World,
     entity: EntityView<'a>,
-    stats: PipeStats,
+    geometry: PipeGeometry,
 ) -> EntityView<'a> {
     let blood_config = world.cloned::<&BloodConfig>();
 
-    let volume = stats.nominal_volume();
-
-    entity
-        .set(stats)
-        .set(
-            Pipe::new()
-                .filled(FluidChunk {
-                    volume: 1.35 * volume,
-                    data: BloodProperties::new(&blood_config, 0.45, 0.200, 0.850),
-                })
-                .with_min_chunk_volume(0.05),
-        )
-        .set(PipeFlowState::default())
-        .set(BloodStats::default())
+    PipeBuilder {
+        geometry: &geometry,
+        data: &BloodProperties::new(&blood_config, 0.45, 0.200, 0.850),
+        target_pressure: 12000.,
+    }
+    .build(world, entity)
+    .set(BloodStats::default())
 }
 
 /// Create a set of blood <'a>vessels
@@ -131,7 +140,7 @@ pub fn create_blood_vessel<'a>(
     entity: EntityView<'a>,
     volume: f64,
 ) -> EntityView<'a> {
-    let mut stats = PipeStats {
+    let mut geometry = PipeGeometry {
         radius: 0.002,
         length: 0.40,
         wall_thickness: 0.0005,
@@ -139,8 +148,8 @@ pub fn create_blood_vessel<'a>(
         count: 1.,
         pressure_min: -5000.,
     };
-    stats.count = stats.volume_to_count(volume);
-    create_blood_vessel_aux(world, entity, stats)
+    geometry.count = geometry.volume_to_count(volume);
+    create_blood_vessel_aux(world, entity, geometry)
 }
 
 /// Create a chunk of tissue

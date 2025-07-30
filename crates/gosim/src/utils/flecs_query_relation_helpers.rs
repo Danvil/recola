@@ -22,17 +22,18 @@ pub trait FlecsQueryRelationHelpers<'a>: QueryBuilderImpl<'a> + TermBuilderImpl<
         self
     }
 
-    fn unrelated<T1, T2, T3>(&mut self, src: T2, rel: T1, second: T3) -> &mut Self
-    where
-        Access: FromAccessArg<T1>,
-        T2: QueryArgApply,
-        T3: QueryArgApply,
-    {
-        self.without(rel);
-        src.set_as_src(self);
-        second.set_as_second(self);
-        self
-    }
+    // fn unrelated<T1, T2, T3>(&mut self, src: T2, rel: T1, second: T3) -> &mut Self
+    // where
+    //     Access: FromAccessArg<T1>,
+    //     T2: QueryArgApply,
+    //     T3: QueryArgApply,
+    // {
+    //     self.not();
+    //     self.with(rel);
+    //     src.set_as_src(self);
+    //     second.set_as_second(self);
+    //     self
+    // }
 
     /// Adds a relationship constraint to a query equivalent to:
     /// ```rust

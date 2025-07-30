@@ -1,8 +1,40 @@
 #[derive(Clone, Debug)]
-pub struct RateEma {
-    rate: Option<f64>,
+pub struct Ema {
+    value: Option<f64>,
     halflife: f64,
 }
+
+impl Default for Ema {
+    fn default() -> Self {
+        Self::from_halflife(1.0) // default halflife of 1 second
+    }
+}
+
+impl Ema {
+    pub fn from_halflife(halflife: f64) -> Self {
+        assert!(halflife > 0.0);
+        Self {
+            value: None,
+            halflife,
+        }
+    }
+
+    pub fn step(&mut self, dt: f64, dx: f64) {
+        assert!(dt > 0.0);
+        let alpha = 1.0 - (-core::f64::consts::LN_2 * dt / self.halflife).exp();
+        self.value = Some(match self.value {
+            Some(value) => value + alpha * (dx - value),
+            None => dx,
+        });
+    }
+
+    pub fn value(&self) -> f64 {
+        self.value.unwrap_or(0.)
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct RateEma(Ema);
 
 impl Default for RateEma {
     fn default() -> Self {
@@ -12,25 +44,15 @@ impl Default for RateEma {
 
 impl RateEma {
     pub fn from_halflife(halflife: f64) -> Self {
-        assert!(halflife > 0.0);
-        Self {
-            rate: None,
-            halflife,
-        }
+        Self(Ema::from_halflife(halflife))
     }
 
     pub fn step(&mut self, dt: f64, dx: f64) {
-        assert!(dt > 0.0);
-        let alpha = 1.0 - (-core::f64::consts::LN_2 * dt / self.halflife).exp();
-        let instant_rate = dx / dt;
-        self.rate = Some(match self.rate {
-            Some(rate) => rate + alpha * (instant_rate - rate),
-            None => instant_rate,
-        });
+        self.0.step(dt, dx / dt)
     }
 
     pub fn value(&self) -> f64 {
-        self.rate.unwrap_or(0.)
+        self.0.value()
     }
 }
 

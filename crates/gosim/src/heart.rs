@@ -1,11 +1,10 @@
 use crate::{
     create_blood_vessel, create_blood_vessel_aux, create_tissue, setup_flow_net, stat_component,
-    BloodProperties, BloodVessel, BodyPartModule, FlecsQueryRelationHelpers, FlowNetModule,
-    FluidFlowLink, IsPumpActive, PipeStats, PumpIntakePipe, PumpOutputPipe, PumpStats, PumpVolume,
-    PumpVolumeBase, PumpVolumeMods, Time, TimeModule,
+    utils::EntityBuilder, BloodProperties, BodyPartModule, FlecsQueryRelationHelpers,
+    FlowNetModule, PipeGeometry, PortTag, PumpBuilder, PumpDef, Time, TimeModule,
 };
 use flecs_ecs::prelude::*;
-use gems::{BeatEma, RateEma};
+use gems::BeatEma;
 
 /// The heart is an organ which pumps blood through the body.
 #[derive(Component)]
@@ -13,10 +12,6 @@ pub struct HeartModule;
 
 #[derive(Component)]
 pub struct HeartConfig {}
-
-/// A human heart usually has two halfes - one from body to lungs and one from lungs to body.
-#[derive(Component)]
-pub struct HeartChamberOf;
 
 /// Internal state used for computation of heart beat
 #[derive(Component, Clone, Default, Debug)]
@@ -80,14 +75,17 @@ pub fn create_heart<'a>(world: &'a World, entity: EntityView<'a>) -> HeartSlots<
             heart_rate: BeatEma::from_halflife(5.),
             monitor: HeartRateMonitor::with_len(40),
             ..Default::default()
-        })
-        .set(PumpVolume::new(0.07))
-        .set(PumpVolumeBase::new(0.07))
-        .set(PumpVolumeMods::default())
-        .set(PumpStats {
-            flow: RateEma::from_halflife(3.),
-            ..Default::default()
         });
+
+    PumpBuilder {
+        def: &PumpDef {
+            max_pressure_differential: 10_000.,
+            max_flow: 0.2,
+            flow_pressure_curve_exponential: 1.5,
+            outlet: PortTag::A,
+        },
+    }
+    .build(world, heart);
 
     create_tissue(heart);
 
@@ -109,15 +107,12 @@ pub fn create_heart<'a>(world: &'a World, entity: EntityView<'a>) -> HeartSlots<
 
         let chamber = world
             .entity_named(&format!("{tag}_chamber"))
-            .child_of(heart)
-            .add((PumpIntakePipe, intake))
-            .add((PumpOutputPipe, output))
-            .add((HeartChamberOf, heart));
+            .child_of(heart);
 
         (intake, chamber, output)
     };
 
-    let pumonary_vene_vessels = PipeStats {
+    let pumonary_vene_vessels = PipeGeometry {
         radius: 0.004,
         length: 0.050,
         wall_thickness: 0.0005,
@@ -125,7 +120,7 @@ pub fn create_heart<'a>(world: &'a World, entity: EntityView<'a>) -> HeartSlots<
         count: 100.,
         pressure_min: -5_000.,
     };
-    let aorta_vessel = PipeStats {
+    let aorta_vessel = PipeGeometry {
         radius: 0.0125,
         length: 0.300,
         wall_thickness: 0.002,
@@ -136,7 +131,7 @@ pub fn create_heart<'a>(world: &'a World, entity: EntityView<'a>) -> HeartSlots<
 
     let (red_in, _red, red_out) = heart_chamber_fn("red", pumonary_vene_vessels, aorta_vessel);
 
-    let systemic_vein_collective = PipeStats {
+    let systemic_vein_collective = PipeGeometry {
         radius: 0.008,
         length: 0.100,
         wall_thickness: 0.0007,
@@ -144,7 +139,7 @@ pub fn create_heart<'a>(world: &'a World, entity: EntityView<'a>) -> HeartSlots<
         count: 10.0, // SVC, IVC, + 1 major tributary
         pressure_min: -5000.0,
     };
-    let pulmonary_artery_outtake = PipeStats {
+    let pulmonary_artery_outtake = PipeGeometry {
         radius: 0.009,
         length: 0.250,
         wall_thickness: 0.0015,
@@ -156,8 +151,9 @@ pub fn create_heart<'a>(world: &'a World, entity: EntityView<'a>) -> HeartSlots<
         heart_chamber_fn("blue", systemic_vein_collective, pulmonary_artery_outtake);
 
     // Blood flows from red_out to heart to blue_in
-    red_out.add((FluidFlowLink, heart_vessel));
-    heart_vessel.add((FluidFlowLink, blue_in));
+    todo!();
+    // red_out.add((FluidFlowLink, heart_vessel));
+    // heart_vessel.add((FluidFlowLink, blue_in));
 
     HeartSlots {
         heart,
@@ -187,10 +183,6 @@ impl Module for HeartModule {
 
         world.component::<HeartConfig>();
 
-        world
-            .component::<HeartChamberOf>()
-            .add_trait::<flecs::Exclusive>();
-
         world.component::<HeartBeatState>();
 
         HeartRateBpm::setup(world);
@@ -209,10 +201,12 @@ impl Module for HeartModule {
                 if state.time_to_beat >= dt {
                     state.time_to_beat -= dt;
                     e.add(HeartBeat);
-                    e.add(IsPumpActive);
+                    todo!();
+                    // e.add(IsPumpActive);
                 } else {
                     e.remove(HeartBeat);
-                    e.remove(IsPumpActive);
+                    todo!();
+                    // e.remove(IsPumpActive);
                 }
             });
 

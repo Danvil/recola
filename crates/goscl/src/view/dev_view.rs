@@ -3,7 +3,7 @@ use flecs_ecs::{
     core::{Builder, QueryAPI},
     prelude::World,
 };
-use gosim::{BloodStats, BloodVessel, BodyPart, PipeFlowState, PipeStats};
+use gosim::{BloodStats, BloodVessel, BodyPart, PipeFlowStats, PipeGeometry};
 use ratatui::{
     layout::{Constraint, Direction, Layout},
     prelude::{Alignment, Stylize},
@@ -97,8 +97,8 @@ struct BloodVesselDevView {
         Option<BodyPart>,
         BloodStats,
         BloodVessel,
-        PipeStats,
-        PipeFlowState,
+        PipeGeometry,
+        PipeFlowStats,
     )>,
 }
 
@@ -110,8 +110,8 @@ impl BloodVesselDevView {
                 Option<&BodyPart>,
                 &BloodStats,
                 &BloodVessel,
-                &PipeStats,
-                &PipeFlowState,
+                &PipeGeometry,
+                &PipeFlowStats,
             )>()
             .build()
             .each_entity(|e, (a1, a2, a3, a4, a5)| {
@@ -126,14 +126,14 @@ impl BloodVesselDevView {
 
     pub fn to_rows(&self) -> Vec<Row> {
         self.list
-            .to_rows(|_e, l, (part, blood, pipe, stats, state)| {
+            .to_rows(|_e, l, (part, blood, pipe, geometry, stats)| {
                 Row::new(vec![
                     l.to_string(),
                     part.as_ref()
                         .map_or_else(|| String::new(), |x| format!("{x:?}")),
-                    format!("{:4.0} mmHg", state.pressure() / 133.322),
+                    format!("{:4.0} L/s", stats.through_flow_ema()),
                     format!("{:3.0} mL", 1000.0 * pipe.volume()),
-                    format!("{:3.0} mL", 1000.0 * stats.nominal_volume()),
+                    format!("{:3.0} mL", 1000.0 * geometry.nominal_volume()),
                     format!("{:3.0} %", 100. * blood.so2),
                     format!("{:5.0} mmHg", blood.po2),
                 ])
@@ -151,7 +151,7 @@ impl BloodVesselDevView {
                 Constraint::Fill(1),
                 Constraint::Fill(1),
             ],
-            Row::new(vec!["Name", "Part", "P", "V", "V0", "SO2", "PO2"]),
+            Row::new(vec!["Name", "Part", "QF", "V", "V0", "SO2", "PO2"]),
         )
     }
 }
