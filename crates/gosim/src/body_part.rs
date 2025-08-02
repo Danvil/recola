@@ -1,7 +1,7 @@
 use crate::{
     stat_component, utils::FlecsQueryRelationHelpers, BloodConfig, BloodModule, BloodOxygenContent,
-    BloodProperties, BloodStats, EntityBuilder, HemoglobinOxygenSaturationHill, PipeBuilder,
-    PipeGeometry, Time, TimeModule,
+    BloodProperties, BloodStats, ElasticTubeBundle, EntityBuilder, HemoglobinOxygenSaturationHill,
+    PipeBuilder, PipeGeometry, Time, TimeModule,
 };
 use flecs_ecs::prelude::*;
 
@@ -29,7 +29,7 @@ pub enum BodyPart {
 /// A block of tissue
 #[derive(Component, Clone)]
 pub struct Tissue {
-    /// Volume of tissue chunk
+    /// Volume of tissue chunk [m^3]
     pub volume: f64,
 
     /// Intracellular O₂ content [L/L]
@@ -140,21 +140,30 @@ pub fn create_blood_vessel<'a>(
     entity: EntityView<'a>,
     volume: f64,
 ) -> EntityView<'a> {
-    let mut geometry = PipeGeometry {
-        radius: 0.002,
-        length: 0.40,
-        wall_thickness: 0.0005,
-        youngs_modulus: 500000.,
-        count: 1.,
-        pressure_min: -5000.,
+    let geometry = PipeGeometry {
+        tubes: ElasticTubeBundle {
+            radius: 0.003,
+            length: 0.30,
+            wall_thickness: 0.0005,
+            youngs_modulus: 500000.,
+            count: 1.,
+        }
+        .with_count_from_total_volume(volume),
+        collapse_pressure: -1000.,
+        conductance_factor: 0.,
     };
-    geometry.count = geometry.volume_to_count(volume);
     create_blood_vessel_aux(world, entity, geometry)
 }
 
 /// Create a chunk of tissue
-pub fn create_tissue(entity: EntityView) -> EntityView {
-    entity
-        .set(Tissue::default_with_volume(1.00))
-        .set(TissueStats::default())
+pub struct TissueBuilder {
+    pub volume: f64,
+}
+
+impl EntityBuilder for TissueBuilder {
+    fn build<'a>(&self, _world: &'a World, entity: EntityView<'a>) -> EntityView<'a> {
+        entity
+            .set(Tissue::default_with_volume(self.volume))
+            .set(TissueStats::default())
+    }
 }

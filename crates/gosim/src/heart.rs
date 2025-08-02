@@ -1,7 +1,9 @@
 use crate::{
-    create_blood_vessel, create_blood_vessel_aux, create_tissue, setup_flow_net, stat_component,
-    utils::EntityBuilder, BloodProperties, BodyPartModule, FlecsQueryRelationHelpers,
-    FlowNetModule, PipeGeometry, PortTag, PumpBuilder, PumpDef, Time, TimeModule,
+    create_blood_vessel, create_blood_vessel_aux, setup_flow_net, stat_component,
+    utils::EntityBuilder, volume_from_liters, BloodProperties, BodyPartModule, CardiacCycle,
+    CardiacCycleStage, ElasticTubeBundle, ExternalPipePressure, FlecsQueryRelationHelpers,
+    FlowDirection, FlowNetModule, PipeConnectionHelper, PipeGeometry, PortTag, Time, TimeModule,
+    TissueBuilder, ValveBuilder, ValveDef, ValveKind,
 };
 use flecs_ecs::prelude::*;
 use gems::BeatEma;
@@ -14,9 +16,9 @@ pub struct HeartModule;
 pub struct HeartConfig {}
 
 /// Internal state used for computation of heart beat
-#[derive(Component, Clone, Default, Debug)]
+#[derive(Component, Clone, Default)]
 struct HeartBeatState {
-    time_to_beat: f64,
+    cycle: CardiacCycle,
 }
 
 stat_component!(
@@ -24,13 +26,19 @@ stat_component!(
     HeartRateBpm
 );
 
-/// Internal tag used to signal heart beats
+/// The ventricles of the heart
 #[derive(Component)]
-pub struct HeartBeat;
+struct HeartChambers {
+    blue_atrium: Entity,
+    blue_ventricle: Entity,
+    red_atrium: Entity,
+    red_ventricle: Entity,
+}
 
 /// Statistics measured for heart
 #[derive(Component, Default, Clone)]
 pub struct HeartStats {
+    pub beat: bool,
     pub heart_rate: BeatEma,
     pub monitor: HeartRateMonitor,
 }
@@ -65,7 +73,22 @@ impl HeartRateMonitor {
 }
 
 /// Create a standard human heart
-pub fn create_heart<'a>(world: &'a World, entity: EntityView<'a>) -> HeartSlots<'a> {
+///
+/// The heart has two chambers each for the pulmonary (oxygen enrichment) and systemic (oxygen
+/// supply) loops. The ventricle chambers are modeled as a (elastic) pipe with pressure valves
+/// which only allow throughflow in the corresponding direction. The atria are simple modeled
+/// as elastic pipes connected to the ventricles.
+///
+/// blue atrium => (tricuspid valve) blue ventricle (pulmonary valve)
+/// red atrium => (mitral valve) red ventricle (aortic valve)
+///
+/// We run a simulation for the heart beat and correspondingly apply external pressure to the
+/// ventricle pipes.
+pub fn create_heart<'a>(
+    world: &'a World,
+    entity: EntityView<'a>,
+    con: &mut PipeConnectionHelper<BloodProperties>,
+) -> HeartJunctions {
     let heart = entity
         .set(HeartBeatState::default())
         .set(HeartRateBpm::new(60.))
@@ -77,100 +100,182 @@ pub fn create_heart<'a>(world: &'a World, entity: EntityView<'a>) -> HeartSlots<
             ..Default::default()
         });
 
-    PumpBuilder {
-        def: &PumpDef {
-            max_pressure_differential: 10_000.,
-            max_flow: 0.2,
-            flow_pressure_curve_exponential: 1.5,
-            outlet: PortTag::A,
+    let valve_builder = ValveBuilder {
+        def: &ValveDef {
+            conductance_factor_closed: 0.,
+            kind: ValveKind::Throughflow(FlowDirection::AtoB),
+            hysteresis: 0.10,
         },
-    }
-    .build(world, heart);
+    };
 
-    create_tissue(heart);
+    let systemic_veins = PipeGeometry {
+        tubes: ElasticTubeBundle {
+            radius: 0.008,
+            length: 0.100,
+            wall_thickness: 0.0007,
+            youngs_modulus: 12_000.0,
+            count: 10., // SVC, IVC, + 1 major tributary
+        },
+        collapse_pressure: -2000.0,
+        conductance_factor: 1.,
+    };
+
+    let blue_atrium = PipeGeometry {
+        tubes: ElasticTubeBundle {
+            radius: 0.018,
+            length: 0.035,
+            wall_thickness: 0.0025,
+            youngs_modulus: 20_000., // Pa
+            count: 1.,
+        },
+        collapse_pressure: -500., // Pa
+        conductance_factor: 1.,
+    };
+
+    let blue_ventricle = PipeGeometry {
+        tubes: ElasticTubeBundle {
+            radius: 0.022,
+            length: 0.045,
+            wall_thickness: 0.004,
+            youngs_modulus: 25_000.,
+            count: 1.,
+        },
+        collapse_pressure: -1_000.,
+        conductance_factor: 1.,
+    };
+
+    let pulmonary_artery = PipeGeometry {
+        tubes: ElasticTubeBundle {
+            radius: 0.009,
+            length: 0.250,
+            wall_thickness: 0.0015,
+            youngs_modulus: 300_000.0,
+            count: 2., // LPA + RPA
+        },
+        collapse_pressure: -1000.0,
+        conductance_factor: 1.,
+    };
+
+    let pulmonary_veins = PipeGeometry {
+        tubes: ElasticTubeBundle {
+            radius: 0.004,
+            length: 0.050,
+            wall_thickness: 0.0005,
+            youngs_modulus: 15_000.,
+            count: 4.,
+        },
+        collapse_pressure: -1_000.,
+        conductance_factor: 1.,
+    };
+
+    let red_atrium = PipeGeometry {
+        tubes: ElasticTubeBundle {
+            radius: 0.018,
+            length: 0.035,
+            wall_thickness: 0.0025,
+            youngs_modulus: 20_000.,
+            count: 1.,
+        },
+        collapse_pressure: -500.,
+        conductance_factor: 1.,
+    };
+
+    let red_ventricle = PipeGeometry {
+        tubes: ElasticTubeBundle {
+            radius: 0.028,
+            length: 0.055,
+            wall_thickness: 0.010,
+            youngs_modulus: 40_000.,
+            count: 1.,
+        },
+        collapse_pressure: -1_500.,
+        conductance_factor: 1.,
+    };
+
+    let aorta = PipeGeometry {
+        tubes: ElasticTubeBundle {
+            radius: 0.0125,
+            length: 0.300,
+            wall_thickness: 0.002,
+            youngs_modulus: 400_000.,
+            count: 1.,
+        },
+        collapse_pressure: -1_000.,
+        conductance_factor: 0.1,
+    };
+
+    // [vein, atrium, ventricle, artery]
+    let mut heart_chamber_f = |names: [&str; 4], geo: [PipeGeometry; 4]| {
+        let entities = names
+            .iter()
+            .zip(geo.iter())
+            .map(|(name, geo)| {
+                create_blood_vessel_aux(world, world.entity_named(name), geo.clone())
+            })
+            .collect::<Vec<_>>();
+
+        entities[1].child_of(heart);
+        entities[2].child_of(heart);
+
+        valve_builder.build(world, entities[2]);
+
+        con.connect_chain(&entities);
+
+        con.connect_to_new_junction((entities[0], PortTag::A));
+        con.connect_to_new_junction((entities[3], PortTag::B));
+
+        entities
+    };
+
+    let blue = heart_chamber_f(
+        [
+            "systemic_veins",
+            "blue_atrium",
+            "blue_ventricle",
+            "pulmonary_artery",
+        ],
+        [
+            systemic_veins,
+            blue_atrium,
+            blue_ventricle,
+            pulmonary_artery,
+        ],
+    );
+
+    let red = heart_chamber_f(
+        ["pulmonary_veins", "red_atrium", "red_ventricle", "aorta"],
+        [pulmonary_veins, red_atrium, red_ventricle, aorta],
+    );
+
+    heart.set(HeartChambers {
+        blue_atrium: *blue[1],
+        blue_ventricle: *blue[2],
+        red_atrium: *red[1],
+        red_ventricle: *red[2],
+    });
 
     // The heart is a body part which needs blood itself
-    let heart_vessel = create_blood_vessel(world, heart, 0.050);
+    TissueBuilder { volume: 1.0 }.build(world, heart);
+    let heart_vessel = create_blood_vessel(world, heart, volume_from_liters(0.050));
 
-    let heart_chamber_fn = |tag, in_vessel_stats, out_vessel_stats| {
-        let intake = create_blood_vessel_aux(
-            world,
-            world.entity_named(&format!("{tag}_in")).child_of(heart),
-            in_vessel_stats,
-        );
+    // Connect heart blood supply directly
+    con.connect_chain(&[red[3], heart_vessel]);
+    con.connect_chain(&[heart_vessel, blue[0]]);
 
-        let output = create_blood_vessel_aux(
-            world,
-            world.entity_named(&format!("{tag}_out")).child_of(heart),
-            out_vessel_stats,
-        );
-
-        let chamber = world
-            .entity_named(&format!("{tag}_chamber"))
-            .child_of(heart);
-
-        (intake, chamber, output)
-    };
-
-    let pumonary_vene_vessels = PipeGeometry {
-        radius: 0.004,
-        length: 0.050,
-        wall_thickness: 0.0005,
-        youngs_modulus: 15_000.,
-        count: 100.,
-        pressure_min: -5_000.,
-    };
-    let aorta_vessel = PipeGeometry {
-        radius: 0.0125,
-        length: 0.300,
-        wall_thickness: 0.002,
-        youngs_modulus: 400_000.,
-        count: 1.,
-        pressure_min: -1_000.,
-    };
-
-    let (red_in, _red, red_out) = heart_chamber_fn("red", pumonary_vene_vessels, aorta_vessel);
-
-    let systemic_vein_collective = PipeGeometry {
-        radius: 0.008,
-        length: 0.100,
-        wall_thickness: 0.0007,
-        youngs_modulus: 12_000.0,
-        count: 10.0, // SVC, IVC, + 1 major tributary
-        pressure_min: -5000.0,
-    };
-    let pulmonary_artery_outtake = PipeGeometry {
-        radius: 0.009,
-        length: 0.250,
-        wall_thickness: 0.0015,
-        youngs_modulus: 300_000.0,
-        count: 2.0, // LPA + RPA
-        pressure_min: -1000.0,
-    };
-    let (blue_in, _blue, blue_out) =
-        heart_chamber_fn("blue", systemic_vein_collective, pulmonary_artery_outtake);
-
-    // Blood flows from red_out to heart to blue_in
-    todo!();
-    // red_out.add((FluidFlowLink, heart_vessel));
-    // heart_vessel.add((FluidFlowLink, blue_in));
-
-    HeartSlots {
-        heart,
-        red_in,
-        red_out,
-        blue_in,
-        blue_out,
+    HeartJunctions {
+        red_in: con.junction(*red[0], PortTag::A).unwrap(),
+        red_out: con.junction(*red[3], PortTag::B).unwrap(),
+        blue_in: con.junction(*blue[0], PortTag::A).unwrap(),
+        blue_out: con.junction(*blue[3], PortTag::B).unwrap(),
     }
 }
 
 #[derive(Component, Clone)]
-pub struct HeartSlots<'a> {
-    pub heart: EntityView<'a>,
-    pub red_in: EntityView<'a>,
-    pub red_out: EntityView<'a>,
-    pub blue_in: EntityView<'a>,
-    pub blue_out: EntityView<'a>,
+pub struct HeartJunctions {
+    pub red_in: Entity,
+    pub red_out: Entity,
+    pub blue_in: Entity,
+    pub blue_out: Entity,
 }
 
 impl Module for HeartModule {
@@ -182,8 +287,9 @@ impl Module for HeartModule {
         world.import::<FlowNetModule>();
 
         world.component::<HeartConfig>();
-
+        world.component::<HeartChambers>();
         world.component::<HeartBeatState>();
+        world.component::<HeartStats>();
 
         HeartRateBpm::setup(world);
 
@@ -193,29 +299,57 @@ impl Module for HeartModule {
 
         // Check if the heart beats
         world
-            .system::<(&Time, &HeartRateBpm, &mut HeartBeatState)>()
+            .system_named::<(&Time, &HeartRateBpm, &mut HeartBeatState)>("HeartBeatCheck")
             .singleton_at(0)
-            .each_entity(|e, (t, rate, state)| {
-                let dt = 60. / *rate;
-                state.time_to_beat += t.sim_dt_f64();
-                if state.time_to_beat >= dt {
-                    state.time_to_beat -= dt;
-                    e.add(HeartBeat);
-                    todo!();
-                    // e.add(IsPumpActive);
-                } else {
-                    e.remove(HeartBeat);
-                    todo!();
-                    // e.remove(IsPumpActive);
+            .each(|(t, rate, state)| {
+                state.cycle.set_target_bpm(**rate);
+                state.cycle.step(t.sim_dt_f64());
+            });
+
+        // Apply pressure to chambers
+        world
+            .system_named::<(&Time, &HeartChambers, &HeartBeatState)>("HeartVentriclePump")
+            .singleton_at(0)
+            .each_entity(|e, (_t, chambers, state)| {
+                let world = e.world();
+
+                let red_atrium = world.entity_from_id(chambers.red_atrium);
+                let blue_atrium = world.entity_from_id(chambers.blue_atrium);
+                let red_ventricle = world.entity_from_id(chambers.red_ventricle);
+                let blue_ventricle = world.entity_from_id(chambers.blue_ventricle);
+
+                match state.cycle.stage() {
+                    (CardiacCycleStage::DiastolePhase1, _) => {
+                        println!("DiastolePhase1");
+                        red_atrium.set(ExternalPipePressure(0.));
+                        blue_atrium.set(ExternalPipePressure(0.));
+                        red_ventricle.set(ExternalPipePressure(0.));
+                        blue_ventricle.set(ExternalPipePressure(0.));
+                    }
+                    (CardiacCycleStage::ArterialSystole, _) => {
+                        println!("ArterialSystole");
+                        red_atrium.set(ExternalPipePressure(1_000.));
+                        blue_atrium.set(ExternalPipePressure(1_000.));
+                        red_ventricle.set(ExternalPipePressure(0.));
+                        blue_ventricle.set(ExternalPipePressure(0.));
+                    }
+                    (CardiacCycleStage::Systole, _) => {
+                        println!("Systole");
+                        red_atrium.set(ExternalPipePressure(0.));
+                        blue_atrium.set(ExternalPipePressure(0.));
+                        red_ventricle.set(ExternalPipePressure(16_000.));
+                        blue_ventricle.set(ExternalPipePressure(3_300.));
+                    }
                 }
             });
 
-        // Compute statistics
+        // Update heart statistics
         world
-            .system::<(&Time, &mut HeartStats)>()
+            .system_named::<(&Time, &HeartBeatState, &mut HeartStats)>("HeartStatistics")
             .singleton_at(0)
-            .each_entity(|e, (t, stats)| {
-                let beat = e.has(HeartBeat);
+            .each(|(t, state, stats)| {
+                let beat = state.cycle.beat();
+                stats.beat = beat;
                 stats.heart_rate.step(t.sim_dt_f64(), beat);
                 stats.monitor.step(beat);
             });

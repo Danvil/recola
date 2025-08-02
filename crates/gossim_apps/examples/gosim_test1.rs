@@ -2,8 +2,6 @@ use flecs_ecs::prelude::*;
 use gosim::*;
 
 fn main() {
-    env_logger::init();
-
     log::info!("Game of Stonks - Simulation");
 
     let world = World::new();
@@ -64,14 +62,11 @@ fn main() {
         //         println!("{:?}: {} BPM, beat: {}", e.name(), **bpm, e.has(HeartBeat));
         //     });
 
-        world
-            .query::<(&HeartRateBpm,)>()
-            .build()
-            .each_entity(|e, (_bpm,)| {
-                if e.has(HeartBeat) {
-                    println!(">>>>> BUM BUM <<<<<");
-                }
-            });
+        world.query::<(&HeartStats,)>().build().each(|(stats,)| {
+            if stats.beat {
+                println!(">>>>> BUM BUM <<<<<");
+            }
+        });
 
         // world
         //     .query::<(&BloodStats,)>()
@@ -93,15 +88,16 @@ fn main() {
         //     });
 
         world
-            .query::<(Option<&BodyPart>, &BloodStats, &BloodVessel, &PipeFlowStats)>()
+            .query::<(Option<&BodyPart>, &BloodStats, &BloodVessel, &PipeFlowState)>()
             .build()
             .each_entity(|e, (part, blood, pipe, state)| {
                 println!(
-                    "Blood {:<16} [{:>12}]: P: {:4.0} mmHg, V: {:5.2} L, SO2: {:5.1} %, PO2: {:5.0} mmHg",
+                    "Blood {:<16} [{:>12}]: P: {:4.0} mmHg, dV: {:5.3} mL/s, V: {:3.0} mL, SO2: {:5.1} %, PO2: {:5.0} mmHg",
                     e.name(),
                     part.map_or_else(|| String::new(), |x| format!("{x:?}")),
-                    0., //FIXME state.total_pressure() / 133.322,
-                    pipe.volume(),
+                    state.mean_pipe_pressure() / 133.322,
+                    state.through_flow() * 1000.,
+                    pipe.volume() * 1000.,
                     100. * blood.so2,
                     blood.po2
                 );

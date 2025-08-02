@@ -16,13 +16,13 @@ pub trait Lerp<K>: Sized {
 
     /// Weighted average over items.
     /// Weights must be non-negative and sum of weights must be positive.
-    fn weighted_average<'a>(items: impl IntoIterator<Item = (K, &'a Self)>) -> Self
+    fn weighted_average<'a>(items: impl IntoIterator<Item = (K, &'a Self)>) -> Option<Self>
     where
         Self: 'a + Sized + Clone,
         K: Copy +AddAssign +Div<Output = K> + Zero + PartialOrd,
     {
         let mut iter = items.into_iter();
-        let (mut sw, sv) = iter.next().expect("must have at least one item");
+        let (mut sw, sv) = iter.next()?;
         let mut sv = sv.clone();
         for (w, v) in iter {
             // (sw*sv + w*v) / (sw + w)
@@ -33,8 +33,12 @@ pub trait Lerp<K>: Sized {
                 sv = sv.lerp_impl(w / sw, &v);
             }
         }
-        sv.normalize();
-        sv
+        if sw == K::zero() {
+            None
+        } else {
+            sv.normalize();
+            Some(sv)
+        }
     }
 
     /// Weighted average of two items.
@@ -75,6 +79,6 @@ mod test {
     #[test]
     fn test_lerp_f64() {
         let actual = f64::weighted_average([(0.2, &0.5), (0.5, &0.8), (0.9, &0.1), (0.4, &1.5)]);
-        approx::assert_relative_eq!(actual, 0.595);
+        approx::assert_relative_eq!(actual.unwrap(), 0.595);
     }
 }

@@ -3,7 +3,9 @@ use flecs_ecs::{
     core::{Builder, QueryAPI},
     prelude::World,
 };
-use gosim::{BloodStats, BloodVessel, BodyPart, PipeFlowStats, PipeGeometry};
+use gosim::{
+    volume_to_milli_liters, BloodStats, BloodVessel, BodyPart, PipeFlowStats, PipeGeometry,
+};
 use ratatui::{
     layout::{Constraint, Direction, Layout},
     prelude::{Alignment, Stylize},
@@ -132,8 +134,11 @@ impl BloodVesselDevView {
                     part.as_ref()
                         .map_or_else(|| String::new(), |x| format!("{x:?}")),
                     format!("{:4.0} L/s", stats.through_flow_ema()),
-                    format!("{:3.0} mL", 1000.0 * pipe.volume()),
-                    format!("{:3.0} mL", 1000.0 * geometry.nominal_volume()),
+                    format!("{:3.0} mL", volume_to_milli_liters(pipe.volume())),
+                    format!(
+                        "{:3.0} mL",
+                        volume_to_milli_liters(geometry.tubes.nominal_volume())
+                    ),
                     format!("{:3.0} %", 100. * blood.so2),
                     format!("{:5.0} mmHg", blood.po2),
                 ])

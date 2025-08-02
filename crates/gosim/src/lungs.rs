@@ -1,6 +1,7 @@
 use crate::{
-    create_blood_vessel, create_tissue, stat_component, Air, BloodModule, BloodProperties,
-    BloodVessel, FlecsQueryRelationHelpers, Time, TimeModule,
+    create_blood_vessel, stat_component, utils::EntityBuilder, volume_from_liters, Air,
+    BloodModule, BloodProperties, BloodVessel, FlecsQueryRelationHelpers, PipeConnectionHelper,
+    PortTag, Time, TimeModule, TissueBuilder,
 };
 use flecs_ecs::prelude::*;
 
@@ -69,47 +70,62 @@ pub struct AlveoliTag;
 // const REBREATHER_LUNG_OXYGEN_MOD: &str = "Rebreather";
 
 /// Create a pair of standard human lungs
-pub fn create_lungs<'a>(world: &'a World, lungs: EntityView<'a>) -> LungsSlots<'a> {
+pub fn create_lungs<'a>(
+    world: &'a World,
+    lungs: EntityView<'a>,
+    con: &mut PipeConnectionHelper<BloodProperties>,
+) -> LungsJunctions {
+    // TODO create two lungs
+
     let part_f = |name| world.entity_named(name).child_of(lungs);
 
     // The pulmonary part enriches blood with oxygen
 
-    let alveoli = create_blood_vessel(&world, part_f("alveoli"), 0.300);
+    let pulmonary_in =
+        create_blood_vessel(&world, part_f("pulmonary_in"), volume_from_liters(0.100));
+
+    let alveoli = create_blood_vessel(&world, part_f("alveoli"), volume_from_liters(0.300));
     alveoli.set(Alveoli { dummy: 0. }).add(AlveoliTag);
+
+    let pulmonary_out =
+        create_blood_vessel(&world, part_f("pulmonary_out"), volume_from_liters(0.200));
+
+    con.connect_chain(&[pulmonary_in, alveoli, pulmonary_out]);
 
     // The bronchial blood supply provides nutrient blood to the lungs
 
-    let bronchial_in = create_blood_vessel(&world, part_f("bronchial_in"), 0.050);
+    let bronchial_in =
+        create_blood_vessel(&world, part_f("bronchial_in"), volume_from_liters(0.050));
 
-    let bronchial = create_blood_vessel(&world, part_f("bronchial"), 0.150);
-    create_tissue(bronchial);
+    let bronchial = create_blood_vessel(&world, part_f("bronchial"), volume_from_liters(0.150));
+    TissueBuilder { volume: 1. }.build(&world, bronchial);
 
-    let bronchial_out = create_blood_vessel(&world, part_f("bronchial_out"), 0.100);
+    let bronchial_out =
+        create_blood_vessel(&world, part_f("bronchial_out"), volume_from_liters(0.100));
 
-    todo!();
-    // bronchial_in.add((FluidFlowLink, bronchial));
-    // bronchial.add((FluidFlowLink, bronchial_out));
+    con.connect_chain(&[bronchial_in, bronchial, bronchial_out]);
 
-    LungsSlots {
-        lungs,
-        alveoli,
-        bronchial_in,
-        bronchial_out,
+    LungsJunctions {
+        pulmonary_in: con.connect_to_new_junction((pulmonary_in, PortTag::A)),
+        pulmonary_out: con.connect_to_new_junction((pulmonary_out, PortTag::B)),
+        bronchial_in: con.connect_to_new_junction((bronchial_in, PortTag::A)),
+        bronchial_out: con.connect_to_new_junction((bronchial_out, PortTag::B)),
     }
 }
 
 #[derive(Component, Clone)]
-pub struct LungsSlots<'a> {
-    pub lungs: EntityView<'a>,
+pub struct LungsJunctions {
+    /// Pulmonary intake (blue)
+    pub pulmonary_in: Entity,
 
-    /// Alevoli vessels (must be connected to pulmory vessels from heart)
-    pub alveoli: EntityView<'a>,
+    /// Pulmonary output (red)
+    pub pulmonary_out: Entity,
 
     /// Nutrient supply blood inflow
-    pub bronchial_in: EntityView<'a>,
+    pub bronchial_in: Entity,
 
     /// Nutrient supply blood outflow
-    pub bronchial_out: EntityView<'a>,
+    pub bronchial_out: Entity,
 }
 
 impl Module for LungsModule {

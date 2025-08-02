@@ -5,6 +5,9 @@ members = [
   "crates/*", "flecs_toybox", "toybox",
 ]
 
+[profile.dev]
+debug = true
+
 [workspace.dependencies]
 bincode = { version = "2.0", features = ["serde"] }
 clap = { version = "4.5", features = ["derive"] }
@@ -12,7 +15,8 @@ ctrlc = "3.4.7"
 env_logger = { version = "0.11" }
 eyre = "0.6"
 approx = "0.5.1"
-flecs_ecs = { git = "https://github.com/Indra-db/Flecs-Rust.git", branch = "main", features = ["flecs_module", "flecs_system", "flecs_manual_registration"] }
+#flecs_ecs = { git = "https://github.com/Indra-db/Flecs-Rust.git", branch = "main", features = ["flecs_module", "flecs_system", "flecs_manual_registration"] }
+flecs_ecs = { path = "I:/opensource/Flecs-Rust/flecs_ecs", features = ["flecs_module", "flecs_system", "flecs_manual_registration"] }
 rust_decimal = { version = "1.37.2", features = ["macros", "maths"] }
 rust_decimal_macros = { version = "1.37.1", features = ["reexportable"] }
 gems = { path = "crates/gems" }
@@ -33,4 +37,3 @@ thiserror = "1.0"
 typenum = "1.18.0"
 ratatui = "0.29.0"
 tui-popup = "0.6.0"
-uom = "0.37.0"

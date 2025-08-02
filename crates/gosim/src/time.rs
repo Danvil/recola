@@ -1,4 +1,3 @@
-use crate::FlecsQueryRelationHelpers;
 use flecs_ecs::prelude::*;
 use std::time::{Duration, Instant};
 
@@ -45,13 +44,12 @@ impl Module for TimeModule {
         });
 
         // Progress time
-        world
-            .system::<(&mut Time,)>()
-            .singleton_at(0)
-            .each(|(time,)| {
+        world.system::<()>().run(|it| {
+            it.world().get::<&mut Time>(|time| {
                 time.walltime = Instant::now();
                 time.frame_count += 1;
                 time.sim_time += time.sim_dt;
             });
+        });
     }
 }

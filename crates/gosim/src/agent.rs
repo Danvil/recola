@@ -1,6 +1,7 @@
 use crate::{
-    create_blood_vessel, create_heart, create_lungs, create_tissue, BloodModule, BodyPart,
-    BodyPartModule, HeartModule, HeartSlots, LungsModule, LungsSlots,
+    create_blood_vessel, create_heart, create_lungs, utils::EntityBuilder, volume_from_liters,
+    BloodModule, BodyPart, BodyPartModule, HeartJunctions, HeartModule, LungsJunctions,
+    LungsModule, PipeConnectionHelper, PortTag, TissueBuilder,
 };
 use flecs_ecs::prelude::*;
 
@@ -27,52 +28,56 @@ impl Module for AgentModule {
 pub fn create_human(human: EntityView) -> EntityView {
     let world = human.world();
 
+    let mut con = PipeConnectionHelper::default();
+
     let part_f = |name| world.entity_named(name).child_of(human);
 
-    let HeartSlots {
-        heart,
+    let heart = part_f("heart");
+    let HeartJunctions {
         red_in,
         red_out,
         blue_in,
         blue_out,
-    } = create_heart(&world, part_f("heart"));
+    } = create_heart(&world, heart, &mut con);
     heart.set(BodyPart::Heart);
 
     // lungs
     {
-        let LungsSlots {
-            lungs,
-            alveoli,
+        let lungs = part_f("lungs");
+        let LungsJunctions {
+            pulmonary_in,
+            pulmonary_out,
             bronchial_in,
             bronchial_out,
-        } = create_lungs(&world, part_f("lungs"));
+        } = create_lungs(&world, lungs, &mut con);
         lungs.set(BodyPart::Lungs);
-
-        todo!();
-        // // create pulmonary cycle (oxygen enrichment)
-        // blue_out.add((FluidFlowLink, alveoli));
-        // alveoli.add((FluidFlowLink, red_in));
-
-        // // create bronchial cycle (nutrients)
-        // red_out.add((FluidFlowLink, bronchial_in));
-        // bronchial_out.add((FluidFlowLink, blue_in));
+        con.join_junctions(&world, blue_out, pulmonary_in);
+        con.join_junctions(&world, red_in, pulmonary_out);
+        con.join_junctions(&world, red_out, bronchial_in);
+        con.join_junctions(&world, blue_in, bronchial_out);
     }
 
     // torso
     {
-        let torso_artery = create_blood_vessel(&world, part_f("torso artery"), 0.100);
+        let torso_artery =
+            create_blood_vessel(&world, part_f("torso artery"), volume_from_liters(0.100));
 
-        let torso = create_blood_vessel(&world, part_f("torso"), 0.500);
-        create_tissue(torso).set(BodyPart::Torso);
+        let torso = create_blood_vessel(&world, part_f("torso"), volume_from_liters(0.500));
+        TissueBuilder {
+            volume: volume_from_liters(10.),
+        }
+        .build(&world, torso)
+        .set(BodyPart::Torso);
 
-        let torso_vein = create_blood_vessel(&world, part_f("torso vein"), 0.400);
+        let torso_vein =
+            create_blood_vessel(&world, part_f("torso vein"), volume_from_liters(0.400));
 
-        todo!();
-        // red_out.add((FluidFlowLink, torso_artery));
-        // torso_artery.add((FluidFlowLink, torso));
-        // torso.add((FluidFlowLink, torso_vein));
-        // torso_vein.add((FluidFlowLink, blue_in));
+        con.connect_to_junction((torso_artery, PortTag::A), red_out);
+        con.connect_chain(&[torso_artery, torso, torso_vein]);
+        con.connect_to_junction((torso_vein, PortTag::B), blue_in);
     }
+
+    con.write_dot(&world, "tmp/human.dot").ok();
 
     human
 }
