@@ -22,6 +22,7 @@ rust_decimal_macros = { version = "1.37.1", features = ["reexportable"] }
 gems = { path = "crates/gems" }
 gos_common = { path = "crates/gos_common" }
 gosim = { path = "crates/gosim" }
+flowsim = { path = "crates/flowsim" }
 log = "0.4"
 nng = "1.0"
 paste = "1.0.15"

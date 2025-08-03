@@ -1,5 +1,5 @@
 use crate::{
-    create_blood_vessel, create_heart, create_lungs, utils::EntityBuilder, volume_from_liters,
+    create_blood_vessels, create_heart, create_lungs, utils::EntityBuilder, volume_from_liters,
     BloodModule, BodyPart, BodyPartModule, HeartJunctions, HeartModule, LungsJunctions,
     LungsModule, PipeConnectionHelper, PortTag, TissueBuilder,
 };
@@ -16,8 +16,9 @@ impl Module for AgentModule {
     fn module(world: &World) {
         world.module::<AgentModule>("agent");
 
-        world.import::<BloodModule>();
+        println!("AgentModule");
         world.import::<BodyPartModule>();
+        world.import::<BloodModule>();
         world.import::<HeartModule>();
         world.import::<LungsModule>();
 
@@ -60,9 +61,9 @@ pub fn create_human(human: EntityView) -> EntityView {
     // torso
     {
         let torso_artery =
-            create_blood_vessel(&world, part_f("torso artery"), volume_from_liters(0.100));
+            create_blood_vessels(&world, part_f("torso artery"), volume_from_liters(0.100));
 
-        let torso = create_blood_vessel(&world, part_f("torso"), volume_from_liters(0.500));
+        let torso = create_blood_vessels(&world, part_f("torso"), volume_from_liters(0.500));
         TissueBuilder {
             volume: volume_from_liters(10.),
         }
@@ -70,7 +71,7 @@ pub fn create_human(human: EntityView) -> EntityView {
         .set(BodyPart::Torso);
 
         let torso_vein =
-            create_blood_vessel(&world, part_f("torso vein"), volume_from_liters(0.400));
+            create_blood_vessels(&world, part_f("torso vein"), volume_from_liters(0.400));
 
         con.connect_to_junction((torso_artery, PortTag::A), red_out);
         con.connect_chain(&[torso_artery, torso, torso_vein]);

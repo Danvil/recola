@@ -1,0 +1,7 @@
+[package]
+name = "flowsim"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+gems = { workspace = true }

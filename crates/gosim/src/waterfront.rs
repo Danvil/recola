@@ -1,6 +1,6 @@
 use crate::{
     create_human, AgentModule, Air, ContainedBy, ContainerTag, HasInventory, InventoryModule,
-    ItemTag, MapModule, OpsModule, PlayerTag, Tile, TimeModule, Weight,
+    ItemTag, MapModule, OpsModule, PlayerTag, Tile, TimeModule, Weight, WeightModule,
 };
 use flecs_ecs::prelude::*;
 
@@ -16,6 +16,7 @@ impl Module for WaterfrontModule {
         world.import::<InventoryModule>();
         world.import::<MapModule>();
         world.import::<OpsModule>();
+        world.import::<WeightModule>();
 
         let tile_bar = world.entity_named("Bar").add(Tile).set(Air {
             oxygen_percent: 0.15,

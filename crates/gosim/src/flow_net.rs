@@ -1,7 +1,8 @@
 use crate::{
-    volume_from_milli_liters, Arg, ElasticTubeBundle, ElasticTubePressureModel, EntityBuilder,
-    FlecsQueryRelationHelpers, JunctionPressureSolver, This, Time, TimeModule, TurbulentFlowModel,
-    DENSITY_BLOOD, FLOW_CONSERVATION_THRESHOLD, VISCOSITY_BLOOD,
+    volume_from_milli_liters, volume_to_milli_liters, Arg, ElasticTubeBundle, EntityBuilder,
+    FlecsQueryRelationHelpers, HoopTubePressureModel, JunctionPressureFlowError,
+    JunctionPressureSolver, JunctionPressureSolverError, This, Time, TimeModule,
+    TurbulentFlowModel, DENSITY_BLOOD, FLOW_CONSERVATION_THRESHOLD, VISCOSITY_BLOOD,
 };
 use flecs_ecs::prelude::*;
 use gems::{Ema, Lerp};
@@ -37,14 +38,13 @@ pub struct PipeGeometry {
 }
 
 impl PipeGeometry {
-    pub fn pressure_model(&self) -> ElasticTubePressureModel {
-        ElasticTubePressureModel::new(self.tubes.clone(), self.collapse_pressure)
+    pub fn pressure_model(&self) -> HoopTubePressureModel {
+        HoopTubePressureModel::new(self.tubes.clone(), self.collapse_pressure)
     }
 
     pub fn flow_model(&self, density: f64, viscosity: f64) -> TurbulentFlowModel {
         TurbulentFlowModel::new(
-            self.tubes.radius,
-            self.tubes.length,
+            self.tubes.cylinder(),
             density,
             viscosity,
             self.conductance_factor,
@@ -125,189 +125,6 @@ where
     }
 }
 
-/// A pipe stores fluid "chunks" as a FIFO list. Pipes can be connected to exchange liquid.
-#[derive(Component, Clone)]
-pub struct Pipe<T: 'static + Send + Sync + Clone> {
-    /// Fluid chunks currently contained by the vessels
-    chunks: VecDeque<FluidChunk<T>>,
-
-    /// Total volume of all chunks
-    volume: f64,
-
-    /// Chunks smaller than this will be merged.
-    min_chunk_volume: f64,
-}
-
-impl<T: 'static + Send + Sync + Clone> Pipe<T>
-where
-    T: Lerp<f64>,
-{
-    pub fn new() -> Self {
-        Self {
-            chunks: VecDeque::new(),
-            volume: 0.,
-            min_chunk_volume: 0.,
-        }
-    }
-
-    pub fn set_min_chunk_volume(&mut self, min_chunk_volume: f64) {
-        self.min_chunk_volume = min_chunk_volume;
-    }
-
-    pub fn with_min_chunk_volume(mut self, min_chunk_volume: f64) -> Self {
-        self.set_min_chunk_volume(min_chunk_volume);
-        self
-    }
-
-    /// Volume of liquid stored in the pipe
-    pub fn volume(&self) -> f64 {
-        self.volume
-    }
-
-    /// Volume-weighted average chunk data
-    pub fn average_data(&self) -> Option<T>
-    where
-        T: Lerp<f64>,
-    {
-        if self.volume == 0. {
-            None
-        } else {
-            T::weighted_average(self.chunks.iter().map(|c| (c.volume, &c.data)))
-        }
-    }
-
-    pub fn chunks(&self) -> impl ExactSizeIterator<Item = &FluidChunk<T>> {
-        self.chunks.iter()
-    }
-
-    pub fn chunk_volume_data_mut(&mut self) -> impl Iterator<Item = (f64, &mut T)> {
-        self.chunks.iter_mut().map(|c| (c.volume, &mut c.data))
-    }
-
-    /// Push liquid into the pipe at given port
-    pub fn fill(&mut self, port: PortTag, chunk: FluidChunk<T>) {
-        assert!(chunk.volume >= 0.);
-        if chunk.volume == 0. {
-            return;
-        }
-
-        self.volume += chunk.volume;
-
-        let mut port = PortOp(port, &mut self.chunks);
-
-        let chunk = if let Some(last) = port.get() {
-            if last.volume < self.min_chunk_volume {
-                // last chunk too small - mix in the inflow
-                let volume = last.volume + chunk.volume;
-                let data =
-                    T::weighted_average_2((last.volume, &last.data), (chunk.volume, &chunk.data));
-                port.pop();
-
-                FluidChunk { volume, data }
-            } else {
-                // start new chunk
-                chunk
-            }
-        } else {
-            // first chunk
-            chunk
-        };
-
-        port.push(chunk);
-    }
-
-    pub fn filled(mut self, port: PortTag, chunk: FluidChunk<T>) -> Self {
-        self.fill(port, chunk);
-        self
-    }
-
-    /// Drain fluid from the pipe at given port.
-    pub fn drain(
-        &mut self,
-        port: PortTag,
-        volume: f64,
-    ) -> impl Iterator<Item = FluidChunk<T>> + '_ {
-        assert!(volume >= 0.);
-
-        struct DrainIter<'a, T: Clone> {
-            port: PortOp<'a, FluidChunk<T>>,
-            target: f64,
-            volume_ref: &'a mut f64,
-        }
-
-        impl<'a, T: Clone> Iterator for DrainIter<'a, T> {
-            type Item = FluidChunk<T>;
-
-            fn next(&mut self) -> Option<Self::Item> {
-                if self.target <= 0. {
-                    return None;
-                }
-
-                let next = self.port.pop()?;
-
-                if next.volume > self.target {
-                    // Split chunk
-                    let mut remainder = next.clone();
-                    remainder.volume -= self.target;
-                    self.port.push(remainder);
-
-                    let mut taken = next;
-                    taken.volume = self.target;
-                    *self.volume_ref -= self.target;
-                    self.target = 0.;
-                    Some(taken)
-                } else {
-                    // Take whole chunk
-                    *self.volume_ref -= next.volume;
-                    self.target -= next.volume;
-                    Some(next)
-                }
-            }
-        }
-
-        DrainIter {
-            port: PortOp(port, &mut self.chunks),
-            target: volume,
-            volume_ref: &mut self.volume,
-        }
-    }
-}
-
-/// Helper type to work on the ports of a pipe
-struct PortOp<'a, T>(PortTag, &'a mut VecDeque<T>);
-
-impl<'a, T> PortOp<'a, T> {
-    /// Current chunk at port
-    fn get(&self) -> Option<&T> {
-        match self.0 {
-            PortTag::A => self.1.front(),
-            PortTag::B => self.1.back(),
-        }
-    }
-
-    /// Pop chunk from port
-    fn pop(&mut self) -> Option<T> {
-        match self.0 {
-            PortTag::A => self.1.pop_front(),
-            PortTag::B => self.1.pop_back(),
-        }
-    }
-
-    /// Push chunk into port
-    fn push(&mut self, chunk: T) {
-        match self.0 {
-            PortTag::A => self.1.push_front(chunk),
-            PortTag::B => self.1.push_back(chunk),
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct FluidChunk<T> {
-    pub volume: f64,
-    pub data: T,
-}
-
 /// Internal state used for computation of liquid flow
 #[derive(Component, Clone, Default, Debug)]
 pub struct PipeFlowState {
@@ -315,7 +132,7 @@ pub struct PipeFlowState {
     current_volume: f64,
 
     /// Current pressure model for the pipe
-    pressure_model: ElasticTubePressureModel,
+    pressure_model: HoopTubePressureModel,
 
     /// Current flow model for each port (based on pipe conductance)
     flow_model: [TurbulentFlowModel; 2],
@@ -349,6 +166,10 @@ impl PipeFlowState {
     pub fn pipe_pressure_differential(&self, direction: FlowDirection) -> f64 {
         let [i1, i2] = direction.indices();
         self.total_pressure[i1] - self.total_pressure[i2]
+    }
+
+    pub fn flow(&self, port: PortTag) -> f64 {
+        self.flow[port.index()]
     }
 
     /// Combined flow into the pipe increasing it's stored volume
@@ -517,36 +338,6 @@ pub struct Junction;
 #[derive(Component, Default)]
 struct JunctionState {
     solver: JunctionPressureSolver<Entity>,
-}
-
-/// A pipe has two ports
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub enum PortTag {
-    A,
-    B,
-}
-
-impl PortTag {
-    pub fn index(&self) -> usize {
-        match self {
-            PortTag::A => 0,
-            PortTag::B => 1,
-        }
-    }
-
-    pub fn opposite(&self) -> PortTag {
-        match self {
-            PortTag::A => PortTag::B,
-            PortTag::B => PortTag::A,
-        }
-    }
-
-    pub fn tag(&self) -> &'static str {
-        match self {
-            PortTag::A => "A",
-            PortTag::B => "B",
-        }
-    }
 }
 
 /// Indicates the junction to which port A of a pipe is connected. There can only be one junction
@@ -845,7 +636,7 @@ pub fn setup_flow_net<T: 'static + Send + Sync + Clone + Lerp<f64>>(world: &Worl
             state.current_volume = pipe.volume();
 
             state.pressure_model =
-                ElasticTubePressureModel::new(pipe_def.tubes.clone(), pipe_def.collapse_pressure);
+                HoopTubePressureModel::new(pipe_def.tubes.clone(), pipe_def.collapse_pressure);
 
             // intrinsic pressure assuming no flow happens
             state.intrinsic_pressure = state.pressure_model.pressure(state.current_volume);
@@ -894,7 +685,7 @@ pub fn setup_flow_net<T: 'static + Send + Sync + Clone + Lerp<f64>>(world: &Worl
             .system_named::<(&mut Time, &mut JunctionState)>(&format!("JunctionStateReset{tag}"))
             .singleton_at(0)
             .each(|(time, junc_state)| {
-                junc_state.solver.reset();
+                junc_state.solver.reset(time.sim_dt_f64());
             });
 
         fn junction_pressure_impl<R>(world: &World, rel: R, port: PortTag, name: &str)
@@ -909,10 +700,11 @@ pub fn setup_flow_net<T: 'static + Send + Sync + Clone + Lerp<f64>>(world: &Worl
                     let pix = port.index();
                     junc_state.solver.add_port(
                         *pipe_entity,
-                        pipe_state.flow_model[pix].clone(),
+                        pipe_geo.tubes.cylinder(),
+                        pipe_state.current_volume,
                         pipe_state.extrinsic_pressure[pix],
                         pipe_geo.pressure_model(),
-                        pipe_state.current_volume,
+                        pipe_state.flow_model[pix].clone(),
                     );
                 });
         }
@@ -933,8 +725,16 @@ pub fn setup_flow_net<T: 'static + Send + Sync + Clone + Lerp<f64>>(world: &Worl
 
         world
             .system_named::<(&mut JunctionState,)>(&format!("JunctionStateSolver{tag}"))
-            .each(|(junc_state,)| {
-                junc_state.solver.solve().ok();
+            .each(|(junc_state,)| match junc_state.solver.solve() {
+                Ok(_)
+                | Err(JunctionPressureSolverError::NoPorts)
+                | Err(JunctionPressureSolverError::NoConductance) => {}
+                Err(err) => {
+                    log::warn!(
+                        "junction pressure solver failed: {err:?}\n{:?}",
+                        junc_state.solver
+                    );
+                }
             });
     }
 
@@ -952,7 +752,11 @@ pub fn setup_flow_net<T: 'static + Send + Sync + Clone + Lerp<f64>>(world: &Worl
                 .tagged("$pipe", Arg(0))
                 .each(move |(pipe_state, junc_state)| {
                     let pix = port.index();
-                    pipe_state.junction_pressure[pix] = junc_state.solver.pressure().unwrap();
+                    // Ignore errors as we complained about solution failures earlier already.
+                    pipe_state.junction_pressure[pix] = junc_state
+                        .solver
+                        .pressure()
+                        .unwrap_or(pipe_state.total_pressure[pix]);
                 });
         }
         store_junction_pressure_impl(
@@ -1003,7 +807,20 @@ pub fn setup_flow_net<T: 'static + Send + Sync + Clone + Lerp<f64>>(world: &Worl
                     // Compute flow based on pressure differential.
                     // Note that conductance is doubled as liquid exchange between pipe and junction
                     // (not throughflow!) has to travel on average only half the pipe length.
-                    let flow = 2.0 * junc_state.solver.flow(*pipe_entity).unwrap();
+                    let flow = 2.0
+                        * match junc_state.solver.flow(*pipe_entity) {
+                            Ok(flow) => flow,
+                            Err(JunctionPressureFlowError::InvalidIndex) => {
+                                // shouldn't happen ..
+                                log::warn!("invalid entity");
+                                0.
+                            }
+                            Err(JunctionPressureFlowError::SolverError(err)) => {
+                                // In case something went wrong just disable flow over port
+                                log::warn!("flow error: {err:?}, pipe: {pipe_entity}");
+                                0.
+                            }
+                        };
                     pipe_state.flow[pix] = flow;
 
                     // println!("{}: {pix} {:?}", pipe_entity.name(), volume_to_liters(flow));
@@ -1050,7 +867,7 @@ pub fn setup_flow_net<T: 'static + Send + Sync + Clone + Lerp<f64>>(world: &Worl
     junction_outflow_impl::<T, _>(world, PortBJunction, PortTag::B, "JunctionOutflowPortB");
 
     world
-        .system_named::<(&Pipe<()>, &mut PipeFlowState)>("UpdatePressure")
+        .system_named::<(&Pipe<T>, &mut PipeFlowState)>("UpdatePressure")
         .each(|(pipe, pipe_state)| {
             pipe_state.current_volume = pipe.volume();
             pipe_state.intrinsic_pressure = pipe_state
@@ -1061,6 +878,17 @@ pub fn setup_flow_net<T: 'static + Send + Sync + Clone + Lerp<f64>>(world: &Worl
                 pipe_state.extrinsic_pressure[0] + pipe_state.intrinsic_pressure;
             pipe_state.total_pressure[1] =
                 pipe_state.extrinsic_pressure[1] + pipe_state.intrinsic_pressure;
+
+            println!(
+                "{:8.3?} {:8.3?} {:8.3?} {:8.3?}",
+                volume_to_milli_liters(pipe_state.current_volume),
+                pipe_state.intrinsic_pressure,
+                pipe_state.junction_pressure,
+                [
+                    volume_to_milli_liters(pipe_state.flow[0]),
+                    volume_to_milli_liters(pipe_state.flow[1])
+                ]
+            );
         });
 
     world
@@ -1078,8 +906,6 @@ pub fn setup_flow_net<T: 'static + Send + Sync + Clone + Lerp<f64>>(world: &Worl
     world
         .system_named::<(&ValveDef, &mut PipeFlowState, &mut ValveState)>("OperateValves")
         .each(|(valve_def, pipe_state, valve_state)| {
-            let factor = valve_def.conductance_factor_closed.max(0.);
-
             let port_flow_kind = valve_def.kind.port_kind();
 
             for i in 0..2 {
@@ -1130,11 +956,19 @@ where
     T: 'static + Send + Sync + Clone + Lerp<f64>,
 {
     fn build<'a>(&self, _world: &'a World, entity: EntityView<'a>) -> EntityView<'a> {
-        let volume = self
-            .geometry
-            .pressure_model()
-            .volume(self.target_pressure)
-            .unwrap_or_else(|v| v);
+        let pressure_model = self.geometry.pressure_model();
+
+        let volume = match pressure_model.volume(self.target_pressure) {
+            Ok(v) => v,
+            Err(err) => {
+                log::warn!(
+                    "failed to compute volume to reach target pressure: {err:?}, P={}\n{:?}",
+                    self.target_pressure,
+                    self.geometry
+                );
+                err.best_guess()
+            }
+        };
 
         entity
             .set(self.geometry.clone())

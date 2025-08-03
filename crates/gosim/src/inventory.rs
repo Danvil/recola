@@ -1,4 +1,4 @@
-use crate::{op_mark_completed, OpStatePending};
+use crate::{op_mark_completed, OpStatePending, OpsModule};
 use flecs_ecs::prelude::*;
 
 #[derive(Component)]
@@ -57,6 +57,8 @@ pub struct DestroyItemOp {
 impl Module for InventoryModule {
     fn module(world: &World) {
         world.module::<InventoryModule>("inventory");
+
+        world.import::<OpsModule>();
 
         world.component::<ItemTag>();
         world.component::<ContainerTag>();

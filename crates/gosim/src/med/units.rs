@@ -24,3 +24,9 @@ pub fn pressure_from_mm_hg(mmhg: f64) -> f64 {
 pub fn pressure_to_mm_hg(pressure: f64) -> f64 {
     pressure / MM_HG_TO_PA
 }
+
+pub const VISCOSITY_WATER: f64 = 1.0016e-3;
+
+pub const VISCOSITY_BLOOD: f64 = 3.5e-3;
+
+pub const DENSITY_BLOOD: f64 = 1075.;

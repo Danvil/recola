@@ -1,6 +1,6 @@
 use crate::{
-    setup_flow_net, BloodOxygenContent, FlecsQueryRelationHelpers, FlowNetModule, FluidChunk,
-    HemoglobinOxygenSaturationHill, Pipe, Time, TimeModule, Tissue,
+    setup_flow_net, BloodOxygenContent, BodyPartModule, FlecsQueryRelationHelpers, FlowNetModule,
+    FluidChunk, HemoglobinOxygenSaturationHill, Pipe, Time, TimeModule, Tissue,
 };
 use flecs_ecs::prelude::*;
 use gems::Lerp;
@@ -127,6 +127,7 @@ impl Module for BloodModule {
         world.import::<FlowNetModule>();
 
         world.component::<BloodConfig>();
+        world.component::<BloodStats>();
 
         setup_flow_net::<BloodProperties>(world);
 

@@ -40,7 +40,7 @@ impl Module for TimeModule {
             walltime: Instant::now(),
             frame_count: 0,
             sim_time: Duration::default(),
-            sim_dt: Duration::from_millis(50),
+            sim_dt: Duration::from_millis(20),
         });
 
         // Progress time

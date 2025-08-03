@@ -1,4 +1,6 @@
-use crate::{cylinder_radius, cylinder_volume, newton_root_solver};
+use crate::{
+    cylinder_radius, cylinder_volume, newton_root_solver, Cylinder, NewtonRootSolverError,
+};
 
 /// Pressure model for an elastic tube under positive pressure
 ///
@@ -13,27 +15,31 @@ use crate::{cylinder_radius, cylinder_volume, newton_root_solver};
 /// The tube surface area is: An = 2 π r L
 /// Pressure P = Fn / An = E τ L ε 2 π / (2 π r L)
 ///            = E τ0 r0 (r - r0) / r^3
-pub fn elastic_tube_pressure(r: f64, r0: f64, t: f64, ym: f64) -> f64 {
+pub fn balloon_tube_pressure(r: f64, r0: f64, t: f64, ym: f64) -> f64 {
     ym * t * (r0 / r) * ((r - r0) / (r * r))
 }
 
 /// Maximum pressure possible in the elastic tube
 /// The maximum pressure is achived at r = 3/2 r0
-pub fn elastic_tube_max_pressure(r0: f64, t: f64, ym: f64) -> f64 {
+pub fn balloon_tube_max_pressure(r0: f64, t: f64, ym: f64) -> f64 {
     4. * t * ym / (27. * r0)
 }
 
 /// The volume of the tube when maximum pressure is reached
-pub fn elastic_tube_volume_at_max_pressure(r0: f64, length: f64) -> f64 {
+pub fn balloon_tube_volume_at_max_pressure(r0: f64, length: f64) -> f64 {
     9. / 4. * core::f64::consts::PI * length * r0 * r0
 }
 
-/// Approximation Derivative of elastic_tube_pressure after r at r=r0
-pub fn elastic_tube_inv_approx(p: f64, r0: f64, t: f64, ym: f64) -> f64 {
-    let p = p.min(elastic_tube_max_pressure(r0, t, ym));
+/// Approximation Derivative of balloon_tube_pressure after r at r=r0
+pub fn balloon_tube_inv_approx(p: f64, r0: f64, t: f64, ym: f64) -> f64 {
+    let p = p.min(balloon_tube_max_pressure(r0, t, ym));
 
     r0 + p * r0 * r0 / (ym * t) * 1.5
     // Note the factor 1.5 just makes it a bit better on average ..
+}
+
+pub fn hoop_tube_pressure(r: f64, r0: f64, t: f64, ym: f64) -> f64 {
+    (t * ym * (r - r0)) / (r * r0)
 }
 
 /// Tube law to model negative pressure
@@ -41,7 +47,7 @@ pub fn elastic_tube_inv_approx(p: f64, r0: f64, t: f64, ym: f64) -> f64 {
 /// P = P0 * ((r/r0)^{2/n} - 1)
 ///
 /// The exponent `n` is computed s.t. the tangent at r=r0 is the same as the tangent of the
-/// elastic_tube_pressure law.
+/// balloon_tube_pressure law.
 pub fn tube_law_pressure(r: f64, r0: f64, t: f64, ym: f64, pmin: f64) -> f64 {
     let n = -2. * pmin * r0 / (ym * t);
     pmin * (1. - (r / r0).powf(2. / n))
@@ -80,6 +86,13 @@ impl Default for ElasticTubeBundle {
 }
 
 impl ElasticTubeBundle {
+    pub fn cylinder(&self) -> Cylinder {
+        Cylinder {
+            radius: self.radius,
+            length: self.length,
+        }
+    }
+
     /// Nominal volume of all tubes in the bundle
     pub fn nominal_volume(&self) -> f64 {
         self.radius_to_volume(self.radius)
@@ -93,6 +106,12 @@ impl ElasticTubeBundle {
     /// Computes volume based on given radius
     pub fn radius_to_volume(&self, radius: f64) -> f64 {
         cylinder_volume(radius, self.length) * self.count
+    }
+
+    pub fn with_cylinder(mut self, cylinder: Cylinder) -> Self {
+        self.radius = cylinder.radius;
+        self.length = cylinder.length;
+        self
     }
 
     pub fn with_radius(mut self, radius: f64) -> Self {
@@ -112,14 +131,14 @@ impl ElasticTubeBundle {
     }
 }
 
-/// Relates pressure in an elastic tube due to stretch or contraction to contained volume
+/// Hoop stress is P r / t
 #[derive(Default, Clone, Debug)]
-pub struct ElasticTubePressureModel {
+pub struct HoopTubePressureModel {
     tubes: ElasticTubeBundle,
     collapse_pressure: f64,
 }
 
-impl ElasticTubePressureModel {
+impl HoopTubePressureModel {
     pub fn new(tubes: ElasticTubeBundle, collapse_pressure: f64) -> Self {
         Self {
             tubes,
@@ -143,7 +162,70 @@ impl ElasticTubePressureModel {
                 self.collapse_pressure,
             )
         } else {
-            elastic_tube_pressure(
+            hoop_tube_pressure(
+                current_radius,
+                self.tubes.radius,
+                self.tubes.wall_thickness,
+                self.tubes.youngs_modulus,
+            )
+        }
+    }
+
+    /// Derivative of `pressure`
+    pub fn pressure_dx(&self, volume: f64) -> f64 {
+        let dv = (volume * 1e-4).max(1e-9);
+
+        let p1 = self.pressure(volume);
+        let p2 = self.pressure(volume + dv);
+
+        (p2 - p1) / dv
+    }
+
+    /// Computes volume which generates given pressure.
+    pub fn volume(&self, pressure: f64) -> Result<f64, NewtonRootSolverError> {
+        // TODO there is a closed form solution
+        // solve P(V) - P0 == 0 for V
+        let obj_f = |v| self.pressure(v) - pressure;
+        let dx_f = |v| self.pressure_dx(v);
+        let v0 = self.tubes.nominal_volume();
+        let sol = newton_root_solver(v0, 1e-3, 25, obj_f, dx_f);
+        sol
+    }
+}
+
+/// Pressure model assuming an elastic wall which thins due to expansion. Similar to inflating a
+/// balloon. Under this model pressure drops again after a certain volume has been reached.
+#[derive(Default, Clone, Debug)]
+pub struct BalloonTubePressureModel {
+    tubes: ElasticTubeBundle,
+    collapse_pressure: f64,
+}
+
+impl BalloonTubePressureModel {
+    pub fn new(tubes: ElasticTubeBundle, collapse_pressure: f64) -> Self {
+        Self {
+            tubes,
+            collapse_pressure,
+        }
+    }
+
+    pub fn tubes(&self) -> &ElasticTubeBundle {
+        &self.tubes
+    }
+
+    pub fn pressure(&self, volume: f64) -> f64 {
+        let current_radius = self.tubes.volume_to_radius(volume);
+
+        if current_radius < self.tubes.radius {
+            tube_law_pressure(
+                current_radius,
+                self.tubes.radius,
+                self.tubes.wall_thickness,
+                self.tubes.youngs_modulus,
+                self.collapse_pressure,
+            )
+        } else {
+            balloon_tube_pressure(
                 current_radius,
                 self.tubes.radius,
                 self.tubes.wall_thickness,
@@ -164,7 +246,7 @@ impl ElasticTubePressureModel {
 
     /// Maximum pressure possible
     pub fn max_pressure(&self) -> f64 {
-        elastic_tube_max_pressure(
+        balloon_tube_max_pressure(
             self.tubes.radius,
             self.tubes.wall_thickness,
             self.tubes.youngs_modulus,
@@ -173,7 +255,7 @@ impl ElasticTubePressureModel {
 
     /// Volume when maximum pressure is reached. Higher volume will lead to pressure drop.
     pub fn volume_at_max_pressure(&self) -> f64 {
-        elastic_tube_volume_at_max_pressure(self.tubes.radius, self.tubes.length) * self.tubes.count
+        balloon_tube_volume_at_max_pressure(self.tubes.radius, self.tubes.length) * self.tubes.count
     }
 
     /// Computes volume which generates given pressure. Note that this might not have a solution
@@ -189,115 +271,7 @@ impl ElasticTubePressureModel {
             let dx_f = |v| self.pressure_dx(v);
             let v0 = self.tubes.nominal_volume();
             let sol = newton_root_solver(v0, 1e-3, 25, obj_f, dx_f);
-            sol
-        }
-    }
-}
-
-/// Conductance of a cylindrical pipe (Poiseuille's law)
-pub fn poiseuille_pipe_conductance(radius: f64, length: f64, viscosity: f64) -> f64 {
-    core::f64::consts::PI * radius.powi(4) / (8. * length * viscosity)
-}
-
-/// Resistance of a cylindrical pipe (Poiseuille's law)
-pub fn poiseuille_pipe_resistance(radius: f64, length: f64, viscosity: f64) -> f64 {
-    8. * length * viscosity / (core::f64::consts::PI * radius.powi(4))
-}
-
-pub const VISCOSITY_WATER: f64 = 1.0016e-3;
-
-pub const VISCOSITY_BLOOD: f64 = 3.5e-3;
-
-pub const DENSITY_BLOOD: f64 = 1075.;
-
-/// Computes pressure (after poiseuille) which realizes given Reynolds number
-pub fn critical_pressure(
-    reynolds_number: f64,
-    radius: f64,
-    length: f64,
-    density: f64,
-    viscosity: f64,
-) -> f64 {
-    reynolds_number * 4. * viscosity * viscosity * length / (radius.powi(3) * density)
-}
-
-/// Flow follows Poiseuille until critical pressure and afterwards proportional to sqrt(dP)
-#[derive(Clone, Default, Debug)]
-pub struct TurbulentFlowModel {
-    poiseuille_conductance: f64,
-    critical_pressure: f64,
-}
-
-impl TurbulentFlowModel {
-    /// Reynolds number around which laminar flow transitions to turbulent flow
-    pub const CRITICAL_REYNOLDS: f64 = 3000.;
-
-    pub fn new(
-        radius: f64,
-        length: f64,
-        density: f64,
-        viscosity: f64,
-        conductance_factor: f64,
-    ) -> Self {
-        assert!(radius > 0.);
-        assert!(length > 0.);
-        assert!(density > 0.);
-        assert!(viscosity > 0.);
-        assert!(conductance_factor > 0.);
-
-        let poiseuille_conductance =
-            poiseuille_pipe_conductance(radius, length, viscosity) * conductance_factor;
-
-        let critical_pressure =
-            critical_pressure(Self::CRITICAL_REYNOLDS, radius, length, density, viscosity)
-                * conductance_factor;
-
-        Self {
-            poiseuille_conductance,
-            critical_pressure,
-        }
-    }
-
-    pub fn apply_conductance_factor(&mut self, factor: f64) {
-        self.poiseuille_conductance *= factor;
-        self.critical_pressure *= factor;
-    }
-
-    pub fn poiseuille_conductance(&self) -> f64 {
-        self.poiseuille_conductance
-    }
-
-    /// Computes flow for given pressure differential
-    pub fn flow(&self, pressure_difference: f64) -> f64 {
-        self.poiseuille_conductance * Self::curve(pressure_difference, self.critical_pressure)
-    }
-
-    /// Computes derivative of flow
-    pub fn flow_dx(&self, pressure_difference: f64) -> f64 {
-        self.poiseuille_conductance * Self::curve_dx(pressure_difference, self.critical_pressure)
-    }
-
-    fn curve(x: f64, x0: f64) -> f64 {
-        if x < 0. {
-            -Self::curve(-x, x0)
-        } else {
-            if x <= x0 {
-                x
-            } else {
-                ((2. * x - x0) * x0).sqrt()
-            }
-        }
-    }
-
-    fn curve_dx(x: f64, x0: f64) -> f64 {
-        if x < 0.0 {
-            Self::curve_dx(-x, x0)
-        } else {
-            if x <= x0 {
-                1.
-            } else {
-                x0 / ((2. * x - x0) * x0).sqrt()
-            }
+            sol.map_err(|err| err.best_guess())
         }
     }
 }
@@ -307,8 +281,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_elastic_tube_pressure_model_volume() {
-        let m = ElasticTubePressureModel::new(ElasticTubeBundle::default(), -1_000.);
+    fn test_balloon_tube_pressure_model_volume() {
+        let m = BalloonTubePressureModel::new(ElasticTubeBundle::default(), -1_000.);
 
         let v0 = m.tubes.nominal_volume();
 
@@ -340,14 +314,5 @@ mod tests {
             let actual = m.pressure(v);
             approx::assert_relative_eq!(actual, expected, max_relative = 1e-4);
         }
-    }
-
-    #[test]
-    fn test_turbulent_flow() {
-        let m = TurbulentFlowModel::new(0.001, 0.05, DENSITY_BLOOD, VISCOSITY_BLOOD, 1.0);
-        approx::assert_relative_eq!(m.flow(1_000.), 2.24399e-6, max_relative = 1e-4);
-
-        let m = TurbulentFlowModel::new(0.012, 0.35, DENSITY_BLOOD, VISCOSITY_BLOOD, 0.1);
-        approx::assert_relative_eq!(m.flow(1_000.), 4.94401e-5, max_relative = 1e-4);
     }
 }

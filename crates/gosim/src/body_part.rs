@@ -65,13 +65,13 @@ impl Module for BodyPartModule {
     fn module(world: &World) {
         world.module::<BodyPartModule>("BodyPartModule");
 
-        world.import::<TimeModule>();
-        world.import::<BloodModule>();
-
         world.component::<BodyPartConfig>();
         world.component::<BodyPart>();
         world.component::<Tissue>();
         world.component::<TissueStats>();
+
+        world.import::<TimeModule>();
+        world.import::<BloodModule>();
 
         BodyPartEfficiency::setup(world);
 
@@ -102,6 +102,8 @@ impl Module for BodyPartModule {
     }
 }
 
+const MEAN_CIRCULATORY_FILLING_PRESSURE: f64 = 800.0; // Pa / 6 mmHg
+
 pub struct BloodVesselBuilder<'a> {
     pub geometry: &'a PipeGeometry,
 }
@@ -112,7 +114,7 @@ impl EntityBuilder for BloodVesselBuilder<'_> {
         PipeBuilder {
             geometry: self.geometry,
             data: &BloodProperties::new(&blood_config, 0.45, 0.200, 0.850),
-            target_pressure: 100. * 133.,
+            target_pressure: MEAN_CIRCULATORY_FILLING_PRESSURE,
         }
         .build(world, entity)
     }
@@ -128,14 +130,14 @@ pub fn create_blood_vessel_aux<'a>(
     PipeBuilder {
         geometry: &geometry,
         data: &BloodProperties::new(&blood_config, 0.45, 0.200, 0.850),
-        target_pressure: 12000.,
+        target_pressure: MEAN_CIRCULATORY_FILLING_PRESSURE,
     }
     .build(world, entity)
     .set(BloodStats::default())
 }
 
-/// Create a set of blood <'a>vessels
-pub fn create_blood_vessel<'a>(
+/// Create a set of blood vessels
+pub fn create_blood_vessels<'a>(
     world: &'a World,
     entity: EntityView<'a>,
     volume: f64,
@@ -150,7 +152,7 @@ pub fn create_blood_vessel<'a>(
         }
         .with_count_from_total_volume(volume),
         collapse_pressure: -1000.,
-        conductance_factor: 0.,
+        conductance_factor: 1.,
     };
     create_blood_vessel_aux(world, entity, geometry)
 }

@@ -1,5 +1,5 @@
 use crate::{
-    create_blood_vessel, create_blood_vessel_aux, setup_flow_net, stat_component,
+    create_blood_vessel_aux, create_blood_vessels, setup_flow_net, stat_component,
     utils::EntityBuilder, volume_from_liters, BloodProperties, BodyPartModule, CardiacCycle,
     CardiacCycleStage, ElasticTubeBundle, ExternalPipePressure, FlecsQueryRelationHelpers,
     FlowDirection, FlowNetModule, PipeConnectionHelper, PipeGeometry, PortTag, Time, TimeModule,
@@ -111,10 +111,10 @@ pub fn create_heart<'a>(
     let systemic_veins = PipeGeometry {
         tubes: ElasticTubeBundle {
             radius: 0.008,
-            length: 0.100,
+            length: 0.150,
             wall_thickness: 0.0007,
-            youngs_modulus: 12_000.0,
-            count: 10., // SVC, IVC, + 1 major tributary
+            youngs_modulus: 36_000.0,
+            count: 3., // SVC, IVC, + 1 major tributary
         },
         collapse_pressure: -2000.0,
         conductance_factor: 1.,
@@ -122,10 +122,10 @@ pub fn create_heart<'a>(
 
     let blue_atrium = PipeGeometry {
         tubes: ElasticTubeBundle {
-            radius: 0.018,
+            radius: 0.014,
             length: 0.035,
             wall_thickness: 0.0025,
-            youngs_modulus: 20_000., // Pa
+            youngs_modulus: 60_000., // Pa
             count: 1.,
         },
         collapse_pressure: -500., // Pa
@@ -137,7 +137,7 @@ pub fn create_heart<'a>(
             radius: 0.022,
             length: 0.045,
             wall_thickness: 0.004,
-            youngs_modulus: 25_000.,
+            youngs_modulus: 75_000.,
             count: 1.,
         },
         collapse_pressure: -1_000.,
@@ -146,10 +146,10 @@ pub fn create_heart<'a>(
 
     let pulmonary_artery = PipeGeometry {
         tubes: ElasticTubeBundle {
-            radius: 0.009,
-            length: 0.250,
+            radius: 0.006,
+            length: 0.200,
             wall_thickness: 0.0015,
-            youngs_modulus: 300_000.0,
+            youngs_modulus: 300_000.,
             count: 2., // LPA + RPA
         },
         collapse_pressure: -1000.0,
@@ -158,10 +158,10 @@ pub fn create_heart<'a>(
 
     let pulmonary_veins = PipeGeometry {
         tubes: ElasticTubeBundle {
-            radius: 0.004,
-            length: 0.050,
+            radius: 0.006,
+            length: 0.150,
             wall_thickness: 0.0005,
-            youngs_modulus: 15_000.,
+            youngs_modulus: 45_000.,
             count: 4.,
         },
         collapse_pressure: -1_000.,
@@ -173,7 +173,7 @@ pub fn create_heart<'a>(
             radius: 0.018,
             length: 0.035,
             wall_thickness: 0.0025,
-            youngs_modulus: 20_000.,
+            youngs_modulus: 60_000.,
             count: 1.,
         },
         collapse_pressure: -500.,
@@ -185,7 +185,7 @@ pub fn create_heart<'a>(
             radius: 0.028,
             length: 0.055,
             wall_thickness: 0.010,
-            youngs_modulus: 40_000.,
+            youngs_modulus: 120_000.,
             count: 1.,
         },
         collapse_pressure: -1_500.,
@@ -256,7 +256,7 @@ pub fn create_heart<'a>(
 
     // The heart is a body part which needs blood itself
     TissueBuilder { volume: 1.0 }.build(world, heart);
-    let heart_vessel = create_blood_vessel(world, heart, volume_from_liters(0.050));
+    let heart_vessel = create_blood_vessels(world, heart, volume_from_liters(0.050));
 
     // Connect heart blood supply directly
     con.connect_chain(&[red[3], heart_vessel]);

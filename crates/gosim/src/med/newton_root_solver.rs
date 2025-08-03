@@ -5,7 +5,7 @@ pub fn newton_root_solver<F, DF>(
     max_iterations: usize,
     mut obj_f: F,
     mut dx_f: DF,
-) -> Result<f64, f64>
+) -> Result<f64, NewtonRootSolverError>
 where
     F: FnMut(f64) -> f64,
     DF: FnMut(f64) -> f64,
@@ -22,11 +22,25 @@ where
         }
 
         if m.abs() < 1e-9 {
-            return Err(x);
+            return Err(NewtonRootSolverError::Plateau { x, y, m });
         }
 
-        let dx = obj_f(x) / m;
-        x = x - dx;
+        x -= y / m;
     }
-    Err(x)
+    Err(NewtonRootSolverError::IterationCountExceeded { x })
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum NewtonRootSolverError {
+    Plateau { x: f64, y: f64, m: f64 },
+    IterationCountExceeded { x: f64 },
+}
+
+impl NewtonRootSolverError {
+    pub fn best_guess(&self) -> f64 {
+        match *self {
+            NewtonRootSolverError::Plateau { x, .. } => x,
+            NewtonRootSolverError::IterationCountExceeded { x } => x,
+        }
+    }
 }

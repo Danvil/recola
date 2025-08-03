@@ -54,12 +54,12 @@ impl TestRunner for FlowNetLine {
         world.query::<(&PipeFlowState,)>().build().each(|(state,)| {
             assert_relative_eq!(
                 state.pipe_pressure(PortTag::A),
-                11456.7,
+                12210.3566,
                 max_relative = 1e-5
             );
             assert_relative_eq!(
                 state.pipe_pressure(PortTag::B),
-                11456.7,
+                12210.3566,
                 max_relative = 1e-5
             );
             assert_abs_diff_eq!(state.storage_flow(), 0., epsilon = 1e-6);

@@ -1,5 +1,5 @@
 use crate::{
-    create_blood_vessel, stat_component, utils::EntityBuilder, volume_from_liters, Air,
+    create_blood_vessels, stat_component, utils::EntityBuilder, volume_from_liters, Air,
     BloodModule, BloodProperties, BloodVessel, FlecsQueryRelationHelpers, PipeConnectionHelper,
     PortTag, Time, TimeModule, TissueBuilder,
 };
@@ -82,26 +82,26 @@ pub fn create_lungs<'a>(
     // The pulmonary part enriches blood with oxygen
 
     let pulmonary_in =
-        create_blood_vessel(&world, part_f("pulmonary_in"), volume_from_liters(0.100));
+        create_blood_vessels(&world, part_f("pulmonary_in"), volume_from_liters(0.100));
 
-    let alveoli = create_blood_vessel(&world, part_f("alveoli"), volume_from_liters(0.300));
+    let alveoli = create_blood_vessels(&world, part_f("alveoli"), volume_from_liters(0.300));
     alveoli.set(Alveoli { dummy: 0. }).add(AlveoliTag);
 
     let pulmonary_out =
-        create_blood_vessel(&world, part_f("pulmonary_out"), volume_from_liters(0.200));
+        create_blood_vessels(&world, part_f("pulmonary_out"), volume_from_liters(0.200));
 
     con.connect_chain(&[pulmonary_in, alveoli, pulmonary_out]);
 
     // The bronchial blood supply provides nutrient blood to the lungs
 
     let bronchial_in =
-        create_blood_vessel(&world, part_f("bronchial_in"), volume_from_liters(0.050));
+        create_blood_vessels(&world, part_f("bronchial_in"), volume_from_liters(0.050));
 
-    let bronchial = create_blood_vessel(&world, part_f("bronchial"), volume_from_liters(0.150));
+    let bronchial = create_blood_vessels(&world, part_f("bronchial"), volume_from_liters(0.150));
     TissueBuilder { volume: 1. }.build(&world, bronchial);
 
     let bronchial_out =
-        create_blood_vessel(&world, part_f("bronchial_out"), volume_from_liters(0.100));
+        create_blood_vessels(&world, part_f("bronchial_out"), volume_from_liters(0.100));
 
     con.connect_chain(&[bronchial_in, bronchial, bronchial_out]);
 
@@ -137,6 +137,7 @@ impl Module for LungsModule {
 
         // world.component::<BreathingOrgan>();
         // world.component::<CurrentBreathingOrgan>();
+        world.component::<LungsConfig>();
         world.component::<AlveoliTag>();
         world.component::<Air>();
         world.component::<Alveoli>();
