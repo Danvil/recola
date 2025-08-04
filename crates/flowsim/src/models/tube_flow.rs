@@ -1,4 +1,15 @@
-use crate::Cylinder;
+use gems::Cylinder;
+
+pub trait FlowModel {
+    /// Flow for given pressure differential
+    fn flow(&self, pressure_difference: f64) -> f64;
+
+    /// Derivative of flow
+    fn flow_dx(&self, pressure_difference: f64) -> f64;
+
+    /// Poiseuille conductance of flow model
+    fn poiseuille_conductance(&self) -> f64;
+}
 
 /// Poiseuille model for laminar flow
 #[derive(Clone, Default, Debug)]
@@ -28,14 +39,18 @@ impl PoiseuilleFlowModel {
     pub fn poiseuille_conductance(&self) -> f64 {
         self.poiseuille_conductance
     }
+}
 
-    /// Flow for given pressure differential
-    pub fn flow(&self, pressure_difference: f64) -> f64 {
+impl FlowModel for PoiseuilleFlowModel {
+    fn flow(&self, pressure_difference: f64) -> f64 {
         self.poiseuille_conductance * pressure_difference
     }
 
-    /// Derivative of flow
-    pub fn flow_dx(&self, _pressure_difference: f64) -> f64 {
+    fn flow_dx(&self, _pressure_difference: f64) -> f64 {
+        self.poiseuille_conductance
+    }
+
+    fn poiseuille_conductance(&self) -> f64 {
         self.poiseuille_conductance
     }
 }
@@ -95,16 +110,6 @@ impl TurbulentFlowModel {
         self.poiseuille_conductance
     }
 
-    /// Computes flow for given pressure differential
-    pub fn flow(&self, pressure_difference: f64) -> f64 {
-        self.poiseuille_conductance * Self::curve(pressure_difference, self.critical_pressure)
-    }
-
-    /// Computes derivative of flow
-    pub fn flow_dx(&self, pressure_difference: f64) -> f64 {
-        self.poiseuille_conductance * Self::curve_dx(pressure_difference, self.critical_pressure)
-    }
-
     fn curve(x: f64, x0: f64) -> f64 {
         if x < 0. {
             -Self::curve(-x, x0)
@@ -131,6 +136,20 @@ impl TurbulentFlowModel {
     }
 }
 
+impl FlowModel for TurbulentFlowModel {
+    fn flow(&self, pressure_difference: f64) -> f64 {
+        self.poiseuille_conductance * Self::curve(pressure_difference, self.critical_pressure)
+    }
+
+    fn flow_dx(&self, pressure_difference: f64) -> f64 {
+        self.poiseuille_conductance * Self::curve_dx(pressure_difference, self.critical_pressure)
+    }
+
+    fn poiseuille_conductance(&self) -> f64 {
+        self.poiseuille_conductance
+    }
+}
+
 /// Computes pressure (after poiseuille) which realizes given Reynolds number
 pub fn critical_pressure(
     reynolds_number: f64,
@@ -145,7 +164,7 @@ pub fn critical_pressure(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{DENSITY_BLOOD, VISCOSITY_BLOOD};
+    use gems::{DENSITY_BLOOD, VISCOSITY_BLOOD};
 
     #[test]
     fn test_turbulent_flow() {

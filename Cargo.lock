@@ -539,7 +539,9 @@ dependencies = [
 name = "flowsim"
 version = "0.1.0"
 dependencies = [
+ "approx",
  "gems",
+ "slab",
 ]
 
 [[package]]
@@ -631,6 +633,7 @@ dependencies = [
  "env_logger",
  "eyre",
  "flecs_ecs 0.1.3",
+ "flowsim",
  "gems",
  "log",
  "num-traits",

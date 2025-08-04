@@ -1,6 +1,12 @@
-use crate::{
-    cylinder_radius, cylinder_volume, newton_root_solver, Cylinder, NewtonRootSolverError,
-};
+use gems::{cylinder_radius, cylinder_volume, newton_root_solver, Cylinder, NewtonRootSolverError};
+
+pub trait PressureModel {
+    /// Pressure for given volume
+    fn pressure(&self, volume: f64) -> f64;
+
+    /// Derivative of pressure
+    fn pressure_dx(&self, volume: f64) -> f64;
+}
 
 /// Pressure model for an elastic tube under positive pressure
 ///
@@ -53,80 +59,64 @@ pub fn tube_law_pressure(r: f64, r0: f64, t: f64, ym: f64, pmin: f64) -> f64 {
     pmin * (1. - (r / r0).powf(2. / n))
 }
 
-/// Geometry and mechanical properties of a bundle of elastic tubes
+/// Geometry and mechanical properties of an elastic tube
 #[derive(Clone, Debug)]
-pub struct ElasticTubeBundle {
-    /// Radius of one tube
-    pub radius: f64,
-
-    /// Length of tubes
-    pub length: f64,
+pub struct ElasticTube {
+    /// Shape of the tube
+    pub shape: Cylinder,
 
     /// Wall thickness of one tube
     pub wall_thickness: f64,
 
     /// Young's modulus describing elasticity of the tube wall
     pub youngs_modulus: f64,
-
-    /// Number of parallel tubes in the bundle. More tubes for example allow higher storage volume
-    /// without affecting tube conductance.
-    pub count: f64,
 }
 
-impl Default for ElasticTubeBundle {
+impl Default for ElasticTube {
     fn default() -> Self {
         Self {
-            radius: 0.005,
-            length: 1.000,
+            shape: Cylinder {
+                radius: 0.005,
+                length: 1.000,
+            },
             wall_thickness: 0.001,
             youngs_modulus: 1_000_000.0,
-            count: 1.,
         }
     }
 }
 
-impl ElasticTubeBundle {
-    pub fn cylinder(&self) -> Cylinder {
-        Cylinder {
-            radius: self.radius,
-            length: self.length,
-        }
+impl ElasticTube {
+    pub fn cylinder(&self) -> &Cylinder {
+        &self.shape
     }
 
     /// Nominal volume of all tubes in the bundle
     pub fn nominal_volume(&self) -> f64 {
-        self.radius_to_volume(self.radius)
+        self.radius_to_volume(self.shape.radius)
     }
 
     /// Computes radius based on given volume
     pub fn volume_to_radius(&self, volume: f64) -> f64 {
-        cylinder_radius(volume / self.count, self.length)
+        cylinder_radius(volume, self.shape.length)
     }
 
     /// Computes volume based on given radius
     pub fn radius_to_volume(&self, radius: f64) -> f64 {
-        cylinder_volume(radius, self.length) * self.count
+        cylinder_volume(radius, self.shape.length)
     }
 
-    pub fn with_cylinder(mut self, cylinder: Cylinder) -> Self {
-        self.radius = cylinder.radius;
-        self.length = cylinder.length;
+    pub fn with_shape(mut self, shape: Cylinder) -> Self {
+        self.shape = shape;
         self
     }
 
     pub fn with_radius(mut self, radius: f64) -> Self {
-        self.radius = radius;
+        self.shape.radius = radius;
         self
     }
 
     pub fn with_length(mut self, length: f64) -> Self {
-        self.length = length;
-        self
-    }
-
-    /// Sets the tube count such that all tubes in the bundle combined store given volume
-    pub fn with_count_from_total_volume(mut self, volume: f64) -> Self {
-        self.count = volume / cylinder_volume(self.radius, self.length);
+        self.shape.length = length;
         self
     }
 }
@@ -134,51 +124,20 @@ impl ElasticTubeBundle {
 /// Hoop stress is P r / t
 #[derive(Default, Clone, Debug)]
 pub struct HoopTubePressureModel {
-    tubes: ElasticTubeBundle,
+    tube: ElasticTube,
     collapse_pressure: f64,
 }
 
 impl HoopTubePressureModel {
-    pub fn new(tubes: ElasticTubeBundle, collapse_pressure: f64) -> Self {
+    pub fn new(tube: ElasticTube, collapse_pressure: f64) -> Self {
         Self {
-            tubes,
+            tube,
             collapse_pressure,
         }
     }
 
-    pub fn tubes(&self) -> &ElasticTubeBundle {
-        &self.tubes
-    }
-
-    pub fn pressure(&self, volume: f64) -> f64 {
-        let current_radius = self.tubes.volume_to_radius(volume);
-
-        if current_radius < self.tubes.radius {
-            tube_law_pressure(
-                current_radius,
-                self.tubes.radius,
-                self.tubes.wall_thickness,
-                self.tubes.youngs_modulus,
-                self.collapse_pressure,
-            )
-        } else {
-            hoop_tube_pressure(
-                current_radius,
-                self.tubes.radius,
-                self.tubes.wall_thickness,
-                self.tubes.youngs_modulus,
-            )
-        }
-    }
-
-    /// Derivative of `pressure`
-    pub fn pressure_dx(&self, volume: f64) -> f64 {
-        let dv = (volume * 1e-4).max(1e-9);
-
-        let p1 = self.pressure(volume);
-        let p2 = self.pressure(volume + dv);
-
-        (p2 - p1) / dv
+    pub fn tube(&self) -> &ElasticTube {
+        &self.tube
     }
 
     /// Computes volume which generates given pressure.
@@ -187,55 +146,35 @@ impl HoopTubePressureModel {
         // solve P(V) - P0 == 0 for V
         let obj_f = |v| self.pressure(v) - pressure;
         let dx_f = |v| self.pressure_dx(v);
-        let v0 = self.tubes.nominal_volume();
+        let v0 = self.tube.nominal_volume();
         let sol = newton_root_solver(v0, 1e-3, 25, obj_f, dx_f);
         sol
     }
 }
 
-/// Pressure model assuming an elastic wall which thins due to expansion. Similar to inflating a
-/// balloon. Under this model pressure drops again after a certain volume has been reached.
-#[derive(Default, Clone, Debug)]
-pub struct BalloonTubePressureModel {
-    tubes: ElasticTubeBundle,
-    collapse_pressure: f64,
-}
+impl PressureModel for HoopTubePressureModel {
+    fn pressure(&self, volume: f64) -> f64 {
+        let current_radius = self.tube.volume_to_radius(volume);
 
-impl BalloonTubePressureModel {
-    pub fn new(tubes: ElasticTubeBundle, collapse_pressure: f64) -> Self {
-        Self {
-            tubes,
-            collapse_pressure,
-        }
-    }
-
-    pub fn tubes(&self) -> &ElasticTubeBundle {
-        &self.tubes
-    }
-
-    pub fn pressure(&self, volume: f64) -> f64 {
-        let current_radius = self.tubes.volume_to_radius(volume);
-
-        if current_radius < self.tubes.radius {
+        if current_radius < self.tube.shape.radius {
             tube_law_pressure(
                 current_radius,
-                self.tubes.radius,
-                self.tubes.wall_thickness,
-                self.tubes.youngs_modulus,
+                self.tube.shape.radius,
+                self.tube.wall_thickness,
+                self.tube.youngs_modulus,
                 self.collapse_pressure,
             )
         } else {
-            balloon_tube_pressure(
+            hoop_tube_pressure(
                 current_radius,
-                self.tubes.radius,
-                self.tubes.wall_thickness,
-                self.tubes.youngs_modulus,
+                self.tube.shape.radius,
+                self.tube.wall_thickness,
+                self.tube.youngs_modulus,
             )
         }
     }
 
-    /// Derivative of `pressure`
-    pub fn pressure_dx(&self, volume: f64) -> f64 {
+    fn pressure_dx(&self, volume: f64) -> f64 {
         let dv = (volume * 1e-4).max(1e-9);
 
         let p1 = self.pressure(volume);
@@ -243,11 +182,32 @@ impl BalloonTubePressureModel {
 
         (p2 - p1) / dv
     }
+}
+
+/// Pressure model assuming an elastic wall which thins due to expansion. Similar to inflating a
+/// balloon. Under this model pressure drops again after a certain volume has been reached.
+#[derive(Default, Clone, Debug)]
+pub struct BalloonTubePressureModel {
+    tubes: ElasticTube,
+    collapse_pressure: f64,
+}
+
+impl BalloonTubePressureModel {
+    pub fn new(tubes: ElasticTube, collapse_pressure: f64) -> Self {
+        Self {
+            tubes,
+            collapse_pressure,
+        }
+    }
+
+    pub fn tubes(&self) -> &ElasticTube {
+        &self.tubes
+    }
 
     /// Maximum pressure possible
     pub fn max_pressure(&self) -> f64 {
         balloon_tube_max_pressure(
-            self.tubes.radius,
+            self.tubes.shape.radius,
             self.tubes.wall_thickness,
             self.tubes.youngs_modulus,
         )
@@ -255,7 +215,7 @@ impl BalloonTubePressureModel {
 
     /// Volume when maximum pressure is reached. Higher volume will lead to pressure drop.
     pub fn volume_at_max_pressure(&self) -> f64 {
-        balloon_tube_volume_at_max_pressure(self.tubes.radius, self.tubes.length) * self.tubes.count
+        balloon_tube_volume_at_max_pressure(self.tubes.shape.radius, self.tubes.shape.length)
     }
 
     /// Computes volume which generates given pressure. Note that this might not have a solution
@@ -276,13 +236,45 @@ impl BalloonTubePressureModel {
     }
 }
 
+impl PressureModel for BalloonTubePressureModel {
+    fn pressure(&self, volume: f64) -> f64 {
+        let current_radius = self.tubes.volume_to_radius(volume);
+
+        if current_radius < self.tubes.shape.radius {
+            tube_law_pressure(
+                current_radius,
+                self.tubes.shape.radius,
+                self.tubes.wall_thickness,
+                self.tubes.youngs_modulus,
+                self.collapse_pressure,
+            )
+        } else {
+            balloon_tube_pressure(
+                current_radius,
+                self.tubes.shape.radius,
+                self.tubes.wall_thickness,
+                self.tubes.youngs_modulus,
+            )
+        }
+    }
+
+    fn pressure_dx(&self, volume: f64) -> f64 {
+        let dv = (volume * 1e-4).max(1e-9);
+
+        let p1 = self.pressure(volume);
+        let p2 = self.pressure(volume + dv);
+
+        (p2 - p1) / dv
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn test_balloon_tube_pressure_model_volume() {
-        let m = BalloonTubePressureModel::new(ElasticTubeBundle::default(), -1_000.);
+        let m = BalloonTubePressureModel::new(ElasticTube::default(), -1_000.);
 
         let v0 = m.tubes.nominal_volume();
 

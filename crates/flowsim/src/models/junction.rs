@@ -1,6 +1,5 @@
-use crate::{
-    newton_root_solver, Cylinder, HoopTubePressureModel, NewtonRootSolverError, TurbulentFlowModel,
-};
+use crate::models::{FlowModel, HoopTubePressureModel, PressureModel, TurbulentFlowModel};
+use gems::{newton_root_solver, Cylinder, NewtonRootSolverError};
 use std::{collections::HashMap, hash::Hash};
 
 /// Solves pressure at a pipe junction which leads to net zero flow between pipes.
@@ -308,7 +307,8 @@ impl Port {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{ElasticTubeBundle, DENSITY_BLOOD, VISCOSITY_BLOOD};
+    use crate::models::ElasticTube;
+    use gems::{DENSITY_BLOOD, VISCOSITY_BLOOD};
 
     #[test]
     fn test_junction_pressure_solver() {
@@ -319,7 +319,7 @@ mod tests {
                                length: f64,
                                conductance_factor: f64,
                                baseline_pressure: f64| {
-            let tubes = ElasticTubeBundle::default()
+            let tubes = ElasticTube::default()
                 .with_radius(radius)
                 .with_length(length);
             let qm = TurbulentFlowModel::new(
@@ -329,7 +329,7 @@ mod tests {
                 conductance_factor,
             );
             let pm = HoopTubePressureModel::new(tubes.clone(), -1_000.);
-            let v0 = pm.tubes().nominal_volume();
+            let v0 = pm.tube().nominal_volume();
             solver.add_port(i, tubes.cylinder(), v0, baseline_pressure, pm, qm)
         };
 

@@ -1,13 +1,23 @@
 mod cycle;
 mod ema;
 mod fair_alloc;
+mod geometry;
+mod int_map;
 mod lerp;
+mod materials;
 mod modifier;
+mod newton_root_solver;
 mod rescale;
+mod units;
 
 pub use cycle::*;
 pub use ema::*;
 pub use fair_alloc::*;
+pub use geometry::*;
+pub use int_map::*;
 pub use lerp::*;
+pub use materials::*;
 pub use modifier::*;
+pub use newton_root_solver::*;
 pub use rescale::*;
+pub use units::*;
