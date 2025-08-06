@@ -1,8 +1,14 @@
 use std::ops::{Index, IndexMut};
 
-#[derive(Default, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct IntMap<T> {
     items: Vec<Entry<T>>,
+}
+
+impl<T> Default for IntMap<T> {
+    fn default() -> Self {
+        Self { items: Vec::new() }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -18,6 +24,10 @@ impl<T> Default for Entry<T> {
 }
 
 impl<T> IntMap<T> {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
     pub fn set(&mut self, index: usize, value: T) {
         self.items.resize_with(index + 1, || Entry::Empty);
         self.items[index] = Entry::Occupied(value);

@@ -1,12 +1,12 @@
 use flowsim::{
     models::{Bundle, ElasticTube, HoopTubePressureModel, TurbulentFlowModel},
-    FlowNet, FlowNetSolver, Fluid, FluidChunk, Pipe, PipeVessel, PortTag,
+    FlowNet, FlowNetSolver, Fluid, FluidChunk, PipeBundle, PipeVessel, PortTag,
 };
 use gems::{pressure_from_atm, DENSITY_BLOOD, VISCOSITY_BLOOD};
 
 use gems::Cylinder;
 
-fn standard_pipe(count: f64, target_pressure: f64) -> Pipe {
+fn standard_pipe(count: f64, target_pressure: f64) -> PipeBundle {
     let cylinder = Cylinder {
         radius: 0.010,
         length: 1.000,
@@ -19,13 +19,13 @@ fn standard_pipe(count: f64, target_pressure: f64) -> Pipe {
     };
 
     let pressure_model = HoopTubePressureModel::new(tube, -1000.0);
-    println!("{pressure_model:?}");
     let volume = pressure_model.volume(target_pressure).unwrap() * count;
 
-    let mut pipe = Pipe {
+    let mut pipe = PipeBundle {
         shape: cylinder.clone(),
         vessel: PipeVessel::default(),
-        external_pressure: [0., 0.],
+        port_velocity: [0., 0.],
+        external_port_pressure: [0., 0.],
         elasticity_pressure_model: Bundle {
             model: pressure_model,
             count,
@@ -34,6 +34,9 @@ fn standard_pipe(count: f64, target_pressure: f64) -> Pipe {
             model: TurbulentFlowModel::new(cylinder, DENSITY_BLOOD, VISCOSITY_BLOOD, 1.0),
             count,
         },
+        ground_angle: 0.,
+        darcy_factor: 64. / 2000., // e.g. 64/Re
+        dampening: 0.0,
     };
 
     pipe.vessel
@@ -45,17 +48,12 @@ fn standard_pipe(count: f64, target_pressure: f64) -> Pipe {
 fn solve(net: &mut FlowNet) {
     let mut solver = FlowNetSolver::new();
 
-    println!("INITIAL");
-    solver.sync(&net);
-    solver.print_overview();
-
     for i in 1..=200 {
-        println!("ITERATION {i}");
-        solver.step(net, 0.050);
-        solver.print_overview();
-        solver
-            .write_pipes_to_csv(&format!("I:/Ikabur/gos/tmp/solver_{i:05}.csv"))
-            .unwrap();
+        // println!("ITERATION {i}");
+        solver.step(i, net, 0.050);
+        // solver
+        //     .write_pipes_to_csv(&format!("I:/Ikabur/gos/tmp/solver_{i:05}.csv"))
+        //     .unwrap();
     }
 }
 
@@ -85,8 +83,8 @@ fn test_pipe_count_imbalance() {
 
     let mut flownet = FlowNet::new();
 
-    let pipe_1 = standard_pipe(1., pressure_from_atm(0.0));
-    let pipe_2 = standard_pipe(10., pressure_from_atm(0.1));
+    let pipe_1 = standard_pipe(1., pressure_from_atm(0.1));
+    let pipe_2 = standard_pipe(10., pressure_from_atm(0.0));
 
     let p1 = flownet.add_pipe(pipe_1);
     let p2 = flownet.add_pipe(pipe_2);

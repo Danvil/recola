@@ -1,11 +1,11 @@
-use crate::{Pipe, PortTag};
+use crate::{PipeBundle, PortTag};
 use slab::Slab;
 use std::{
     collections::{HashMap, HashSet},
     ops::Deref,
 };
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct PipeId(pub usize);
 
 impl Deref for PipeId {
@@ -16,7 +16,7 @@ impl Deref for PipeId {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct JunctionId(pub usize);
 
 impl Deref for JunctionId {
@@ -27,14 +27,14 @@ impl Deref for JunctionId {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Port {
     PipeOutlet { pipe_id: PipeId, side: PortTag },
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct FlowNet {
-    pub(crate) pipes: Slab<Pipe>,
+    pub(crate) pipes: Slab<PipeBundle>,
     pub(crate) pipe_to_junc: HashMap<Port, JunctionId>,
     pub(crate) junctions: Slab<HashSet<Port>>,
 }
@@ -44,12 +44,12 @@ impl FlowNet {
         Self::default()
     }
 
-    pub fn add_pipe(&mut self, pipe: Pipe) -> PipeId {
+    pub fn add_pipe(&mut self, pipe: PipeBundle) -> PipeId {
         let idx = self.pipes.insert(pipe);
         PipeId(idx)
     }
 
-    pub fn get_pipe(&self, id: PipeId) -> Option<&Pipe> {
+    pub fn get_pipe(&self, id: PipeId) -> Option<&PipeBundle> {
         self.pipes.get(*id)
     }
 

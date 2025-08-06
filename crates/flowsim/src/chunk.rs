@@ -1,118 +1,95 @@
-use gems::DENSITY_HEMOGLOBIN;
+use crate::{Fluid, Mix};
 
-use gems::MOLAR_MASS_HEMOGLOBIN;
-
-#[derive(Clone, Debug)]
+/// A chunk of fluid
+#[derive(Clone, Debug, Default)]
 pub struct FluidChunk {
-    pub volume: f64,
-    pub fluid: Fluid,
+    fluid: Fluid,
+
+    volume: f64,
+    mass: f64,
+    density: f64,
+    viscosity: f64,
 }
 
 impl FluidChunk {
     pub fn from_fluid(fluid: Fluid) -> Self {
+        let volume = fluid.volume();
+        let mass = fluid.mass();
+        let viscosity = fluid.viscosity();
         Self {
-            volume: fluid.volume(),
             fluid,
+            volume,
+            mass,
+            density: mass / volume,
+            viscosity,
         }
+    }
+
+    pub fn fluid(&self) -> &Fluid {
+        &self.fluid
+    }
+
+    pub fn volume(&self) -> f64 {
+        self.volume
+    }
+
+    pub fn mass(&self) -> f64 {
+        self.mass
+    }
+
+    pub fn density(&self) -> f64 {
+        self.density
+    }
+
+    pub fn viscosity(&self) -> f64 {
+        self.viscosity
+    }
+
+    pub fn clone_with_volume(&self, new_volume: f64) -> Self {
+        Self::scale(self, new_volume / self.volume)
+    }
+
+    pub fn split_by_volume(self, first_volume: f64) -> (Self, Self) {
+        let second_volume = (self.volume - first_volume).max(0.);
+        let first_volume = self.volume - second_volume;
+        self.split(first_volume / self.volume)
+    }
+
+    pub fn split_off_by_volume(&mut self, split_off_volume: f64) -> Self {
+        let remaining_volume = (self.volume - split_off_volume).max(0.);
+        let (remaining, other) = self.split(remaining_volume / self.volume);
+        *self = remaining;
+        other
     }
 }
 
 impl Mix for FluidChunk {
     fn mix(a: &FluidChunk, b: &FluidChunk) -> FluidChunk {
+        let fluid = Fluid::mix(&a.fluid, &b.fluid);
+        let volume = a.volume + b.volume;
+        let mass = a.mass + b.mass;
+        let viscosity = fluid.viscosity();
         FluidChunk {
-            volume: a.volume + b.volume,
-            fluid: Fluid::mix(&a.fluid, &b.fluid),
+            fluid,
+            volume,
+            mass,
+            density: mass / volume,
+            viscosity,
+            // velocity: joint_velocity(a.velocity, a.mass, b.velocity, b.mass),
         }
     }
 
     fn scale(a: &FluidChunk, s: f64) -> FluidChunk {
+        let fluid = Fluid::scale(&a.fluid, s);
+        let viscosity = fluid.viscosity();
         FluidChunk {
+            fluid,
             volume: s * a.volume,
-            fluid: Fluid::scale(&a.fluid, s),
+            mass: s * a.mass,
+            density: a.density,
+            viscosity,
+            // velocity: a.velocity,
         }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct Fluid {
-    /// Volume of water
-    pub water: f64,
-
-    /// Volume of oxygen
-    pub oxygen: f64,
-
-    /// Mol of oxygenated red blood cells
-    pub red_rbc: f64,
-
-    /// Mol of de-oxygenated red blood cells
-    pub blue_rbc: f64,
-}
-
-impl Fluid {
-    pub fn volume(&self) -> f64 {
-        self.water
-            + self.oxygen
-            + (self.red_rbc + self.blue_rbc) * MOLAR_MASS_HEMOGLOBIN * DENSITY_HEMOGLOBIN
-    }
-
-    pub fn water(volume: f64) -> Self {
-        Self {
-            water: volume,
-            oxygen: 0.,
-            red_rbc: 0.,
-            blue_rbc: 0.,
-        }
-    }
-
-    pub fn blood(volume: f64) -> Self {
-        Self {
-            water: 0.55 * volume,
-            oxygen: 0.,
-            red_rbc: 0.45 * volume / DENSITY_HEMOGLOBIN / MOLAR_MASS_HEMOGLOBIN, // FIXME
-            blue_rbc: 0.,
-        }
-    }
-}
-
-impl Mix for Fluid {
-    fn mix(a: &Fluid, b: &Fluid) -> Fluid {
-        Fluid {
-            water: a.water + b.water,
-            oxygen: a.oxygen + b.oxygen,
-            red_rbc: a.red_rbc + b.red_rbc,
-            blue_rbc: a.blue_rbc + b.blue_rbc,
-        }
-    }
-
-    fn scale(a: &Fluid, s: f64) -> Fluid {
-        Fluid {
-            water: s * a.water,
-            oxygen: s * a.oxygen,
-            red_rbc: s * a.red_rbc,
-            blue_rbc: s * a.blue_rbc,
-        }
-    }
-}
-
-pub trait Mix: Sized {
-    fn mix(a: &Self, b: &Self) -> Self;
-
-    fn scale(a: &Self, s: f64) -> Self;
-
-    fn split(&self, q: f64) -> (Self, Self) {
-        (Self::scale(self, q), Self::scale(self, 1. - q))
-    }
-
-    fn mix_many<'a, I>(mut iter: I) -> Option<Self>
-    where
-        I: Iterator<Item = &'a Self>,
-        Self: Clone + 'a,
-    {
-        let mut a = iter.next()?.clone();
-        for x in iter {
-            a = Self::mix(&a, x);
-        }
-        Some(a)
     }
 }
 

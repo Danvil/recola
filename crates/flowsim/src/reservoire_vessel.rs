@@ -1,4 +1,4 @@
-use crate::{chunk::Mix, Fluid, FluidChunk};
+use crate::{Fluid, FluidChunk, Mix};
 
 /// A vessel stores a single chunk of fluid. Inflow mixes perfectly.
 #[derive(Clone, Debug)]
@@ -20,17 +20,17 @@ impl ReservoirVessel {
 
     /// Volume of liquid stored in the vessel
     pub fn volume(&self) -> f64 {
-        self.chunk.as_ref().map_or(0., |c| c.volume)
+        self.chunk.as_ref().map_or(0., |c| c.volume())
     }
 
     /// Fluid contained in the reservoir
     pub fn fluid(&self) -> Option<&Fluid> {
-        self.chunk.as_ref().map(|c| &c.fluid)
+        self.chunk.as_ref().map(|c| c.fluid())
     }
 
     /// Mix liquid into the vessel
     pub fn fill(&mut self, incoming: FluidChunk) {
-        assert!(incoming.volume >= 0.);
+        assert!(incoming.volume() >= 0.);
 
         self.chunk = Some(match self.chunk.as_ref() {
             Some(current) => FluidChunk::mix(current, &incoming),
@@ -48,13 +48,11 @@ impl ReservoirVessel {
             return None;
         };
 
-        if volume >= current.volume {
+        if volume >= current.volume() {
             return self.chunk.take();
         }
 
-        let mut out = current.clone();
-        out.volume = volume;
-        current.volume -= volume;
+        let out = current.split_off_by_volume(volume);
 
         Some(out)
     }
