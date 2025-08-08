@@ -1,13 +1,14 @@
 use flecs_ecs::prelude::*;
 use log::{Level, LevelFilter, Metadata, Record};
+use mocca::Mocca;
 use std::{
     collections::VecDeque,
     sync::{Arc, RwLock},
 };
 
 /// Collects errors
-#[derive(Component)]
-pub struct LogModule;
+#[derive(Default)]
+pub struct LogMocca;
 
 struct WorldLogger {
     backend: Arc<RwLock<Backend>>,
@@ -68,16 +69,16 @@ pub struct Log {
 
 impl Log {
     pub fn print_to_console(&self) {
-        self.backend.write().unwrap().print_to_console()
+        self.backend.write().unwrap().print_to_console();
     }
 }
 
-impl Module for LogModule {
-    fn module(world: &World) {
-        world.module::<LogModule>("LogModule");
-
+impl Mocca for LogMocca {
+    fn register_components(world: &World) {
         world.component::<Log>();
+    }
 
+    fn start(world: &World) -> Self {
         let backend = Arc::new(RwLock::new(Backend::default()));
 
         world.set(Log {
@@ -91,13 +92,22 @@ impl Module for LogModule {
         };
         log::set_max_level(LevelFilter::Info);
 
-        // Flush messages to console
-        world.system::<()>().run(|it| {
-            it.world().get::<&mut Log>(|log| {
-                if log.enable_print_to_console {
-                    log.print_to_console();
-                }
-            });
+        Self
+    }
+
+    fn step(&mut self, world: &World) {
+        world.get::<&mut Log>(|log| {
+            if log.enable_print_to_console {
+                log.print_to_console();
+            }
+        });
+    }
+
+    fn fini(&mut self, world: &World) {
+        world.get::<&mut Log>(|log| {
+            if log.enable_print_to_console {
+                log.print_to_console();
+            }
         });
     }
 }

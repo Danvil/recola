@@ -3,8 +3,6 @@ mod newtype_decimal_component;
 mod stats;
 
 pub use flecs_query_relation_helpers::*;
-pub use newtype_decimal_component::*;
-pub use stats::*;
 
 use flecs_ecs::prelude::{EntityView, World};
 

@@ -1,4 +1,4 @@
-use crate::{FluidChunk, Mix};
+use crate::{FluidChunk, Mix, PortTag};
 use std::collections::VecDeque;
 
 /// A fluid vessel which with two ends which stores chunks as a directed list. Fluid can flow in
@@ -33,6 +33,10 @@ impl PipeVessel {
     pub fn with_min_chunk_volume(mut self, min_chunk_volume: f64) -> Self {
         self.set_min_chunk_volume(min_chunk_volume);
         self
+    }
+
+    pub fn volume(&self) -> f64 {
+        self.combined_chunk().map_or(0., |c| c.volume())
     }
 
     /// Chunk representing all fluid
@@ -145,36 +149,6 @@ impl<'a, T> PortOp<'a, T> {
         match self.0 {
             PortTag::A => self.1.push_front(chunk),
             PortTag::B => self.1.push_back(chunk),
-        }
-    }
-}
-
-/// A pipe has two ports
-#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub enum PortTag {
-    A,
-    B,
-}
-
-impl PortTag {
-    pub fn index(&self) -> usize {
-        match self {
-            PortTag::A => 0,
-            PortTag::B => 1,
-        }
-    }
-
-    pub fn opposite(&self) -> PortTag {
-        match self {
-            PortTag::A => PortTag::B,
-            PortTag::B => PortTag::A,
-        }
-    }
-
-    pub fn tag(&self) -> &'static str {
-        match self {
-            PortTag::A => "A",
-            PortTag::B => "B",
         }
     }
 }

@@ -1,9 +1,10 @@
 use flecs_ecs::prelude::*;
+use mocca::Mocca;
 use std::time::{Duration, Instant};
 
 /// Measures time
-#[derive(Component)]
-pub struct TimeModule;
+#[derive(Default)]
+pub struct TimeMocca;
 
 #[derive(Component, Clone)]
 pub struct Time {
@@ -30,12 +31,12 @@ impl Time {
     }
 }
 
-impl Module for TimeModule {
-    fn module(world: &World) {
-        world.module::<TimeModule>("TimeModule");
-
+impl Mocca for TimeMocca {
+    fn register_components(world: &World) {
         world.component::<Time>();
+    }
 
+    fn start(world: &World) -> Self {
         world.set(Time {
             walltime: Instant::now(),
             frame_count: 0,
@@ -43,13 +44,15 @@ impl Module for TimeModule {
             sim_dt: Duration::from_millis(20),
         });
 
+        Self
+    }
+
+    fn step(&mut self, world: &World) {
         // Progress time
-        world.system::<()>().run(|it| {
-            it.world().get::<&mut Time>(|time| {
-                time.walltime = Instant::now();
-                time.frame_count += 1;
-                time.sim_time += time.sim_dt;
-            });
+        world.get::<&mut Time>(|time| {
+            time.walltime = Instant::now();
+            time.frame_count += 1;
+            time.sim_time += time.sim_dt;
         });
     }
 }

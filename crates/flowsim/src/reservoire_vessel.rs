@@ -1,4 +1,4 @@
-use crate::{Fluid, FluidChunk, Mix};
+use crate::{FluidChunk, FluidComposition, Mix};
 
 /// A vessel stores a single chunk of fluid. Inflow mixes perfectly.
 #[derive(Clone, Debug)]
@@ -24,7 +24,7 @@ impl ReservoirVessel {
     }
 
     /// Fluid contained in the reservoir
-    pub fn fluid(&self) -> Option<&Fluid> {
+    pub fn composition(&self) -> Option<&FluidComposition> {
         self.chunk.as_ref().map(|c| c.fluid())
     }
 

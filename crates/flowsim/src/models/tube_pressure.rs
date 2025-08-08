@@ -6,6 +6,14 @@ pub trait PressureModel {
 
     /// Derivative of pressure
     fn pressure_dx(&self, volume: f64) -> f64;
+
+    fn volume(&self, pressure: f64, guess: f64) -> Result<f64, NewtonRootSolverError> {
+        // solve P(V) - P0 == 0 for V
+        let obj_f = |v| self.pressure(v) - pressure;
+        let dx_f = |v| self.pressure_dx(v);
+        let sol = newton_root_solver(guess, 1e-3, 25, obj_f, dx_f);
+        sol
+    }
 }
 
 /// Pressure model for an elastic tube under positive pressure

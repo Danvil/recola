@@ -1,0 +1,9 @@
+[package]
+name = "mocca"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ctrlc = { workspace = true }
+flecs_ecs = { workspace = true }
+gems = { workspace = true }

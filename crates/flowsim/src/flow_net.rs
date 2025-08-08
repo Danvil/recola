@@ -1,5 +1,5 @@
-use crate::{PipeBundle, PortTag};
-use slab::Slab;
+use crate::{PipeDef, Port, PortTag};
+use gems::IntMap;
 use std::{
     collections::{HashMap, HashSet},
     ops::Deref,
@@ -17,9 +17,9 @@ impl Deref for PipeId {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct JunctionId(pub usize);
+pub struct JuncId(pub usize);
 
-impl Deref for JunctionId {
+impl Deref for JuncId {
     type Target = usize;
 
     fn deref(&self) -> &Self::Target {
@@ -27,16 +27,10 @@ impl Deref for JunctionId {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Port {
-    PipeOutlet { pipe_id: PipeId, side: PortTag },
-}
-
 #[derive(Default, Debug)]
 pub struct FlowNet {
-    pub(crate) pipes: Slab<PipeBundle>,
-    pub(crate) pipe_to_junc: HashMap<Port, JunctionId>,
-    pub(crate) junctions: Slab<HashSet<Port>>,
+    pub topology: FlowNetTopology,
+    pub pipes: IntMap<PipeDef>,
 }
 
 impl FlowNet {
@@ -44,13 +38,64 @@ impl FlowNet {
         Self::default()
     }
 
-    pub fn add_pipe(&mut self, pipe: PipeBundle) -> PipeId {
-        let idx = self.pipes.insert(pipe);
-        PipeId(idx)
+    // pub fn new_zero_state(&self) -> FlowNetState {
+    //     FlowNetState(self.pipes.map(|_| PipeState::default()))
+    // }
+
+    // pub fn set_pipe(&mut self, id: PipeId, pipe: PipeBundle) {
+    //     self.pipes.set(*id, pipe);
+    // }
+
+    pub fn insert_pipe(&mut self, pipe: PipeDef) -> PipeId {
+        PipeId(self.pipes.insert(pipe))
     }
 
-    pub fn get_pipe(&self, id: PipeId) -> Option<&PipeBundle> {
-        self.pipes.get(*id)
+    // pub fn get_pipe(&self, id: PipeId) -> Option<&PipeBundle> {
+    //     self.pipes.get(*id)
+    // }
+}
+
+#[derive(Default, Debug)]
+pub struct FlowNetTopology {
+    pub(crate) pipe_to_junc: HashMap<Port, JuncId>,
+    pub(crate) junctions: IntMap<HashSet<Port>>,
+}
+
+impl FlowNetTopology {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Connect a pipe port to a junction
+    pub fn connect_to_junction(&mut self, p: (PipeId, PortTag), j: JuncId) {
+        let key = Port::PipeOutlet {
+            pipe_id: p.0,
+            side: p.1,
+        };
+
+        self.junctions[*j].insert(key);
+        self.pipe_to_junc.insert(key, j);
+    }
+
+    /// Connect a pipe port to a new junction
+    pub fn connect_to_new_junction(&mut self, p: (PipeId, PortTag)) -> JuncId {
+        let key = Port::PipeOutlet {
+            pipe_id: p.0,
+            side: p.1,
+        };
+
+        match self.pipe_to_junc.get(&key) {
+            Some(junc) => {
+                // TODO is this an error?
+                *junc
+            }
+            None => {
+                let ports = HashSet::from_iter([key]);
+                let j = JuncId(self.junctions.insert(ports));
+                self.pipe_to_junc.insert(key, j);
+                j
+            }
+        }
     }
 
     pub fn connect(&mut self, p1: (PipeId, PortTag), p2: (PipeId, PortTag)) {
@@ -71,7 +116,7 @@ impl FlowNet {
                 // Neither pipe port is connected to a junction yet: create a new junction.
 
                 let ports = HashSet::from_iter([key1, key2]);
-                let j = JunctionId(self.junctions.insert(ports));
+                let j = JuncId(self.junctions.insert(ports));
 
                 self.pipe_to_junc.insert(key1, j);
                 self.pipe_to_junc.insert(key2, j);
@@ -95,7 +140,7 @@ impl FlowNet {
 
     /// Joins the second junction into the first one thus connecting all pipe ports they are
     /// connected to.
-    pub fn join_junctions(&mut self, j1: JunctionId, j2: JunctionId) {
+    pub fn join_junctions(&mut self, j1: JuncId, j2: JuncId) {
         // Find all pipe-ports connected to J2
         let j2_ports: Vec<Port> = self
             .pipe_to_junc

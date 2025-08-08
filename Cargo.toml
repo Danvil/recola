@@ -16,13 +16,14 @@ nalgebra = "0.34.0"
 env_logger = { version = "0.11" }
 eyre = "0.6"
 approx = "0.5.1"
-#flecs_ecs = { git = "https://github.com/Indra-db/Flecs-Rust.git", branch = "main", features = ["flecs_module", "flecs_system", "flecs_manual_registration"] }
-flecs_ecs = { path = "I:/opensource/Flecs-Rust/flecs_ecs", features = ["flecs_module", "flecs_system", "flecs_manual_registration"] }
+flecs_ecs = { git = "https://github.com/Indra-db/Flecs-Rust.git", branch = "main", features = ["flecs_module", "flecs_system", "flecs_manual_registration"] }
+#flecs_ecs = { path = "I:/opensource/Flecs-Rust/flecs_ecs", features = ["flecs_module", "flecs_system", "flecs_manual_registration"] }
 rust_decimal = { version = "1.37.2", features = ["macros", "maths"] }
 rust_decimal_macros = { version = "1.37.1", features = ["reexportable"] }
 gems = { path = "crates/gems" }
 gos_common = { path = "crates/gos_common" }
 gosim = { path = "crates/gosim" }
+mocca = { path = "crates/mocca" }
 flowsim = { path = "crates/flowsim" }
 log = "0.4"
 nng = "1.0"

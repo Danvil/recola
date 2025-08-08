@@ -1,4 +1,5 @@
 use crate::models::{FlowModel, PressureModel};
+use gems::{NewtonRootSolverError, VolumeModel};
 
 /// Bundle of models in parallel
 #[derive(Clone, Debug)]
@@ -28,5 +29,17 @@ impl<M: PressureModel> PressureModel for Bundle<M> {
 
     fn pressure_dx(&self, volume: f64) -> f64 {
         self.model.pressure_dx(volume / self.count) / self.count
+    }
+
+    fn volume(&self, pressure: f64, guess: f64) -> Result<f64, NewtonRootSolverError> {
+        self.model
+            .volume(pressure, guess / self.count)
+            .map(|v| v * self.count)
+    }
+}
+
+impl<M: VolumeModel> VolumeModel for Bundle<M> {
+    fn volume(&self) -> f64 {
+        self.model.volume() * self.count
     }
 }

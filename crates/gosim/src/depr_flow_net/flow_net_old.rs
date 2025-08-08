@@ -52,138 +52,65 @@ impl PipeGeometry {
     }
 }
 
-/// A vessel stores a single chunk of fluid. Inflow mixes perfectly.
-#[derive(Component, Clone)]
-pub struct Vessel<T: 'static + Send + Sync + Clone> {
-    chunk: Option<FluidChunk<T>>,
-}
+// /// Internal state used for computation of liquid flow
+// #[derive(Component, Clone, Default, Debug)]
+// pub struct PipeFlowState {
+//     /// Current volume of liquid in the pipe
+//     current_volume: f64,
 
-impl<T: 'static + Send + Sync + Clone> Default for Vessel<T> {
-    fn default() -> Self {
-        Self { chunk: None }
-    }
-}
+//     /// Current pressure model for the pipe
+//     pressure_model: HoopTubePressureModel,
 
-impl<T: 'static + Send + Sync + Clone> Vessel<T>
-where
-    T: Lerp<f64>,
-{
-    /// Return true if the vessel does not contain any liquid
-    pub fn is_empty(&self) -> bool {
-        self.chunk.is_none()
-    }
+//     /// Current flow model for each port (based on pipe conductance)
+//     flow_model: [TurbulentFlowModel; 2],
 
-    /// Volume of liquid stored in the vessel
-    pub fn volume(&self) -> f64 {
-        self.chunk.as_ref().map_or(0., |c| c.volume)
-    }
+//     /// Extrinsic pressure at ports: external pressure, pump
+//     extrinsic_pressure: [f64; 2],
 
-    /// Volume-weighted average chunk data
-    pub fn average_data(&self) -> Option<&T> {
-        self.chunk.as_ref().map(|c| &c.data)
-    }
+//     /// Intrinsic pressure on the pipe due to elasticity
+//     intrinsic_pressure: f64,
 
-    /// Mix liquid into the vessel
-    pub fn fill(&mut self, incoming: FluidChunk<T>) {
-        assert!(incoming.volume >= 0.);
+//     /// Total pressure at ports
+//     total_pressure: [f64; 2],
 
-        self.chunk = Some(match self.chunk.as_ref() {
-            Some(current) => FluidChunk {
-                volume: current.volume + incoming.volume,
-                data: T::weighted_average_2(
-                    (current.volume, &current.data),
-                    (incoming.volume, &incoming.data),
-                ),
-            },
-            None => incoming,
-        });
-    }
+//     /// Junction pressure for each port.
+//     junction_pressure: [f64; 2],
 
-    pub fn drain(&mut self, volume: f64) -> Option<FluidChunk<T>> {
-        assert!(volume >= 0.);
-        if volume == 0. {
-            return None;
-        }
+//     /// Flow into the pipe through port A and B
+//     flow: [f64; 2],
+// }
 
-        let Some(current) = self.chunk.as_mut() else {
-            return None;
-        };
+// impl PipeFlowState {
+//     pub fn pipe_pressure(&self, port: PortTag) -> f64 {
+//         self.total_pressure[port.index()]
+//     }
 
-        if volume >= current.volume {
-            return self.chunk.take();
-        }
+//     pub fn mean_pipe_pressure(&self) -> f64 {
+//         0.5 * (self.total_pressure[0] + self.total_pressure[1])
+//     }
 
-        let mut out = current.clone();
-        out.volume = volume;
-        current.volume -= volume;
+//     /// Pressure differential over the pipe
+//     pub fn pipe_pressure_differential(&self, direction: FlowDirection) -> f64 {
+//         let [i1, i2] = direction.indices();
+//         self.total_pressure[i1] - self.total_pressure[i2]
+//     }
 
-        Some(out)
-    }
+//     pub fn flow(&self, port: PortTag) -> f64 {
+//         self.flow[port.index()]
+//     }
 
-    pub fn drain_all(&mut self) -> Option<FluidChunk<T>> {
-        self.chunk.take()
-    }
-}
+//     /// Combined flow into the pipe increasing it's stored volume
+//     pub fn storage_flow(&self) -> f64 {
+//         let [a, b] = [self.flow[0], self.flow[1]];
+//         a + b
+//     }
 
-/// Internal state used for computation of liquid flow
-#[derive(Component, Clone, Default, Debug)]
-pub struct PipeFlowState {
-    /// Current volume of liquid in the pipe
-    current_volume: f64,
-
-    /// Current pressure model for the pipe
-    pressure_model: HoopTubePressureModel,
-
-    /// Current flow model for each port (based on pipe conductance)
-    flow_model: [TurbulentFlowModel; 2],
-
-    /// Extrinsic pressure at ports: external pressure, pump
-    extrinsic_pressure: [f64; 2],
-
-    /// Intrinsic pressure on the pipe due to elasticity
-    intrinsic_pressure: f64,
-
-    /// Total pressure at ports
-    total_pressure: [f64; 2],
-
-    /// Junction pressure for each port.
-    junction_pressure: [f64; 2],
-
-    /// Flow into the pipe through port A and B
-    flow: [f64; 2],
-}
-
-impl PipeFlowState {
-    pub fn pipe_pressure(&self, port: PortTag) -> f64 {
-        self.total_pressure[port.index()]
-    }
-
-    pub fn mean_pipe_pressure(&self) -> f64 {
-        0.5 * (self.total_pressure[0] + self.total_pressure[1])
-    }
-
-    /// Pressure differential over the pipe
-    pub fn pipe_pressure_differential(&self, direction: FlowDirection) -> f64 {
-        let [i1, i2] = direction.indices();
-        self.total_pressure[i1] - self.total_pressure[i2]
-    }
-
-    pub fn flow(&self, port: PortTag) -> f64 {
-        self.flow[port.index()]
-    }
-
-    /// Combined flow into the pipe increasing it's stored volume
-    pub fn storage_flow(&self) -> f64 {
-        let [a, b] = [self.flow[0], self.flow[1]];
-        a + b
-    }
-
-    /// Flow through the pipe from port A to port B
-    pub fn through_flow(&self) -> f64 {
-        let [a, b] = [self.flow[0], self.flow[1]];
-        a.max(-b).min(0.) + a.min(-b).max(0.)
-    }
-}
+//     /// Flow through the pipe from port A to port B
+//     pub fn through_flow(&self) -> f64 {
+//         let [a, b] = [self.flow[0], self.flow[1]];
+//         a.max(-b).min(0.) + a.min(-b).max(0.)
+//     }
+// }
 
 /// Statistics for pipe
 #[derive(Component, Clone, Default)]

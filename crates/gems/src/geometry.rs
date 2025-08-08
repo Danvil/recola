@@ -36,8 +36,14 @@ impl Cylinder {
     pub fn surface_area(&self) -> f64 {
         disk_circumfence(self.radius) * self.length
     }
+}
 
-    pub fn volume(&self) -> f64 {
+pub trait VolumeModel {
+    fn volume(&self) -> f64;
+}
+
+impl VolumeModel for Cylinder {
+    fn volume(&self) -> f64 {
         disk_area(self.radius) * self.length
     }
 }
