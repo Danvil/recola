@@ -1,4 +1,6 @@
 use flecs_ecs::prelude::*;
+use flowsim::PortTag;
+use gems::{pressure_to_mm_hg, volume_to_milli_liters, VolumeModel};
 use gosim::*;
 use mocca::{Mocca, MoccaDeps, MoccaRunSettings, MoccaRunner};
 
@@ -14,8 +16,15 @@ impl Mocca for GosSimDebugMocca {
         dep.dep::<GosSimMocca>();
     }
 
-    fn start(_: &World) -> Self {
+    fn start(world: &World) -> Self {
         log::info!("Game of Stonks - Simulation");
+
+        // enable flow sim logging
+        world.get::<&mut FlowSimConfig>(|cfg| {
+            cfg.pipe_stats_csv_path = Some("I:/Ikabur/gos/tmp/heart/".into());
+            cfg.graph_topology_path = Some("I:/Ikabur/gos/tmp/heart/".into());
+        });
+
         Self
     }
 
@@ -28,7 +37,7 @@ impl Mocca for GosSimDebugMocca {
     }
 }
 
-fn print_report(_world: &World) {
+fn print_report(world: &World) {
     //     // world
     //     //     .query::<(&CurrentBloodOxygen, &BodyTox, &CurrentBreathingOrgan)>()
     //     //     .build()
@@ -65,12 +74,19 @@ fn print_report(_world: &World) {
     //     //         );
     //     //     });
 
-    //     // world
-    //     //     .query::<(&HeartRateBpm,)>()
-    //     //     .build()
-    //     //     .each_entity(|e, (bpm,)| {
-    //     //         println!("{:?}: {} BPM, beat: {}", e.name(), **bpm, e.has(HeartBeat));
-    //     //     });
+    world
+        .query::<(&HeartRateBpm, &HeartStats)>()
+        .build()
+        .each_entity(|e, (bpm, stats)| {
+            println!(
+                "{:?}: {} BPM, beat: {}, stage: {:?} [{:4.1}%]",
+                e.name(),
+                **bpm,
+                stats.beat,
+                stats.stage,
+                stats.stage_progress * 100.
+            );
+        });
 
     //     world.query::<(&HeartStats,)>().build().each(|(stats,)| {
     //         if stats.beat {
@@ -97,23 +113,30 @@ fn print_report(_world: &World) {
     //     //         );
     //     //     });
 
-    //     world
-    //             .query::<(Option<&BodyPart>, &BloodStats, &BloodVessel, &PipeFlowState)>()
-    //             .build()
-    //             .each_entity(|e, (part, blood, pipe, state)| {
-    //                 println!(
-    //                     "Blood {:<16} [{:>12}]: P: {:5.1}|{:5.1} mmHg, Q: {:5.3}|{:5.3} mL/s, V:
-    // {:3.0} mL, SO2: {:5.1} %, PO2: {:5.0} mmHg",                     e.name(),
-    //                     part.map_or_else(|| String::new(), |x| format!("{x:?}")),
-    //                     pressure_to_mm_hg(state.pipe_pressure(PortTag::A)),
-    //                     pressure_to_mm_hg(state.pipe_pressure(PortTag::B)),
-    //                     volume_to_milli_liters(state.flow(PortTag::A)),
-    //                     volume_to_milli_liters(state.flow(PortTag::B)),
-    //                     volume_to_milli_liters(pipe.volume()),
-    //                     100. * blood.so2,
-    //                     blood.po2
-    //                 );
-    //             });
+    world
+        .query::<(
+            Option<&BodyPart>,
+            &BloodStats,
+            &FlowNetPipeDef,
+            &FlowNetPipeVessel,
+            &PipeFlowState,
+        )>()
+        .build()
+        .each_entity(|e, (part, blood, def, vessel,state, )| {
+            println!(
+                "Blood {:<16} [{:>12}]: P: {:6.1}|{:6.1} mmHg, Q: {:7.1}|{:7.1} mL/s, V: {:5.1}/{:5.1} mL, SO2: {:5.1} %, PO2: {:5.0} mmHg",
+                e.name(),
+                part.map_or_else(|| String::new(), |x| format!("{x:?}")),
+                pressure_to_mm_hg(state.pressure(PortTag::A)),
+                pressure_to_mm_hg(state.pressure(PortTag::B)),
+                volume_to_milli_liters(state.flow(PortTag::A)),
+                volume_to_milli_liters(state.flow(PortTag::B)),
+                volume_to_milli_liters(vessel.0.volume()),
+                volume_to_milli_liters(def.0.shape.nominal_volume()),
+                100. * blood.so2,
+                blood.po2
+            );
+        });
 
     //     // world
     //     //     .query::<(Option<&BodyPart>, &Tissue, &TissueStats)>()

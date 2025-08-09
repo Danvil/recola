@@ -1,17 +1,17 @@
-use crate::{FlowSimMocca, LogMocca, TimeMocca};
+use crate::{create_human, AgentMocca};
 use flecs_ecs::prelude::World;
 use mocca::{Mocca, MoccaDeps};
 
 pub struct GosSimMocca;
 
 impl Mocca for GosSimMocca {
-    fn start(_: &World) -> Self {
-        Self
+    fn load(mut dep: MoccaDeps) {
+        dep.dep::<AgentMocca>();
     }
 
-    fn load(mut dep: MoccaDeps) {
-        dep.dep::<LogMocca>();
-        dep.dep::<TimeMocca>();
-        dep.dep::<FlowSimMocca>();
+    fn start(world: &World) -> Self {
+        create_human(world.entity_named("Bob"));
+
+        Self
     }
 }

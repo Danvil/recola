@@ -3,9 +3,8 @@ use flecs_ecs::{
     core::{Builder, QueryAPI},
     prelude::World,
 };
-use gosim::{
-    volume_to_milli_liters, BloodStats, BloodVessel, BodyPart, PipeFlowStats, PipeGeometry,
-};
+use gems::{volume_to_milli_liters, VolumeModel};
+use gosim::{BloodStats, BodyPart, FlowNetPipeDef, FlowNetPipeVessel, PipeFlowStats};
 use ratatui::{
     layout::{Constraint, Direction, Layout},
     prelude::{Alignment, Stylize},
@@ -98,8 +97,8 @@ struct BloodVesselDevView {
     list: EntityListView<(
         Option<BodyPart>,
         BloodStats,
-        BloodVessel,
-        PipeGeometry,
+        FlowNetPipeVessel,
+        FlowNetPipeDef,
         PipeFlowStats,
     )>,
 }
@@ -111,8 +110,8 @@ impl BloodVesselDevView {
             .query::<(
                 Option<&BodyPart>,
                 &BloodStats,
-                &BloodVessel,
-                &PipeGeometry,
+                &FlowNetPipeVessel,
+                &FlowNetPipeDef,
                 &PipeFlowStats,
             )>()
             .build()
@@ -128,16 +127,16 @@ impl BloodVesselDevView {
 
     pub fn to_rows(&self) -> Vec<Row> {
         self.list
-            .to_rows(|_e, l, (part, blood, pipe, geometry, stats)| {
+            .to_rows(|_e, l, (part, blood, vessel, def, stats)| {
                 Row::new(vec![
                     l.to_string(),
                     part.as_ref()
                         .map_or_else(|| String::new(), |x| format!("{x:?}")),
                     format!("{:4.0} L/s", stats.through_flow_ema()),
-                    format!("{:3.0} mL", volume_to_milli_liters(pipe.volume())),
+                    format!("{:3.0} mL", volume_to_milli_liters(vessel.0.volume())),
                     format!(
                         "{:3.0} mL",
-                        volume_to_milli_liters(geometry.tubes.nominal_volume())
+                        volume_to_milli_liters(def.0.shape.nominal_volume())
                     ),
                     format!("{:3.0} %", 100. * blood.so2),
                     format!("{:5.0} mmHg", blood.po2),

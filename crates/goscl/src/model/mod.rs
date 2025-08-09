@@ -1,5 +1,5 @@
 use flecs_ecs::prelude::*;
-use gosim::WaterfrontModule;
+// use gosim::WaterfrontModule;
 
 pub struct GosClientModel {
     world: World,
@@ -9,7 +9,7 @@ impl GosClientModel {
     pub fn new() -> Self {
         let world = World::new();
 
-        world.import::<WaterfrontModule>();
+        // world.import::<WaterfrontModule>();
 
         Self { world }
     }

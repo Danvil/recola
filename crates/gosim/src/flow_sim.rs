@@ -5,9 +5,12 @@ use flowsim::{
     FlowNet, FlowNetSolver, FluidChunk, FluidComposition, FluidDensityViscosity, JuncId, PipeDef,
     PipeId, PipeSolution, PipeState, PipeVessel, PortMap, PortTag, ReservoirVessel,
 };
-use gems::{volume_from_milli_liters, Ema, IntMap, Lerp, VolumeModel};
+use gems::{volume_from_milli_liters, Ema, IntMap, RateEma, VolumeModel};
 use mocca::{Mocca, MoccaDeps};
-use std::{collections::HashMap, marker::PhantomData};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 pub struct FlowSimMocca;
 
@@ -30,7 +33,7 @@ pub struct PipeFlowStats {
     pressure_ema: [Ema; 2],
 
     /// EMA of flow through ports
-    flow_ema: [Ema; 2],
+    flow_ema: [RateEma; 2],
 }
 
 impl PipeFlowStats {
@@ -46,6 +49,11 @@ impl PipeFlowStats {
     }
 
     /// Combined flow into the pipe increasing it's stored volume
+    pub fn flow_ema(&self, side: PortTag) -> f64 {
+        self.flow_ema[side.index()].value()
+    }
+
+    /// Combined flow into the pipe increasing it's stored volume
     pub fn storage_flow_ema(&self) -> f64 {
         let [a, b] = [self.flow_ema[0].value(), self.flow_ema[1].value()];
         a + b
@@ -58,59 +66,55 @@ impl PipeFlowStats {
     }
 }
 
-// /// Internal state used for computation of liquid flow
-// #[derive(Component, Clone, Default, Debug)]
-// pub struct PipeFlowState {
-//     /// Current pressure model for the pipe
-//     pressure_model: HoopTubePressureModel,
+/// Internal state used for computation of liquid flow
+#[derive(Component, Clone, Default, Debug)]
+pub struct PipeFlowState {
+    // /// Extrinsic pressure at ports: external pressure, pump
+    // extrinsic_pressure: [f64; 2],
 
-//     /// Extrinsic pressure at ports: external pressure, pump
-//     extrinsic_pressure: [f64; 2],
+    // /// Intrinsic pressure on the pipe due to elasticity
+    // intrinsic_pressure: f64,
+    /// Total pressure at ports
+    pressure: PortMap<f64>,
 
-//     /// Intrinsic pressure on the pipe due to elasticity
-//     intrinsic_pressure: f64,
+    /// Junction pressure for each port.
+    junction_pressure: PortMap<Option<f64>>,
 
-//     /// Total pressure at ports
-//     total_pressure: [f64; 2],
+    /// Flow into the pipe through port A and B
+    flow: PortMap<f64>,
+}
 
-//     /// Junction pressure for each port.
-//     junction_pressure: [f64; 2],
+impl PipeFlowState {
+    pub fn pressure(&self, port: PortTag) -> f64 {
+        self.pressure[port.index()]
+    }
 
-//     /// Flow into the pipe through port A and B
-//     flow: [f64; 2],
-// }
+    pub fn mean_pressure(&self) -> f64 {
+        0.5 * (self.pressure[0] + self.pressure[1])
+    }
 
-// impl PipeFlowState {
-//     pub fn pipe_pressure(&self, port: PortTag) -> f64 {
-//         self.total_pressure[port.index()]
-//     }
+    /// Pressure differential over the pipe
+    pub fn pressure_differential(&self, direction: FlowDirection) -> f64 {
+        let [i1, i2] = direction.indices();
+        self.pressure[i1] - self.pressure[i2]
+    }
 
-//     pub fn mean_pipe_pressure(&self) -> f64 {
-//         0.5 * (self.total_pressure[0] + self.total_pressure[1])
-//     }
+    pub fn flow(&self, port: PortTag) -> f64 {
+        self.flow[port.index()]
+    }
 
-//     /// Pressure differential over the pipe
-//     pub fn pipe_pressure_differential(&self, direction: FlowDirection) -> f64 {
-//         let [i1, i2] = direction.indices();
-//         self.total_pressure[i1] - self.total_pressure[i2]
-//     }
+    /// Combined flow into the pipe increasing it's stored volume
+    pub fn storage_flow(&self) -> f64 {
+        let [a, b] = [self.flow[0], self.flow[1]];
+        a + b
+    }
 
-//     pub fn flow(&self, port: PortTag) -> f64 {
-//         self.flow[port.index()]
-//     }
-
-//     /// Combined flow into the pipe increasing it's stored volume
-//     pub fn storage_flow(&self) -> f64 {
-//         let [a, b] = [self.flow[0], self.flow[1]];
-//         a + b
-//     }
-
-//     /// Flow through the pipe from port A to port B
-//     pub fn through_flow(&self) -> f64 {
-//         let [a, b] = [self.flow[0], self.flow[1]];
-//         a.max(-b).min(0.) + a.min(-b).max(0.)
-//     }
-// }
+    /// Flow through the pipe from port A to port B
+    pub fn through_flow(&self) -> f64 {
+        let [a, b] = [self.flow[0], self.flow[1]];
+        a.max(-b).min(0.) + a.min(-b).max(0.)
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum FlowDirection {
@@ -136,6 +140,12 @@ impl FlowDirection {
 #[derive(Component, Clone, Debug)]
 pub struct ExternalPipePressure(pub PortMap<f64>);
 
+impl ExternalPipePressure {
+    pub fn ubiquous(p: f64) -> Self {
+        ExternalPipePressure(PortMap::from_array([p, p]))
+    }
+}
+
 /// A valve inside a pipe can block flow. The valve blocks both through flow and storage flow.
 #[derive(Component, Clone, Default)]
 pub struct ValveDef {
@@ -147,23 +157,6 @@ pub struct ValveDef {
 
     /// Hysteresis control value for opening and closing port valves. If 0 hysteresis is disabled.
     pub hysteresis: f64,
-}
-
-/// Active if current exceeds threshold and deactivates if current falls below threshold.
-fn hysteresis(active: bool, current: f64, threshold: f64, factor: f64) -> bool {
-    if active {
-        if current < threshold / (1. + factor) {
-            false
-        } else {
-            true
-        }
-    } else {
-        if current > threshold * (1. + factor) {
-            true
-        } else {
-            false
-        }
-    }
 }
 
 #[derive(Clone, Default, PartialEq)]
@@ -187,10 +180,17 @@ pub enum ValveKind {
 
 #[derive(Clone, PartialEq)]
 pub enum PortFlowKind {
+    /// Allow flow in both directions
     Open,
+
+    /// Do not allow flow in any direction
     Closed,
-    Outflow,
+
+    /// Only allow flow into the pipe (positive flow)
     Inflow,
+
+    /// Only allow flow out of the pipe (negative flow)
+    Outflow,
 }
 
 impl ValveKind {
@@ -242,18 +242,12 @@ pub struct PortAJunction;
 pub struct PortBJunction;
 
 /// Automatically creates junctions when connecting pipes
-pub struct PipeConnectionHelper<T>
-where
-    T: 'static + Send + Sync + Clone + Lerp<f64>,
-{
+pub struct PipeConnectionHelper {
     pipe_to_junc: HashMap<(Entity, PortTag), Entity>,
-    builder: JunctionBuilder<T>,
+    builder: JunctionBuilder,
 }
 
-impl<T> Default for PipeConnectionHelper<T>
-where
-    T: 'static + Send + Sync + Clone + Lerp<f64>,
-{
+impl Default for PipeConnectionHelper {
     fn default() -> Self {
         Self {
             pipe_to_junc: HashMap::default(),
@@ -262,10 +256,7 @@ where
     }
 }
 
-impl<T> PipeConnectionHelper<T>
-where
-    T: 'static + Send + Sync + Clone + Lerp<f64>,
-{
+impl PipeConnectionHelper {
     /// Gets junction to which a pipe port is connected.
     pub fn junction(&self, pipe: Entity, port: PortTag) -> Option<Entity> {
         self.pipe_to_junc.get(&(pipe, port)).copied()
@@ -376,71 +367,6 @@ where
             self.connect((*pn, PortTag::B), (*p1, PortTag::A));
         }
     }
-
-    /// Writes the pipe network as a Graphviz `.dot` file.
-    pub fn write_dot(&self, world: &World, path: &str) -> std::io::Result<()> {
-        use std::io::Write;
-
-        let mut file = std::fs::File::create(path)?;
-        writeln!(file, "graph PipeNetwork {{")?;
-
-        // Collect which junctions each pipe connects
-        let mut pipe_to_junctions: HashMap<Entity, Vec<Entity>> = HashMap::new();
-        for ((pipe, _port), junc) in &self.pipe_to_junc {
-            pipe_to_junctions.entry(*pipe).or_default().push(*junc);
-        }
-
-        // Emit all junction nodes with labels (entity name)
-        let mut junctions: Vec<Entity> = self.pipe_to_junc.values().copied().collect();
-        junctions.sort();
-        junctions.dedup();
-        for junc in &junctions {
-            let junc_name = world.entity_from_id(**junc).name();
-            writeln!(
-                file,
-                "    {} [label=\"{} ({})\"];",
-                **junc as u64, junc_name, **junc as u64
-            )?;
-        }
-
-        // Emit edges for each pipe
-        for (pipe, junctions) in &pipe_to_junctions {
-            let pipe_entity = world.entity_from_id(**pipe);
-            let pipe_label = format!("{} ({})", pipe_entity.name(), **pipe as u64);
-
-            match junctions.as_slice() {
-                [j1, j2] => {
-                    writeln!(
-                        file,
-                        "    {} -- {} [label=\"{}\"];",
-                        **j1 as u64, **j2 as u64, pipe_label
-                    )?;
-                }
-                [j1] => {
-                    // Single-ended pipe: draw as a self-loop
-                    writeln!(
-                        file,
-                        "    {} -- {} [label=\"{}\"];",
-                        **j1 as u64, **j1 as u64, pipe_label
-                    )?;
-                }
-                _ => {
-                    // Handle unexpected >2 port pipes
-                    for window in junctions.windows(2) {
-                        let (a, b) = (window[0], window[1]);
-                        writeln!(
-                            file,
-                            "    {} -- {} [label=\"{}\"];",
-                            *a as u64, *b as u64, pipe_label
-                        )?;
-                    }
-                }
-            }
-        }
-
-        writeln!(file, "}}")?;
-        Ok(())
-    }
 }
 
 /// A pump creates a pressure differential on a pipe.
@@ -522,20 +448,22 @@ impl EntityBuilder for PipeBuilder {
             count: self.strand_count,
         };
 
-        let volume = match elasticity_pressure_model.volume(self.target_pressure, shape.volume()) {
-            Ok(v) => v,
-            Err(err) => {
-                println!("error");
-                log::warn!(
-                    "failed to compute volume to reach target pressure: {err:?}, P={}\n{:?}",
-                    self.target_pressure,
-                    elasticity_pressure_model
-                );
-                err.best_guess()
-            }
-        };
+        let volume =
+            match elasticity_pressure_model.volume(self.target_pressure, shape.nominal_volume()) {
+                Ok(v) => v,
+                Err(err) => {
+                    println!("error");
+                    log::warn!(
+                        "failed to compute volume to reach target pressure: {err:?}, P={}\n{:?}",
+                        self.target_pressure,
+                        elasticity_pressure_model
+                    );
+                    err.best_guess()
+                }
+            };
 
         let pipe = PipeDef {
+            name: entity.name(),
             shape,
             fluid: FluidDensityViscosity::blood(),
             external_port_pressure: PortMap::from_array([0., 0.]),
@@ -543,7 +471,7 @@ impl EntityBuilder for PipeBuilder {
             ground_angle: 0.,
             darcy_factor: 64. / 2000., // e.g. 64/Re
             dampening: 0.0,
-            port_area_factor: [1., 1.],
+            port_area_factor: PortMap::from_array([1., 1.]),
         };
 
         entity
@@ -560,23 +488,15 @@ impl EntityBuilder for PipeBuilder {
                     )
                     .with_min_chunk_volume(volume_from_milli_liters(50.)),
             ))
-            // .set(PipeFlowState::default())
+            .set(PipeFlowState::default())
             .set(PipeFlowStats::default())
     }
 }
 
-pub struct JunctionBuilder<T>(PhantomData<T>);
+#[derive(Default)]
+pub struct JunctionBuilder;
 
-impl<T> Default for JunctionBuilder<T> {
-    fn default() -> Self {
-        Self(PhantomData)
-    }
-}
-
-impl<T> EntityBuilder for JunctionBuilder<T>
-where
-    T: 'static + Send + Sync + Clone + Lerp<f64>,
-{
+impl EntityBuilder for JunctionBuilder {
     fn build<'a>(&self, _world: &'a World, entity: EntityView<'a>) -> EntityView<'a> {
         entity
             .add(Junction)
@@ -608,17 +528,32 @@ impl EntityBuilder for ValveBuilder<'_> {
     }
 }
 
+#[derive(Component, Default, Clone)]
+pub struct FlowSimConfig {
+    /// If set writes pipe statistics to CSV file
+    pub pipe_stats_csv_path: Option<PathBuf>,
+
+    /// If set writes the topology of the flow net to a DOT file
+    pub graph_topology_path: Option<PathBuf>,
+
+    /// If enabled prints the flow sim ODE to console after solving
+    pub debug_print_ode_solution: bool,
+}
+
 impl Mocca for FlowSimMocca {
     fn load(mut dep: MoccaDeps) {
         dep.dep::<TimeMocca>();
     }
 
     fn register_components(world: &World) {
+        world.component::<FlowSimConfig>();
+
         world.component::<FlowNetPipeDef>();
         world.component::<FlowNetPipeState>();
         world.component::<FlowNetPipeVessel>();
         world.component::<FlowNetReservoirVessel>();
         // world.component::<PipeFlowState>();
+        world.component::<PipeFlowState>();
         world.component::<PipeFlowStats>();
         world.component::<ExternalPipePressure>();
 
@@ -640,7 +575,9 @@ impl Mocca for FlowSimMocca {
         world.component::<PumpStats>();
     }
 
-    fn start(_: &World) -> Self {
+    fn start(world: &World) -> Self {
+        world.set(FlowSimConfig::default());
+
         Self
     }
 
@@ -731,19 +668,12 @@ impl Mocca for FlowSimMocca {
         let dt = world.get::<&Time>(|t| t.sim_dt_f64());
 
         // solve flow net
-        let (_ode, solution, next) = FlowNetSolver::new().step(&mut net, net_pipe_state, dt);
-        // println!("ode: {:?}", ode);
-        // ode.print_overview(&next);
-        // println!("solution: {:?}", solution);
+        let (ode, solution, next) = FlowNetSolver::new().step(&mut net, net_pipe_state, dt);
 
-        // write back state
-        world
-            .query::<(&mut FlowNetPipeState,)>()
-            .build()
-            .each_entity(|epipe, (state,)| {
-                let id = **pipe_entity_id_map.get(&epipe).unwrap();
-                state.0 = next[id].clone();
-            });
+        if world.get::<&FlowSimConfig>(|c| c.debug_print_ode_solution) {
+            ode.print_overview(&next);
+            // println!("solution: {:?}", solution);
+        }
 
         // Phase 1: liquid flows from pipes vessels into the transionary junction vessels
         fn pipe_outflow_impl<R>(
@@ -828,5 +758,252 @@ impl Mocca for FlowSimMocca {
             PortBJunction,
             PortTag::B,
         );
+
+        // write back state
+        world
+            .query::<(
+                &FlowNetPipeDef,
+                &mut FlowNetPipeState,
+                &mut PipeFlowState,
+                &mut PipeFlowStats,
+            )>()
+            .build()
+            .each_entity(|epipe, (_def, fls, state, stats)| {
+                let pipe_id = **pipe_entity_id_map.get(&epipe).unwrap();
+                let scr = &ode.pipe_scratch()[pipe_id];
+
+                fls.0 = next[pipe_id].clone();
+
+                state.junction_pressure = PortMap::from_array(scr.junction_pressure);
+
+                for i in [0, 1] {
+                    // P = F/A = a / (A/m)
+                    let pressure = scr.total_accel[i] / scr.area_per_mass;
+                    state.pressure[i] = pressure;
+                    stats.pressure_ema[i].step(dt, pressure);
+
+                    let delta_volume = solution[pipe_id].delta_volume[i];
+                    let flow = delta_volume / dt;
+                    state.flow[i] = flow;
+                    stats.flow_ema[i].step(dt, delta_volume);
+                }
+            });
+
+        // Operate valves based on pressure differential
+        world
+            .query::<(
+                &ValveDef,
+                &mut ValveState,
+                &mut FlowNetPipeDef,
+                &mut PipeFlowState,
+            )>()
+            .build()
+            .each(|(valve_def, valve_state, pipe_def, pipe_state)| {
+                let port_flow_kind = valve_def.kind.port_kind();
+
+                for i in 0..2 {
+                    let is_open = if let Some(junction_pressure) = pipe_state.junction_pressure[i] {
+                        // println!("{}/{}", pipe_state.pressure[i], junction_pressure);
+
+                        match port_flow_kind[i] {
+                            PortFlowKind::Open => true,
+                            PortFlowKind::Closed => false,
+                            PortFlowKind::Inflow => hysteresis(
+                                valve_state.is_open[i],
+                                pipe_state.pressure[i],
+                                -junction_pressure,
+                                valve_def.hysteresis,
+                            ),
+                            PortFlowKind::Outflow => hysteresis(
+                                valve_state.is_open[i],
+                                -pipe_state.pressure[i],
+                                junction_pressure,
+                                valve_def.hysteresis,
+                            ),
+                        }
+                    } else {
+                        false
+                    };
+
+                    valve_state.is_open[i] = is_open;
+                    pipe_def.0.port_area_factor[i] = if is_open { 1. } else { 0. };
+                    // println!("VALVE: {}", is_open);
+                }
+            });
+
+        // Write pipe data to CSV
+        if let Some(path) = world.get::<&FlowSimConfig>(|c| c.pipe_stats_csv_path.clone()) {
+            let step = world.get::<&Time>(|t| t.frame_count);
+            let file_path = path.join(format!("flow_net_pipes_{step:05}.csv"));
+
+            write_flow_net_pipes_csv(world, &file_path).ok();
+        }
+
+        // Write graph topology to CSV
+        if let Some(path) = world.get::<&FlowSimConfig>(|c| c.graph_topology_path.clone()) {
+            let step = world.get::<&Time>(|t| t.frame_count);
+            let file_path = path.join(format!("topology_{step:05}.csv"));
+
+            write_flow_net_topology_dot(world, &file_path).ok();
+        }
     }
+}
+
+/// Active if current exceeds threshold and deactivates if current falls below threshold.
+fn hysteresis(active: bool, current: f64, threshold: f64, factor: f64) -> bool {
+    if active {
+        // stay on for longer
+        current >= threshold / (1. + factor)
+    } else {
+        // turn on a bit later
+        current > threshold * (1. + factor)
+    }
+}
+
+fn write_flow_net_pipes_csv(world: &World, file_path: &Path) -> std::io::Result<()> {
+    use std::{
+        fs::File,
+        io::{BufWriter, Write},
+    };
+
+    let file = File::create(file_path)?;
+    let mut writer = BufWriter::new(file);
+
+    // Write header
+    writeln!(
+        writer,
+        "entity,name,volume,length,pressure_a,pressure_b,junction_a,junction_b,flow_a,flow_b"
+    )?;
+
+    world
+        .query::<(&FlowNetPipeDef, &PipeFlowState, &FlowNetPipeVessel)>()
+        .build()
+        .each_entity(|entity, (def, state, vessel)| {
+            let volume = vessel.0.volume();
+            let length = def.0.shape.model.length;
+            let pressure_a = state.pressure[PortTag::A];
+            let pressure_b = state.pressure[PortTag::B];
+            let junction_a = state.junction_pressure[PortTag::A]
+                .map(|p| p.to_string())
+                .unwrap_or_else(|| String::new());
+            let junction_b = state.junction_pressure[PortTag::B]
+                .map(|p| p.to_string())
+                .unwrap_or_else(|| String::new());
+            let flow_a = state.flow[PortTag::A];
+            let flow_b = state.flow[PortTag::B];
+            let open_a = def.0.port_area_factor[PortTag::A];
+            let open_b = def.0.port_area_factor[PortTag::B];
+
+            writeln!(
+                writer,
+                "{},{},{volume},{length},{pressure_a},{pressure_b},{junction_a},{junction_b},{flow_a},{flow_b},{open_a},{open_b}",
+                *entity,entity.name()
+            )
+            .unwrap();
+        });
+
+    Ok(())
+}
+
+fn write_flow_net_topology_dot(world: &World, file_path: &Path) -> std::io::Result<()> {
+    use std::{
+        collections::HashSet,
+        fs::File,
+        io::{BufWriter, Write},
+    };
+
+    // Helper: stable Graphviz ID for an entity and a safe label.
+    fn gv_id(e: EntityView) -> String {
+        format!("e{}", e.id())
+    }
+
+    fn gv_label(e: EntityView) -> String {
+        // Use the entity's name if present; otherwise fall back to its id.
+        match Some(e.name()) {
+            Some(n) if !n.is_empty() => n.replace('"', r#"\""#),
+            _ => format!("id={}", e.id()),
+        }
+    }
+
+    let file = File::create(file_path)?;
+    let mut w = BufWriter::new(file);
+
+    writeln!(w, "graph FlowNet {{")?;
+    writeln!(w, "  graph [overlap=false];")?;
+    writeln!(w, "  node  [fontname=\"Helvetica\"];")?;
+
+    let mut seen_pipes: HashSet<Entity> = HashSet::new();
+    let mut seen_juncs: HashSet<Entity> = HashSet::new();
+    let mut seen_edges: HashSet<(Entity, Entity)> = HashSet::new();
+
+    fn walk_rel<R>(
+        world: &World,
+        rel: R,
+        w: &mut BufWriter<File>,
+        seen_pipes: &mut HashSet<Entity>,
+        seen_juncs: &mut HashSet<Entity>,
+        seen_edges: &mut HashSet<(Entity, Entity)>,
+    ) where
+        Access: FromAccessArg<R>,
+    {
+        let topo = world
+            .query::<(&mut FlowNetPipeVessel, &mut FlowNetReservoirVessel)>()
+            .related(This, rel, "$junc")
+            .tagged("$junc", Junction)
+            .tagged("$junc", Arg(1))
+            .build();
+
+        let junc_var = topo.find_var("junc").expect("var $junc");
+
+        topo.run(|mut it| {
+            while it.next() {
+                for i in it.iter() {
+                    let pipe = it.entity(i).unwrap();
+                    let junc = it.get_var(junc_var);
+
+                    // Node declarations (once).
+                    if seen_pipes.insert(pipe.id()) {
+                        writeln!(
+                            w,
+                            "  {} [label=\"{}\", shape=box, style=rounded, penwidth=1.2];",
+                            gv_id(pipe),
+                            gv_label(pipe)
+                        ).ok();
+                    }
+                    if seen_juncs.insert(junc.id()) {
+                        writeln!(
+                            w,
+                            "  {} [label=\"\", shape=circle, width=0.15, fixedsize=true, style=filled, fillcolor=\"#666666\"];",
+                            gv_id(junc)
+                        ).ok();
+                    }
+
+                    // Edges (once across both PortA/PortB passes).
+                    if seen_edges.insert((pipe.id(), junc.id())) {
+                        writeln!(w, "  {} -- {};", gv_id(pipe), gv_id(junc)).ok();
+                    }
+                }
+            }
+        });
+    }
+
+    walk_rel(
+        world,
+        PortAJunction,
+        &mut w,
+        &mut seen_pipes,
+        &mut seen_juncs,
+        &mut seen_edges,
+    );
+    walk_rel(
+        world,
+        PortBJunction,
+        &mut w,
+        &mut seen_pipes,
+        &mut seen_juncs,
+        &mut seen_edges,
+    );
+
+    writeln!(w, "}}")?;
+    Ok(())
 }

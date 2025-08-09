@@ -7,6 +7,8 @@ use std::ops::{Add, Mul, Sub};
 
 #[derive(Clone, Debug)]
 pub struct PipeDef {
+    pub name: String,
+
     pub shape: Bundle<Cylinder>,
 
     /// Fluid stored in the pipe
@@ -30,8 +32,7 @@ pub struct PipeDef {
     pub dampening: f64,
 
     /// The port area is scaled with this factor. If set to 0 the port is closed.
-    // FIXME not implemented
-    pub port_area_factor: [f64; 2],
+    pub port_area_factor: PortMap<f64>,
 }
 
 impl PipeDef {
@@ -60,7 +61,7 @@ impl PipeState {
 }
 
 fn inwards(a: f64, b: f64) -> f64 {
-    a - b
+    a + b
 }
 
 fn through(a: f64, b: f64) -> f64 {
@@ -102,15 +103,21 @@ impl Mul<f64> for PipeState {
 
 #[derive(Default, Clone, Debug)]
 pub struct PipeScratch {
-    /// Radius of a single pipe in the bundle (at current volume)
-    pub strand_radius: f64,
-
     /// Number of strands in the bundle. All properties not prefixed with strand_ are are wrt to
     /// the whole bundel.
     pub strand_count: f64,
 
-    /// Cross section area of the pipe bundle (at current volume)
-    pub cross_section_area: f64,
+    /// Radius of a single pipe in the bundle over most of the length of the tube
+    pub tube_strand_radius: f64,
+
+    /// Cross section area of the pipe bundle at the ports
+    pub port_cross_section_area: [f64; 2],
+
+    /// Cross section area of the pipe bundle over most of the length of the tube
+    pub tube_cross_section_area: f64,
+
+    /// Area/Mass used for port pressure equalization
+    pub area_per_mass: f64,
 
     /// Mass of liquid contained in the pipe
     pub volume: f64,
@@ -118,15 +125,23 @@ pub struct PipeScratch {
     /// Mass of liquid contained in the pipe
     pub mass: f64,
 
-    pub pump_force: [f64; 2],
-    pub grav_force: [f64; 2],
-    pub elas_force: f64,
+    pub elas_pressure: f64,
+
+    pub pump_accel: [f64; 2],
+    pub grav_accel: [f64; 2],
+    pub elas_accel: f64,
     pub visc_force: [f64; 2],
     pub turb_force: [f64; 2],
     pub damp_force: [f64; 2],
 
-    /// Force acting on the ports of a pipe. Positive force pushes inwards
-    pub force: [f64; 2],
+    /// Liquid acceleration on ports based on external effects like gravity or pump.
+    pub ext_accels: [f64; 2],
+
+    /// Sum of drag forcesopposing liquid movement.
+    pub drag_forces: [f64; 2],
+
+    /// Total liquid acceleration on ports (external and drag)
+    pub total_accel: [f64; 2],
 
     /// Junction pressure at ports
     pub junction_pressure: [Option<f64>; 2],

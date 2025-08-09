@@ -1,14 +1,16 @@
 use crate::{
-    create_blood_vessels, stat_component, utils::EntityBuilder, volume_from_liters, Air,
-    BloodModule, BloodProperties, BloodVessel, FlecsQueryRelationHelpers, PipeConnectionHelper,
-    PortTag, Time, TimeModule, TissueBuilder,
+    create_blood_vessels, stat_component, utils::EntityBuilder, BloodMocca, BloodProperties,
+    PipeConnectionHelper, TimeMocca, TissueBuilder,
 };
 use flecs_ecs::prelude::*;
+use flowsim::PortTag;
+use gems::volume_from_liters;
+use mocca::{Mocca, MoccaDeps};
 
 /// Breathing transfers oxygen (and other components) from the surrounding air into the blood
 /// stream.
 #[derive(Component)]
-pub struct LungsModule;
+pub struct LungsMocca;
 
 stat_component!(
     /// Rate at which lungs absorbe oxygen from air into the blood
@@ -73,7 +75,7 @@ pub struct AlveoliTag;
 pub fn create_lungs<'a>(
     world: &'a World,
     lungs: EntityView<'a>,
-    con: &mut PipeConnectionHelper<BloodProperties>,
+    con: &mut PipeConnectionHelper,
 ) -> LungsJunctions {
     // TODO create two lungs
 
@@ -128,21 +130,23 @@ pub struct LungsJunctions {
     pub bronchial_out: Entity,
 }
 
-impl Module for LungsModule {
-    fn module(world: &World) {
-        world.module::<LungsModule>("breathing");
+impl Mocca for LungsMocca {
+    fn load(mut dep: MoccaDeps) {
+        dep.dep::<TimeMocca>();
+        dep.dep::<BloodMocca>();
+    }
 
-        world.import::<TimeModule>();
-        world.import::<BloodModule>();
-
+    fn register_components(world: &World) {
         // world.component::<BreathingOrgan>();
         // world.component::<CurrentBreathingOrgan>();
         world.component::<LungsConfig>();
         world.component::<AlveoliTag>();
-        world.component::<Air>();
+        // world.component::<Air>();
         world.component::<Alveoli>();
         // world.component::<Rebreather>();
+    }
 
+    fn start(world: &World) -> Self {
         // Initialize configuration
         world.set(LungsConfig {
             oxygen_diffusion_rate: 0.000002,
@@ -151,23 +155,27 @@ impl Module for LungsModule {
             // critical_blood_oxygen_organ_eff_range: RangeF64::new(0., 1.0),
         });
 
-        // Alevoli exchange oxygen from air into the blood
-        world
-            .system_named::<(&Time, &LungsConfig, &Air, &Alveoli, &mut BloodVessel)>(
-                "LungsAlveoliExchange",
-            )
-            .singleton_at(0)
-            .singleton_at(1)
-            .term_at(2)
-            .up()
-            .each(|(time, cfg, air, _alveoli, vessel)| {
-                let air_po2 = air.oxygen_percent * 713.0 * 133.322; // Pa
-                let vol_by_pressure = cfg.oxygen_diffusion_rate * time.sim_dt_f64();
-                for (_, blood) in vessel.chunk_volume_data_mut() {
-                    alevoli_diffusion(blood, air_po2, vol_by_pressure);
-                    // TODO
-                }
-            });
+        Self
+    }
+
+    fn step(&mut self, world: &World) {
+        // // Alevoli exchange oxygen from air into the blood
+        // world
+        //     .system_named::<(&Time, &LungsConfig, &Air, &Alveoli, &mut BloodVessel)>(
+        //         "LungsAlveoliExchange",
+        //     )
+        //     .singleton_at(0)
+        //     .singleton_at(1)
+        //     .term_at(2)
+        //     .up()
+        //     .each(|(time, cfg, air, _alveoli, vessel)| {
+        //         let air_po2 = air.oxygen_percent * 713.0 * 133.322; // Pa
+        //         let vol_by_pressure = cfg.oxygen_diffusion_rate * time.sim_dt_f64();
+        //         for (_, blood) in vessel.chunk_volume_data_mut() {
+        //             alevoli_diffusion(blood, air_po2, vol_by_pressure);
+        //             // TODO
+        //         }
+        //     });
 
         // // Consume blood oxygen
         // world

@@ -1,16 +1,19 @@
 use crate::decimal_component;
-use flecs_ecs::prelude::{Component, Module, World};
+use flecs_ecs::prelude::{Component, World};
+use mocca::Mocca;
 
 /// The weight of a physical object
 decimal_component!(Weight);
 
 #[derive(Component)]
-pub struct WeightModule;
+pub struct WeightMocca;
 
-impl Module for WeightModule {
-    fn module(world: &World) {
-        world.module::<WeightModule>("WeightModule");
-
+impl Mocca for WeightMocca {
+    fn register_components(world: &World) {
         world.component::<Weight>();
+    }
+
+    fn start(_world: &World) -> Self {
+        Self
     }
 }

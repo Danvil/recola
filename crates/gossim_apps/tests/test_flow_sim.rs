@@ -1,9 +1,14 @@
-use gossim_apps::apps::FlowNetPipeChainMocca;
+use gossim_apps::apps::{FlowSimPipeChainMocca, FlowSimValveMocca};
 use mocca::{MoccaRunSettings, MoccaRunner};
 
 #[test]
-fn test_flow_net_line() {
-    MoccaRunner::run::<FlowNetPipeChainMocca>(MoccaRunSettings::test(2000));
+fn test_flow_sim_line() {
+    MoccaRunner::run::<FlowSimPipeChainMocca>(MoccaRunSettings::test(2000));
+}
+
+#[test]
+fn test_flow_sim_valve() {
+    MoccaRunner::run::<FlowSimValveMocca>(MoccaRunSettings::test(2000));
 }
 
 // #[test]

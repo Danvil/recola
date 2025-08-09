@@ -22,6 +22,7 @@ fn standard_pipe(count: f64, target_pressure: f64) -> (PipeDef, PipeState) {
     let volume = pressure_model.volume(target_pressure).unwrap() * count;
 
     let pipe = PipeDef {
+        name: "".to_string(),
         shape: Bundle {
             model: cylinder.clone(),
             count: count,
@@ -35,7 +36,7 @@ fn standard_pipe(count: f64, target_pressure: f64) -> (PipeDef, PipeState) {
         ground_angle: 0.,
         darcy_factor: 64. / 2000.,
         dampening: 0.0,
-        port_area_factor: [1., 1.],
+        port_area_factor: PortMap::from_array([1., 1.]),
     };
 
     let state = PipeState {
@@ -47,7 +48,7 @@ fn standard_pipe(count: f64, target_pressure: f64) -> (PipeDef, PipeState) {
 }
 
 #[test]
-fn test_flow_net_pipe_chain() {
+fn test_flow_sim_pipe_chain() {
     // Creates 10 pipes in a chain. The first pipe is over-pressured.
 
     let mut net = FlowNet::new();
@@ -71,12 +72,12 @@ fn test_flow_net_pipe_chain() {
 
     let state = FlowNetSolver::new().solve(&mut net, state, 2000, 0.050);
 
-    approx::assert_relative_eq!(state[0].volume, 0.31887745e-3, max_relative = 1e-6);
-    approx::assert_relative_eq!(state[9].volume, 0.31885347e-3, max_relative = 1e-6);
+    approx::assert_relative_eq!(state[0].volume, 0.31887589e-3, max_relative = 1e-6);
+    approx::assert_relative_eq!(state[9].volume, 0.31887591e-3, max_relative = 1e-6);
 }
 
 #[test]
-fn test_flow_net_pipe_count_imbalance() {
+fn test_flow_sim_pipe_count_imbalance() {
     // Creates two connected pipes. The first one is over-pressured. The second one has count 10.
 
     let mut net = FlowNet::new();
@@ -98,6 +99,6 @@ fn test_flow_net_pipe_count_imbalance() {
 
     let state = FlowNetSolver::new().solve(&mut net, state, 2000, 0.050);
 
-    approx::assert_relative_eq!(state[*p1].volume, 0.279668e-3, max_relative = 1e-6);
-    approx::assert_relative_eq!(state[*p2].volume, 3.223250e-3, max_relative = 1e-6);
+    approx::assert_relative_eq!(state[*p1].volume, 0.3184471e-3, max_relative = 1e-6);
+    approx::assert_relative_eq!(state[*p2].volume, 3.184471e-3, max_relative = 1e-6);
 }

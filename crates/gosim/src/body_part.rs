@@ -1,12 +1,14 @@
 use crate::{
-    stat_component, utils::FlecsQueryRelationHelpers, BloodConfig, BloodModule, BloodOxygenContent,
-    BloodProperties, BloodStats, ElasticTubeBundle, EntityBuilder, HemoglobinOxygenSaturationHill,
-    PipeBuilder, PipeGeometry, Time, TimeModule,
+    stat_component, BloodMocca, BloodOxygenContent, BloodStats, EntityBuilder,
+    HemoglobinOxygenSaturationHill, PipeBuilder, TimeMocca,
 };
 use flecs_ecs::prelude::*;
+use flowsim::{models::ElasticTube, FluidComposition};
+use gems::{Cylinder, VolumeModel};
+use mocca::{Mocca, MoccaDeps};
 
 #[derive(Component)]
-pub struct BodyPartModule;
+pub struct BodyPartMocca;
 
 stat_component!(BodyPartEfficiency);
 
@@ -61,18 +63,20 @@ pub struct TissueStats {
     pub o2_pressure: f64,
 }
 
-impl Module for BodyPartModule {
-    fn module(world: &World) {
-        world.module::<BodyPartModule>("BodyPartModule");
+impl Mocca for BodyPartMocca {
+    fn load(mut dep: MoccaDeps) {
+        dep.dep::<TimeMocca>();
+        dep.dep::<BloodMocca>();
+    }
 
+    fn register_components(world: &World) {
         world.component::<BodyPartConfig>();
         world.component::<BodyPart>();
         world.component::<Tissue>();
         world.component::<TissueStats>();
+    }
 
-        world.import::<TimeModule>();
-        world.import::<BloodModule>();
-
+    fn start(world: &World) -> Self {
         BodyPartEfficiency::setup(world);
 
         world.set(BodyPartConfig {
@@ -81,59 +85,55 @@ impl Module for BodyPartModule {
             tissue_oxygen_consumption: 0.01, // ~10 minute until depletion
         });
 
-        // Tissue consumes oxygen
-        world
-            .system::<(&Time, &BodyPartConfig, &mut Tissue)>()
-            .singleton_at(0)
-            .singleton_at(1)
-            .each(|(time, cfg, tissue)| {
-                let delta = time.sim_dt_f64() * cfg.tissue_oxygen_consumption;
-                tissue.o2_content = (tissue.o2_content - delta).max(0.);
-            });
+        Self
+    }
 
-        // Update tissue statistics
-        world
-            .system::<(&BodyPartConfig, &Tissue, &mut TissueStats)>()
-            .singleton_at(0)
-            .each(|(cfg, tissue, stats)| {
-                stats.o2_saturation = cfg.o2_content.hb_o2_content_into_so2(1., tissue.o2_content);
-                stats.o2_pressure = cfg.hill.saturation_into_pressure(stats.o2_saturation);
-            });
+    fn step(&mut self, _world: &World) {
+        // // Tissue consumes oxygen
+        // world
+        //     .query::<(&Time, &BodyPartConfig, &mut Tissue)>()
+        //     .singleton_at(0)
+        //     .singleton_at(1)
+        //     .build()
+        //     .each(|(time, cfg, tissue)| {
+        //         let delta = time.sim_dt_f64() * cfg.tissue_oxygen_consumption;
+        //         tissue.o2_content = (tissue.o2_content - delta).max(0.);
+        //     });
+
+        // // Update tissue statistics
+        // world
+        //     .query::<(&BodyPartConfig, &Tissue, &mut TissueStats)>()
+        //     .singleton_at(0)
+        //     .build()
+        //     .each(|(cfg, tissue, stats)| {
+        //         stats.o2_saturation = cfg.o2_content.hb_o2_content_into_so2(1.,
+        // tissue.o2_content);         stats.o2_pressure =
+        // cfg.hill.saturation_into_pressure(stats.o2_saturation);     });
     }
 }
 
 const MEAN_CIRCULATORY_FILLING_PRESSURE: f64 = 800.0; // Pa / 6 mmHg
 
-pub struct BloodVesselBuilder<'a> {
-    pub geometry: &'a PipeGeometry,
+pub struct BloodVesselBuilder {
+    pub tube: ElasticTube,
+    pub strand_count: f64,
+    pub collapse_pressure: f64,
 }
 
-impl EntityBuilder for BloodVesselBuilder<'_> {
+impl EntityBuilder for BloodVesselBuilder {
     fn build<'a>(&self, world: &'a World, entity: EntityView<'a>) -> EntityView<'a> {
-        let blood_config = world.cloned::<&BloodConfig>();
+        // let blood_config = world.cloned::<&BloodConfig>();
+        // FIXME use collapse_pressure
         PipeBuilder {
-            geometry: self.geometry,
-            data: &BloodProperties::new(&blood_config, 0.45, 0.200, 0.850),
+            tube: self.tube.clone(),
+            strand_count: self.strand_count,
+            fluid: FluidComposition::blood(1.),
+            // data: &BloodProperties::new(&blood_config, 0.45, 0.200, 0.850),
             target_pressure: MEAN_CIRCULATORY_FILLING_PRESSURE,
         }
         .build(world, entity)
+        .set(BloodStats::default())
     }
-}
-
-pub fn create_blood_vessel_aux<'a>(
-    world: &'a World,
-    entity: EntityView<'a>,
-    geometry: PipeGeometry,
-) -> EntityView<'a> {
-    let blood_config = world.cloned::<&BloodConfig>();
-
-    PipeBuilder {
-        geometry: &geometry,
-        data: &BloodProperties::new(&blood_config, 0.45, 0.200, 0.850),
-        target_pressure: MEAN_CIRCULATORY_FILLING_PRESSURE,
-    }
-    .build(world, entity)
-    .set(BloodStats::default())
 }
 
 /// Create a set of blood vessels
@@ -142,19 +142,22 @@ pub fn create_blood_vessels<'a>(
     entity: EntityView<'a>,
     volume: f64,
 ) -> EntityView<'a> {
-    let geometry = PipeGeometry {
-        tubes: ElasticTubeBundle {
+    let tube = ElasticTube {
+        shape: Cylinder {
             radius: 0.003,
-            length: 0.30,
-            wall_thickness: 0.0005,
-            youngs_modulus: 500000.,
-            count: 1.,
-        }
-        .with_count_from_total_volume(volume),
-        collapse_pressure: -1000.,
-        conductance_factor: 1.,
+            length: 0.300,
+        },
+        wall_thickness: 0.0005,
+        youngs_modulus: 500_000.0,
     };
-    create_blood_vessel_aux(world, entity, geometry)
+    let strand_count = volume / tube.nominal_volume();
+
+    BloodVesselBuilder {
+        tube,
+        strand_count,
+        collapse_pressure: -1_000.,
+    }
+    .build(world, entity)
 }
 
 /// Create a chunk of tissue

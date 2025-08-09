@@ -1,4 +1,7 @@
-use gems::{cylinder_radius, cylinder_volume, newton_root_solver, Cylinder, NewtonRootSolverError};
+use gems::{
+    cylinder_radius, cylinder_volume, newton_root_solver, Cylinder, NewtonRootSolverError,
+    VolumeModel,
+};
 
 pub trait PressureModel {
     /// Pressure for given volume
@@ -78,6 +81,12 @@ pub struct ElasticTube {
 
     /// Young's modulus describing elasticity of the tube wall
     pub youngs_modulus: f64,
+}
+
+impl VolumeModel for ElasticTube {
+    fn nominal_volume(&self) -> f64 {
+        self.shape.nominal_volume()
+    }
 }
 
 impl Default for ElasticTube {

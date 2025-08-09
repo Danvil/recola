@@ -1,7 +1,8 @@
 use flecs_ecs::prelude::*;
+use mocca::Mocca;
 
 #[derive(Component)]
-pub struct OpsModule;
+pub struct OpsMocca;
 
 /// Marker for operations which are not yet completed.
 #[derive(Component)]
@@ -11,17 +12,22 @@ pub struct OpStatePending;
 #[derive(Component)]
 pub struct OpStateCompleted;
 
-impl Module for OpsModule {
-    fn module(world: &World) {
-        world.module::<OpsModule>("ops");
-
+impl Mocca for OpsMocca {
+    fn register_components(world: &World) {
         world.component::<OpStatePending>();
         world.component::<OpStateCompleted>();
+    }
 
+    fn start(_world: &World) -> Self {
+        Self
+    }
+
+    fn step(&mut self, world: &World) {
         // Delete completed operations
         world
-            .system::<()>()
+            .query::<()>()
             .with(OpStateCompleted)
+            .build()
             .each_entity(|e, _| e.destruct());
     }
 }

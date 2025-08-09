@@ -1,7 +1,6 @@
 use std::{
-    marker::PhantomData,
     mem::swap,
-    ops::{Add, Deref, Index, IndexMut, Mul, Sub},
+    ops::{Index, IndexMut},
 };
 
 #[derive(Clone, Debug)]
@@ -16,13 +15,20 @@ impl<T> Default for IntMap<T> {
 }
 
 #[derive(Clone, Debug)]
-enum Entry<T> {
+pub enum Entry<T> {
     Empty,
     Occupied(T),
 }
 
 impl<T> Entry<T> {
     fn as_ref_opt(&self) -> Option<&T> {
+        match self {
+            Entry::Empty => None,
+            Entry::Occupied(x) => Some(x),
+        }
+    }
+
+    fn as_mut_opt(&mut self) -> Option<&mut T> {
         match self {
             Entry::Empty => None,
             Entry::Occupied(x) => Some(x),
@@ -307,53 +313,20 @@ pub trait IntMapTuple {
         F: FnMut(Self::RowRef) -> S;
 }
 
-impl<'a, T1, T2> IntMapTuple for (&'a IntMap<T1>, &'a IntMap<T2>) {
-    type RowRef = (&'a T1, &'a T2);
+impl<M1, M2> IntMapTuple for (M1, M2)
+where
+    M1: IntMapRef,
+    M2: IntMapRef,
+{
+    type RowRef = (M1::Item, M2::Item);
 
     fn iter(self) -> impl Iterator<Item = Self::RowRef> {
         self.0
-            .items
-            .iter()
-            .zip(self.1.items.iter())
-            .filter_map(|(a, b)| match (a.as_ref_opt(), b.as_ref_opt()) {
-                (Some(a), Some(b)) => Some((a, b)),
-                _ => None,
-            })
-    }
-
-    fn map<F, S>(self, mut f: F) -> IntMap<S>
-    where
-        F: FnMut(Self::RowRef) -> S,
-    {
-        let n = self.0.items.len().min(self.1.items.len());
-        let mut items = (0..n).map(|_| Entry::Empty).collect::<Vec<_>>();
-        for (i, a) in self
-            .0
-            .items
-            .iter()
-            .enumerate()
-            .filter_map(|(i, a)| a.as_ref_opt().map(|x| (i, x)))
-        {
-            if let Some(b) = self.1.get(i) {
-                items[i] = Entry::Occupied(f((a, b)));
-            }
-        }
-        IntMap { items }
-    }
-}
-
-impl<'a, T1, T2, T3> IntMapTuple for (&'a IntMap<T1>, &'a IntMap<T2>, &'a IntMap<T3>) {
-    type RowRef = (&'a T1, &'a T2, &'a T3);
-
-    fn iter(self) -> impl Iterator<Item = Self::RowRef> {
-        self.0
-            .items
-            .iter()
-            .zip(self.1.items.iter())
-            .zip(self.2.items.iter())
+            .iter_entries()
+            .zip(self.1.iter_entries())
             .filter_map(
-                |((a, b), c)| match (a.as_ref_opt(), b.as_ref_opt(), c.as_ref_opt()) {
-                    (Some(a), Some(b), Some(c)) => Some((a, b, c)),
+                |(a, b)| match (M1::entry_to_item(a), M2::entry_to_item(b)) {
+                    (Some(a), Some(b)) => Some((a, b)),
                     _ => None,
                 },
             )
@@ -363,24 +336,102 @@ impl<'a, T1, T2, T3> IntMapTuple for (&'a IntMap<T1>, &'a IntMap<T2>, &'a IntMap
     where
         F: FnMut(Self::RowRef) -> S,
     {
-        let n = self
-            .0
-            .items
-            .len()
-            .min(self.1.items.len())
-            .min(self.2.items.len());
-        let mut items = (0..n).map(|_| Entry::Empty).collect::<Vec<_>>();
-        for (i, a) in self
-            .0
-            .items
-            .iter()
-            .enumerate()
-            .filter_map(|(i, a)| a.as_ref_opt().map(|x| (i, x)))
-        {
-            if let (Some(b), Some(c)) = (self.1.get(i), self.2.get(i)) {
-                items[i] = Entry::Occupied(f((a, b, c)));
-            }
+        IntMap {
+            items: self
+                .0
+                .iter_entries()
+                .zip(self.1.iter_entries())
+                .map(
+                    |(a, b)| match (M1::entry_to_item(a), M2::entry_to_item(b)) {
+                        (Some(a), Some(b)) => Entry::Occupied(f((a, b))),
+                        _ => Entry::Empty,
+                    },
+                )
+                .collect(),
         }
-        IntMap { items }
+    }
+}
+
+impl<M1, M2, M3> IntMapTuple for (M1, M2, M3)
+where
+    M1: IntMapRef,
+    M2: IntMapRef,
+    M3: IntMapRef,
+{
+    type RowRef = (M1::Item, M2::Item, M3::Item);
+
+    fn iter(self) -> impl Iterator<Item = Self::RowRef> {
+        self.0
+            .iter_entries()
+            .zip(self.1.iter_entries())
+            .zip(self.2.iter_entries())
+            .filter_map(|((a1, a2), a3)| {
+                match (
+                    M1::entry_to_item(a1),
+                    M2::entry_to_item(a2),
+                    M3::entry_to_item(a3),
+                ) {
+                    (Some(a1), Some(a2), Some(a3)) => Some((a1, a2, a3)),
+                    _ => None,
+                }
+            })
+    }
+
+    fn map<F, S>(self, mut f: F) -> IntMap<S>
+    where
+        F: FnMut(Self::RowRef) -> S,
+    {
+        IntMap {
+            items: self
+                .0
+                .iter_entries()
+                .zip(self.1.iter_entries())
+                .zip(self.2.iter_entries())
+                .map(|((a1, a2), a3)| {
+                    match (
+                        M1::entry_to_item(a1),
+                        M2::entry_to_item(a2),
+                        M3::entry_to_item(a3),
+                    ) {
+                        (Some(a1), Some(a2), Some(a3)) => Entry::Occupied(f((a1, a2, a3))),
+                        _ => Entry::Empty,
+                    }
+                })
+                .collect(),
+        }
+    }
+}
+
+pub trait IntMapRef {
+    type Item;
+    type Entry;
+
+    fn iter_entries(self) -> impl Iterator<Item = Self::Entry>;
+    fn entry_to_item(entry: Self::Entry) -> Option<Self::Item>;
+}
+
+impl<'a, T> IntMapRef for &'a IntMap<T> {
+    type Item = &'a T;
+    type Entry = &'a Entry<T>;
+
+    fn iter_entries(self) -> impl Iterator<Item = Self::Entry> {
+        self.items.iter()
+    }
+
+    fn entry_to_item(entry: Self::Entry) -> Option<Self::Item> {
+        entry.as_ref_opt()
+    }
+}
+
+impl<'a, T> IntMapRef for &'a mut IntMap<T> {
+    type Item = &'a mut T;
+    type Entry = &'a mut Entry<T>;
+
+    fn iter_entries(self) -> impl Iterator<Item = Self::Entry> {
+        self.items.iter_mut()
+    }
+
+    fn entry_to_item(entry: Self::Entry) -> Option<Self::Item> {
+        entry.as_mut_opt()
     }
 }

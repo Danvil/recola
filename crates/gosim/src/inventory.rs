@@ -1,8 +1,9 @@
-use crate::{op_mark_completed, OpStatePending, OpsModule};
+use crate::{op_mark_completed, OpStatePending, OpsMocca};
 use flecs_ecs::prelude::*;
+use mocca::{Mocca, MoccaDeps};
 
 #[derive(Component)]
-pub struct InventoryModule;
+pub struct InventoryMocca;
 
 /// Marker for individual items which can be stored in a container
 #[derive(Component)]
@@ -54,12 +55,12 @@ pub struct DestroyItemOp {
     pub item: Entity,
 }
 
-impl Module for InventoryModule {
-    fn module(world: &World) {
-        world.module::<InventoryModule>("inventory");
+impl Mocca for InventoryMocca {
+    fn load(mut dep: MoccaDeps) {
+        dep.dep::<OpsMocca>();
+    }
 
-        world.import::<OpsModule>();
-
+    fn register_components(world: &World) {
         world.component::<ItemTag>();
         world.component::<ContainerTag>();
         world
@@ -72,11 +73,18 @@ impl Module for InventoryModule {
         world.component::<TransferItemOp>();
         world.component::<DestroyContainerOp>();
         world.component::<DestroyItemOp>();
+    }
 
+    fn start(_world: &World) -> Self {
+        Self
+    }
+
+    fn step(&mut self, world: &World) {
         // Process operations to transfer items
         world
-            .system::<(&TransferItemOp,)>()
+            .query::<(&TransferItemOp,)>()
             .with(OpStatePending)
+            .build()
             .each_entity(|e, (op,)| {
                 let world = e.world();
                 let item = world.entity_from_id(op.item);
@@ -88,8 +96,9 @@ impl Module for InventoryModule {
 
         // Process operations to destroy a container
         world
-            .system::<(&DestroyContainerOp,)>()
+            .query::<(&DestroyContainerOp,)>()
             .with(OpStatePending)
+            .build()
             .each_entity(move |e, (op,)| {
                 let world = e.world();
                 let container = world.entity_from_id(op.container);
@@ -110,8 +119,9 @@ impl Module for InventoryModule {
 
         // Process operations to destroy an item
         world
-            .system::<(&DestroyItemOp,)>()
+            .query::<(&DestroyItemOp,)>()
             .with(OpStatePending)
+            .build()
             .each_entity(|e, (op,)| {
                 let world = e.world();
                 let item = world.entity_from_id(op.item);

@@ -1,9 +1,13 @@
 use crate::{
-    models::PressureModel, DataColumn, FlowNet, PipeScratch, PipeSolution, PipeState, Port,
-    Port::PipeOutlet, PortTag,
+    models::PressureModel, DataColumn, FlowNet, PipeDef, PipeScratch, PipeSolution, PipeState,
+    Port, Port::PipeOutlet, PortTag,
 };
 use gems::{volume_to_liters, IntMap, IntMapTuple, GRAVITY_CONSTANT, ODE};
-use std::{cell::RefCell, error::Error, f64::consts::PI};
+use std::{
+    cell::{Ref, RefCell},
+    error::Error,
+    f64::consts::PI,
+};
 
 #[derive(Debug)]
 pub struct FlowNetOde<'a> {
@@ -19,6 +23,14 @@ impl<'a> FlowNetOde<'a> {
             pipe_scratch: RefCell::new(IntMap::default()),
             junc_scratch: RefCell::new(IntMap::default()),
         }
+    }
+
+    pub fn net(&self) -> &FlowNet {
+        &self.net
+    }
+
+    pub fn pipe_scratch(&self) -> Ref<IntMap<PipeScratch>> {
+        self.pipe_scratch.borrow()
     }
 }
 
@@ -44,27 +56,38 @@ impl<'a> ODE<PipeStateCol> for FlowNetOde<'a> {
             let mut scr = PipeScratch::default();
 
             scr.strand_count = pipe.strand_count();
+            assert!(scr.strand_count > 0.);
 
             // Volume cannot become negative!
             let volume = state.volume.max(0.);
+            assert!(volume.is_finite());
+            assert!(volume >= 0.);
             scr.volume = volume;
 
-            scr.cross_section_area = volume / pipe.shape.model.length;
-            scr.strand_radius = (scr.cross_section_area / PI / scr.strand_count).sqrt();
+            // scr.port_cross_section_area = scr.strand_count *
+            // pipe.shape.model.cross_section_area();
+
+            scr.tube_cross_section_area = volume / pipe.shape.model.length;
+            scr.tube_strand_radius = (scr.tube_cross_section_area / PI / scr.strand_count).sqrt();
 
             // During solving the volume is changed by the solver. We compute mass and
             // viscosity assuming that the density is constant.
             // Note: Do not use volume from fluid as it is given by the solver state.
             scr.mass = pipe.fluid.density * volume;
 
+            // Port Area / Mass does not actually depend on the mass stored in the pipe.
+            scr.area_per_mass = 1.0 / (pipe.shape.model.length * pipe.fluid.density);
+
             // compute forces
 
-            // If pipe volume increases above nominal a force pushes liquid out of both
-            // ports. Force on port from elastic pressure: F = P *
-            // A_cross
-            let elas_force =
-                -pipe.elasticity_pressure_model.pressure(volume) * scr.cross_section_area;
-            scr.elas_force = elas_force;
+            // If pipe volume increases above nominal a force pushes liquid out of both ports.
+            // Force on port from elastic pressure: F = P * A_cross. Note that we use the nominal
+            // port area to avoid diminishing force due to vessel collapse.
+            // We compute it as acceleration so it also works with m = 0:
+            // F = P A = m a => a = P * A / m
+            let elas_pressure = pipe.elasticity_pressure_model.pressure(volume);
+            let elas_accel = -elas_pressure * scr.area_per_mass;
+            scr.elas_accel = elas_accel;
 
             // We use half the pipe length for both viscous and turbulent force for each
             // port. This will give the full theoretic force in case of
@@ -76,15 +99,20 @@ impl<'a> ODE<PipeStateCol> for FlowNetOde<'a> {
             for side in [PortTag::A, PortTag::B] {
                 let pix = side.index();
 
-                // external force, e.g. from a pump
-                // F = P A
-                let pump_force = pipe.external_port_pressure[pix] * scr.cross_section_area;
+                scr.port_cross_section_area[pix] =
+                    scr.tube_cross_section_area * pipe.port_area_factor[pix];
+
+                // external force, e.g. from a pump. We use nominal area to avoid diminishing force
+                // in case of volume changes.
+                // We compute it as acceleration so it also works with m = 0:
+                // F = P A = m a => a = P * A / m
+                let pump_accel = pipe.external_port_pressure[pix] * scr.area_per_mass;
 
                 // If pipe is inclined under a positive angle port B is higher than port A
                 // and gravity pushes liquid out at the bottom (port
                 // A) and in at the top (port B).
-                let grav_force = scr.mass
-                    * GRAVITY_CONSTANT
+                // Naturally computes as an acceleration independent of mass.
+                let grav_accel = GRAVITY_CONSTANT
                     * pipe.ground_angle.sin()
                     * match side {
                         PortTag::A => -1.,
@@ -102,7 +130,7 @@ impl<'a> ODE<PipeStateCol> for FlowNetOde<'a> {
                 let turb_force = (-0.25 * PI)
                     * pipe.darcy_factor
                     * pipe.fluid.density
-                    * scr.strand_radius
+                    * scr.tube_strand_radius
                     * scr.strand_count
                     * effective_length
                     * v
@@ -111,15 +139,24 @@ impl<'a> ODE<PipeStateCol> for FlowNetOde<'a> {
                 // Additional dampening force linear in v with tuned coefficient.
                 let damp_force = -pipe.dampening * scr.strand_count * v;
 
-                scr.force[pix] =
-                    pump_force + elas_force + grav_force + visc_force + turb_force + damp_force;
-
-                scr.pump_force[pix] = pump_force;
-                scr.grav_force[pix] = grav_force;
+                scr.pump_accel[pix] = pump_accel;
+                scr.grav_accel[pix] = grav_accel;
                 scr.visc_force[pix] = visc_force;
                 scr.turb_force[pix] = turb_force;
                 scr.damp_force[pix] = damp_force;
+
+                scr.ext_accels[pix] = pump_accel + elas_accel + grav_accel;
+                scr.drag_forces[pix] = visc_force + turb_force + damp_force;
+
+                // if volume == 0. {
+                //     println!("VOL0: {scr:?}");
+                // }
             }
+
+            // if scr.pump_accel[0] != 0. || scr.pump_accel[1] != 0. {
+            //     println!("{scr:?}");
+            // }
+
             scr
         });
 
@@ -129,10 +166,15 @@ impl<'a> ODE<PipeStateCol> for FlowNetOde<'a> {
             junc_scratch.clear();
 
             for (junc_id, junc) in self.net.topology.junctions.iter() {
-                let junction_pressure =
-                    junction_zero_flow_pressure(junc.iter().flat_map(|port| match *port {
-                        Port::PipeOutlet { pipe_id, side } => Some((&pipe_scratch[*pipe_id], side)),
-                    }));
+                let ports = junc.iter().filter_map(|port| match *port {
+                    Port::PipeOutlet { pipe_id, side } => {
+                        let scr = &pipe_scratch[*pipe_id];
+                        Some((scr, side))
+                    }
+                });
+
+                let junction_pressure = junction_zero_flow_pressure(ports);
+
                 junc_scratch.set(
                     junc_id,
                     JunctionScratch {
@@ -154,28 +196,58 @@ impl<'a> ODE<PipeStateCol> for FlowNetOde<'a> {
         }
 
         // compute derivatives
-        let derivatives = (&state.0, &pipe_scratch).map(|(state, scr)| {
+        let derivatives = (&state.0, &mut pipe_scratch).map(|(state, scr)| {
             let mut derivatives = PipeState::default();
 
-            // dv = (F + FJ)/m = (F + PJ A)/m
+            // a = F_drag/m + (a_mix - F_junc/m)
+            // F_junc = P_junc * A
+            // a = F_drag/m + a_mix - P_junc * (A/m)
+            // If m=0 then F_drag is irrelevant and ignored.
             for side in [PortTag::A, PortTag::B] {
                 let pix = side.index();
 
-                // Note: this is the acceleration
-                derivatives.velocity[side] = match scr.junction_pressure[pix] {
+                let mut accel = match scr.junction_pressure[pix] {
                     Some(junction_pressure) => {
-                        (scr.force[pix] + junction_pressure * scr.cross_section_area) / scr.mass
+                        let a_drag = if scr.mass > 0. {
+                            scr.drag_forces[pix] / scr.mass
+                        } else {
+                            0.
+                        };
+
+                        // println!(
+                        //     "{side:?}: {} {} {} {}",
+                        //     a_drag,
+                        //     junction_pressure,
+                        //     junction_pressure * scr.area_per_mass,
+                        //     scr.ext_accels[pix]
+                        // );
+
+                        a_drag + scr.ext_accels[pix] - junction_pressure * scr.area_per_mass
                     }
                     None => {
                         // acceleration is 0 if port is not connected to a junction
                         0.
                     }
+                };
+                assert!(accel.is_finite());
+
+                // If mass is zero acceleration cannot be negative (no outflow)
+                if scr.mass == 0. {
+                    accel = accel.max(0.);
                 }
+
+                scr.total_accel[pix] = accel;
+
+                // Note: Acceleration is stored in the "velocity" slot of the derivative.
+                derivatives.velocity[side] = accel;
             }
 
             // dV = (va + vb) * A
             // Note: this is the change of volume
-            derivatives.volume = state.inflow_velocity() * scr.cross_section_area;
+            let flow = state.velocity[0] * scr.port_cross_section_area[0]
+                + state.velocity[1] * scr.port_cross_section_area[1];
+            assert!(flow.is_finite());
+
             // println!(
             //     "{pipe_idx}: dV/dt={}, v={}, A={}",
             //     *derivatives.volume_change_mut(pipe_idx),
@@ -183,12 +255,15 @@ impl<'a> ODE<PipeStateCol> for FlowNetOde<'a> {
             //     scr.cross_section_area
             // );
 
+            // Note: Change of volume (flow) is stored in the "volume" slot of the derivative.
+            derivatives.volume = flow;
+
             derivatives
         });
 
         // self.print_overview();
 
-        // println!("Scratch: {:?}", self.scratch.pipes);
+        // println!("Scratch: {:?}", pipe_scratch);
         // println!("Derivative: {derivatives:?}",);
 
         *self.pipe_scratch.borrow_mut() = pipe_scratch;
@@ -219,7 +294,7 @@ pub fn compute_solution(
 
                     let delta_volume = state[*pipe_id].velocity[side]
                         * dt
-                        * pipe_scratch[pipe_idx].cross_section_area;
+                        * pipe_scratch[pipe_idx].port_cross_section_area[side.index()];
                     solution[pipe_idx].delta_volume[side] = delta_volume;
 
                     if delta_volume < 0. {
@@ -273,8 +348,15 @@ pub fn compute_solution(
     // update velocity to match actual flow
     for (id, scr) in pipe_scratch.iter() {
         let sol = &mut solution[id];
-        sol.velocity[PortTag::A] = sol.delta_volume[PortTag::A] / scr.cross_section_area / dt;
-        sol.velocity[PortTag::B] = sol.delta_volume[PortTag::B] / scr.cross_section_area / dt
+        for side in [PortTag::A, PortTag::B] {
+            let area = scr.port_cross_section_area[side.index()];
+
+            if area == 0. {
+                sol.velocity[side] = 0.;
+            } else {
+                sol.velocity[side] = sol.delta_volume[side] / area / dt;
+            }
+        }
     }
 
     solution
@@ -307,9 +389,9 @@ pub fn increment_solution(sub: &IntMap<PipeSolution>, total: &mut IntMap<PipeSol
 
 /// Solve sum_i Q_i = 0
 /// sum_i v_i A_i = 0 => sum_i (F_i + F_J) A_i/m_i = 0 (derivative of mass conservation)
-/// m_i = A_i*L*rho => A_i/m_i = 1/(L*rho)
 /// F_J = P_J A_i (junction pressure)
 /// Solve for P: P = - (sum_i A_i/m_i F_i) / (sum_i A_i^2/m_i)
+/// We use m_i = n A_i L ρ => A_i/m_i = 1/(n L ρ) to avoid division by zero for empty pipes
 fn junction_zero_flow_pressure<'a>(
     ports: impl Iterator<Item = (&'a PipeScratch, PortTag)>,
 ) -> Option<f64> {
@@ -317,12 +399,15 @@ fn junction_zero_flow_pressure<'a>(
     let mut z = 0.;
 
     for (scr, side) in ports {
-        let area = scr.cross_section_area;
-        h += scr.force[side.index()] * area / scr.mass;
-        z += area * area / scr.mass;
+        let pix = side.index();
+        // h = (F_drag + accel*m) * A/m = F_drag * A/m + accel * A
+        // This will also work for m=0.
+        h += scr.drag_forces[pix] * scr.area_per_mass
+            + scr.ext_accels[pix] * scr.port_cross_section_area[pix];
+        z += scr.port_cross_section_area[pix] * scr.area_per_mass;
     }
 
-    (z > 0.).then(|| -h / z)
+    (z > 0.).then(|| h / z)
 }
 
 impl FlowNetOde<'_> {
@@ -345,23 +430,43 @@ impl FlowNetOde<'_> {
     pub fn print_pipe_overview(&self, state: &IntMap<PipeState>) {
         // Print header
         println!(
-            "  {:<6} {:>12} {:>12} {:>12} {:>12} {:>12} {:>12}",
-            "ID", "Volume [L]", "EForce", "Force A", "Force B", "Vel. A [m/s]", "Vel. B [m/s]"
+            "  {:<6} {:>16} {:>12} {:>12} {:>12} {:>12} {:>12} {:>12} {:>12} {:>12} {:>12} {:>12} {:>12} {:>12}",
+            "ID",
+            "Name",
+            "Volume [L]",
+            "P_elas",
+            "Drag F A",
+            "Drag F B",
+            "Ext F A",
+            "Ext F B",
+            "Junc F A",
+            "Junc F B",
+            "Vel. A [m/s]",
+            "Vel. B [m/s]",
+            "Area A [cm2]",
+            "Area B [cm2]"
         );
-        println!("{}", "-".repeat(6 + 12 * 6 + 6)); // separator
+        println!("{}", "-".repeat(6 + 16 + 12 * 12 + 15)); // separator
 
         // Print each pipe
         for (id, scr) in self.pipe_scratch.borrow().iter() {
             // let pipe = &self.net.pipes[id];
             println!(
-                "  {:<6} {:>12.6} {:>12.3} {:>12.3} {:>12.3} {:>12.3} {:>12.3}",
+                "  {:<6} {:>16} {:>12.6} {:>12.3} {:>12.3} {:>12.3} {:>12.3} {:>12.3} {:>12.3} {:>12.3} {:>12.3} {:>12.3} {:>12.3} {:>12.3}",
                 id,
+                self.net.pipes[id].name,
                 volume_to_liters(state[id].volume),
-                scr.elas_force,
-                scr.force[0],
-                scr.force[1],
+                scr.elas_pressure,
+                scr.drag_forces[0],
+                scr.drag_forces[1],
+                scr.ext_accels[0] * scr.mass,
+                scr.ext_accels[1] * scr.mass,
+                scr.junction_pressure[0].unwrap_or(0.) * scr.area_per_mass,
+                scr.junction_pressure[1].unwrap_or(0.) * scr.area_per_mass,
                 state[id].velocity[PortTag::A],
                 state[id].velocity[PortTag::B],
+                10000. * scr.port_cross_section_area[0],
+                10000. * scr.port_cross_section_area[1],
             );
         }
         // for (id, state) in self.scratch.pipes.borrow().iter() {

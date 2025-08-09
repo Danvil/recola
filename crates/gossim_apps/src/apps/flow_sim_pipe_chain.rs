@@ -9,9 +9,9 @@ use mocca::{Mocca, MoccaDeps};
 
 // Four pipes connected in a line: pipe1 - pipe2 - pipe3 - pipe4
 // External pressure on first pipe.
-pub struct FlowNetPipeChainMocca;
+pub struct FlowSimPipeChainMocca;
 
-impl Mocca for FlowNetPipeChainMocca {
+impl Mocca for FlowSimPipeChainMocca {
     fn load(mut dep: MoccaDeps) {
         dep.dep::<TimeMocca>();
         dep.dep::<FlowSimMocca>();
@@ -39,7 +39,7 @@ impl Mocca for FlowNetPipeChainMocca {
         let pipe3 = pipe_builder.new_named(world, "pipe3");
         let pipe4 = pipe_builder.new_named(world, "pipe4");
 
-        let mut conn = PipeConnectionHelper::<()>::default();
+        let mut conn = PipeConnectionHelper::default();
         conn.connect_chain(&[pipe1, pipe2, pipe3, pipe4]);
 
         Self
@@ -82,7 +82,7 @@ fn print_pipe_status(world: &World) {
                 "{:<7}: V: {:.5}, V0: {:.5}, v_in: {:8.5}, v_thr: {:8.5}",
                 e.name(),
                 volume_to_liters(pipe.0.volume()),
-                volume_to_liters(geo.0.shape.volume()),
+                volume_to_liters(geo.0.shape.nominal_volume()),
                 state.0.inflow_velocity(),
                 state.0.throughflow_velocity(),
             );

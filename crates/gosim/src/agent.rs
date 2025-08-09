@@ -1,28 +1,34 @@
 use crate::{
-    create_blood_vessels, create_heart, create_lungs, utils::EntityBuilder, volume_from_liters,
-    BloodModule, BodyPart, BodyPartModule, HeartJunctions, HeartModule, LungsJunctions,
-    LungsModule, PipeConnectionHelper, PortTag, TissueBuilder,
+    create_blood_vessels, create_heart, create_lungs, utils::EntityBuilder, BloodMocca, BodyPart,
+    BodyPartMocca, HeartJunctions, HeartMocca, LungsJunctions, LungsMocca, PipeConnectionHelper,
+    TissueBuilder,
 };
 use flecs_ecs::prelude::*;
+use flowsim::PortTag;
+use gems::volume_from_liters;
+use mocca::{Mocca, MoccaDeps};
 
 #[derive(Component)]
-pub struct AgentModule;
+pub struct AgentMocca;
 
 /// Marker for the player entity
 #[derive(Component)]
 pub struct PlayerTag;
 
-impl Module for AgentModule {
-    fn module(world: &World) {
-        world.module::<AgentModule>("agent");
+impl Mocca for AgentMocca {
+    fn load(mut dep: MoccaDeps) {
+        dep.dep::<BodyPartMocca>();
+        dep.dep::<BloodMocca>();
+        dep.dep::<HeartMocca>();
+        dep.dep::<LungsMocca>();
+    }
 
-        println!("AgentModule");
-        world.import::<BodyPartModule>();
-        world.import::<BloodModule>();
-        world.import::<HeartModule>();
-        world.import::<LungsModule>();
-
+    fn register_components(world: &World) {
         world.component::<PlayerTag>();
+    }
+
+    fn start(_world: &World) -> Self {
+        Self
     }
 }
 
@@ -77,8 +83,6 @@ pub fn create_human(human: EntityView) -> EntityView {
         con.connect_chain(&[torso_artery, torso, torso_vein]);
         con.connect_to_junction((torso_vein, PortTag::B), blue_in);
     }
-
-    con.write_dot(&world, "tmp/human.dot").ok();
 
     human
 }

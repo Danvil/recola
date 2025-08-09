@@ -7,6 +7,7 @@ pub struct CardiacCycle {
     current_rate: f64,
     stage: CardiacCycleStage,
     stage_time: f64,
+    stage_percent: f64,
     beat: bool,
 }
 
@@ -17,14 +18,16 @@ impl Default for CardiacCycle {
             current_rate: 60.,
             stage: CardiacCycleStage::DiastolePhase1,
             stage_time: 0.,
+            stage_percent: 0.,
             beat: false,
         }
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum CardiacCycleStage {
     /// No contraction (diastole without arterial systole)
+    #[default]
     DiastolePhase1,
 
     /// Atrium contracts
@@ -72,9 +75,12 @@ impl CardiacCycle {
             CardiacCycleStage::Systole => systole_duration(self.current_rate),
         };
 
+        self.stage_percent = self.stage_time / target;
+
         self.beat = false;
         if self.stage_time >= target {
             self.stage_time = 0.;
+            self.stage_percent = 0.;
             self.stage = self.stage.next();
             if self.stage == CardiacCycleStage::Systole {
                 self.beat = true;
@@ -83,7 +89,7 @@ impl CardiacCycle {
     }
 
     pub fn stage(&self) -> (CardiacCycleStage, f64) {
-        (self.stage, self.stage_time)
+        (self.stage, self.stage_percent)
     }
 
     pub fn beat(&self) -> bool {

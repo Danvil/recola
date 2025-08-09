@@ -1,14 +1,12 @@
-use crate::{
-    setup_flow_net, BloodOxygenContent, BodyPartModule, FlecsQueryRelationHelpers, FlowNetModule,
-    FluidChunk, HemoglobinOxygenSaturationHill, Pipe, Time, TimeModule, Tissue,
-};
+use crate::{BloodOxygenContent, FlowSimMocca, HemoglobinOxygenSaturationHill, TimeMocca, Tissue};
 use flecs_ecs::prelude::*;
 use gems::Lerp;
+use mocca::{Mocca, MoccaDeps};
 use std::sync::Arc;
 
 /// Blood carries oxygen, nutrients and pollutants between body parts.
 #[derive(Component)]
-pub struct BloodModule;
+pub struct BloodMocca;
 
 #[derive(Component, Clone)]
 pub struct BloodConfig {
@@ -106,10 +104,6 @@ impl Lerp<f64> for BloodProperties {
     }
 }
 
-pub type BloodChunk = FluidChunk<BloodProperties>;
-
-pub type BloodVessel = Pipe<BloodProperties>;
-
 #[derive(Component, Default, Clone)]
 pub struct BloodStats {
     /// O2 saturation [%]
@@ -119,54 +113,58 @@ pub struct BloodStats {
     pub po2: f64,
 }
 
-impl Module for BloodModule {
-    fn module(world: &World) {
-        world.module::<BloodModule>("BloodModule");
+impl Mocca for BloodMocca {
+    fn load(mut dep: MoccaDeps) {
+        dep.dep::<TimeMocca>();
+        dep.dep::<FlowSimMocca>();
+    }
 
-        world.import::<TimeModule>();
-        world.import::<FlowNetModule>();
-
+    fn register_components(world: &World) {
         world.component::<BloodConfig>();
         world.component::<BloodStats>();
+    }
 
-        setup_flow_net::<BloodProperties>(world);
-
+    fn start(world: &World) -> Self {
         world.set(BloodConfig {
             hill: HemoglobinOxygenSaturationHill::default().into(),
             o2_content: BloodOxygenContent::default().into(),
             transport_factor: 0.002,
         });
 
-        // Exchange nutrients between blood and tissue
-        world
-            .system_named::<(&Time, &BloodConfig, &mut BloodVessel, &mut Tissue)>(
-                "BloodTissueNutrientExchange",
-            )
-            .singleton_at(0)
-            .singleton_at(1)
-            .each(|(time, cfg, vessel, tissue)| {
-                for (volume, blood) in vessel.chunk_volume_data_mut() {
-                    diffusion(
-                        cfg.transport_factor * time.sim_dt_f64(),
-                        volume,
-                        blood,
-                        tissue,
-                    )
-                }
-            });
+        Self
+    }
 
-        // Update blood stats
-        world
-            .system_named::<(&BloodVessel, &mut BloodStats)>("BloodStats")
-            .each(|(vessel, stats)| {
-                if let Some(avg) = vessel.average_data() {
-                    stats.so2 = avg.so2;
-                    stats.po2 = avg.po2;
-                } else {
-                    stats.so2 = 0.;
-                    stats.po2 = 0.;
-                }
-            });
+    fn step(&mut self, _world: &World) {
+        // // Exchange nutrients between blood and tissue
+        // world
+        //     .query::<(&Time, &BloodConfig, &mut FlowNetPipeVessel, &mut Tissue)>()
+        //     .singleton_at(0)
+        //     .singleton_at(1)
+        //     .build()
+        //     .each(|(time, cfg, vessel, tissue)| {
+        //         for (volume, blood) in vessel.chunk_volume_data_mut() {
+        //             diffusion(
+        //                 cfg.transport_factor * time.sim_dt_f64(),
+        //                 volume,
+        //                 blood,
+        //                 tissue,
+        //             )
+        //         }
+        //     });
+
+        // // Update blood stats
+        // world
+        //     .query::<(&FlowNetPipeVessel, &mut BloodStats)>()
+        //     .build()
+        //     .each(|(vessel, stats)| {
+        //         if let Some(avg) = vessel.average_data() {
+        //             stats.so2 = avg.so2;
+        //             stats.po2 = avg.po2;
+        //         } else {
+        //             stats.so2 = 0.;
+        //             stats.po2 = 0.;
+        //         }
+        //     });
     }
 }
 

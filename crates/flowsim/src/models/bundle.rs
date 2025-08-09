@@ -1,5 +1,5 @@
 use crate::models::{FlowModel, PressureModel};
-use gems::{NewtonRootSolverError, VolumeModel};
+use gems::{AreaVolumeModel, NewtonRootSolverError, VolumeModel};
 
 /// Bundle of models in parallel
 #[derive(Clone, Debug)]
@@ -39,7 +39,17 @@ impl<M: PressureModel> PressureModel for Bundle<M> {
 }
 
 impl<M: VolumeModel> VolumeModel for Bundle<M> {
-    fn volume(&self) -> f64 {
-        self.model.volume() * self.count
+    fn nominal_volume(&self) -> f64 {
+        self.model.nominal_volume() * self.count
+    }
+}
+
+impl<M: AreaVolumeModel> AreaVolumeModel for Bundle<M> {
+    fn area(&self, volume: f64) -> f64 {
+        self.model.area(volume / self.count) * self.count
+    }
+
+    fn volume(&self, area: f64) -> f64 {
+        self.model.volume(area / self.count) * self.count
     }
 }

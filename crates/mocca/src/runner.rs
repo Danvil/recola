@@ -169,6 +169,10 @@ impl MoccaRunner {
 
         runner.load::<MT>();
 
+        if let Some(preamble) = settings.preamble.as_ref() {
+            (preamble)(runner.world());
+        }
+
         runner.start();
 
         let mut iteration = 0;
@@ -209,6 +213,7 @@ pub struct MoccaRunSettings {
     pub enable_test: bool,
     pub enable_flecs_stats_server: bool,
     pub throttle: Option<Duration>,
+    pub preamble: Option<Box<dyn Fn(&World)>>,
 }
 
 impl MoccaRunSettings {
@@ -219,6 +224,7 @@ impl MoccaRunSettings {
             enable_test: false,
             enable_flecs_stats_server: true,
             throttle: Some(Duration::from_millis(50)),
+            preamble: None,
         }
     }
 
@@ -229,7 +235,21 @@ impl MoccaRunSettings {
             enable_test: true,
             enable_flecs_stats_server: false,
             throttle: None,
+            preamble: None,
         }
+    }
+
+    pub fn with_step_limit(mut self, step_limit: usize) -> Self {
+        self.step_limit = Some(step_limit);
+        self
+    }
+
+    pub fn with_preamble<F>(mut self, f: F) -> Self
+    where
+        F: Fn(&World) + 'static,
+    {
+        self.preamble = Some(Box::new(f));
+        self
     }
 }
 
