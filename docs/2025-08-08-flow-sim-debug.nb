@@ -10,10 +10,10 @@
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
 NotebookDataPosition[       158,          7]
-NotebookDataLength[   2871067,      47663]
-NotebookOptionsPosition[   2868666,      47622]
-NotebookOutlinePosition[   2869090,      47639]
-CellTagsIndexPosition[   2869047,      47636]
+NotebookDataLength[   2871219,      47664]
+NotebookOptionsPosition[   2868818,      47623]
+NotebookOutlinePosition[   2869242,      47640]
+CellTagsIndexPosition[   2869199,      47637]
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
@@ -40793,7 +40793,7 @@ Cell[BoxData[{
        RowBox[{
         RowBox[{"r", "=", 
          RowBox[{"1", "+", 
-          RowBox[{"2", 
+          RowBox[{"1.75", 
            RowBox[{"(", 
             RowBox[{
              RowBox[{
@@ -40962,14 +40962,14 @@ Cell[BoxData[{
   3.9637096588876195`*^9, 3.963709743364982*^9}, {3.9637097761344943`*^9, 
   3.963709883683319*^9}, {3.963709943470605*^9, 3.9637100245836105`*^9}, {
   3.9637100549192905`*^9, 3.963710325268205*^9}, {3.963710380117407*^9, 
-  3.963710384772479*^9}},
+  3.963710384772479*^9}, {3.9637141615247183`*^9, 3.9637141809236655`*^9}},
  CellLabel->
-  "In[162]:=",ExpressionUUID->"fb605121-a985-4e92-8069-79a7f53ebeda"],
+  "In[178]:=",ExpressionUUID->"fb605121-a985-4e92-8069-79a7f53ebeda"],
 
 Cell[BoxData[
  TagBox[
   StyleBox[
-   DynamicModuleBox[{$CellContext`i$$ = 490, Typeset`show$$ = True, 
+   DynamicModuleBox[{$CellContext`i$$ = 1641, Typeset`show$$ = True, 
     Typeset`bookmarkList$$ = {}, Typeset`bookmarkMode$$ = "Menu", 
     Typeset`animator$$, Typeset`animvar$$ = 1, Typeset`name$$ = 
     "\"untitled\"", Typeset`specs$$ = {{
@@ -47610,9 +47610,10 @@ Trlz0vqrU+6ctP7qlDsnrb865c5J669O3V1fQA9M5A==
    3.963709991958369*^9, 3.9637100914740353`*^9}, {3.963710143373684*^9, 
    3.963710205773184*^9}, 3.9637102663419204`*^9, {3.9637103085499277`*^9, 
    3.9637103256020217`*^9}, {3.9637103816233053`*^9, 3.9637103852025757`*^9}, 
-   3.9637129776214886`*^9},
+   3.9637129776214886`*^9, 3.9637133376439495`*^9, 3.9637141003823075`*^9, {
+   3.963714162455598*^9, 3.963714181687247*^9}},
  CellLabel->
-  "Out[165]=",ExpressionUUID->"8535f91d-7b83-478c-89a0-ccc1ad733815"]
+  "Out[181]=",ExpressionUUID->"4f51b273-5edd-409e-89c8-0caff7c1fa47"]
 }, Open  ]],
 
 Cell[BoxData[""], "Input",
@@ -47621,7 +47622,7 @@ Cell[BoxData[""], "Input",
 830a54d832c8"]
 },
 WindowSize->{1523, 1817},
-WindowMargins->{{Automatic, 549}, {131, Automatic}},
+WindowMargins->{{Automatic, 895}, {108, Automatic}},
 CellContext->Notebook,
 FrontEndVersion->"12.3 for Microsoft Windows (64-bit) (July 9, 2021)",
 StyleDefinitions->"Default.nb",
@@ -47661,10 +47662,10 @@ Cell[2456437, 40759, 337, 7, 33, "Output",ExpressionUUID->"ec68fab6-16e3-492a-86
 Cell[2456777, 40768, 333, 7, 33, "Output",ExpressionUUID->"8f0231f9-0f71-4990-b7d9-a01714ce0a6d"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[2457147, 40780, 6721, 186, 723, "Input",ExpressionUUID->"fb605121-a985-4e92-8069-79a7f53ebeda"],
-Cell[2463871, 40968, 404624, 6646, 478, "Output",ExpressionUUID->"8535f91d-7b83-478c-89a0-ccc1ad733815"]
+Cell[2457147, 40780, 6774, 186, 723, "Input",ExpressionUUID->"fb605121-a985-4e92-8069-79a7f53ebeda"],
+Cell[2463924, 40968, 404723, 6647, 478, "Output",ExpressionUUID->"4f51b273-5edd-409e-89c8-0caff7c1fa47"]
 }, Open  ]],
-Cell[2868510, 47617, 152, 3, 29, "Input",ExpressionUUID->"93270c79-9940-4307-9886-830a54d832c8"]
+Cell[2868662, 47618, 152, 3, 29, "Input",ExpressionUUID->"93270c79-9940-4307-9886-830a54d832c8"]
 }
 ]
 *)
