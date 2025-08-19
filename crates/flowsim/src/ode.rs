@@ -430,7 +430,7 @@ impl FlowNetOde<'_> {
     pub fn print_pipe_overview(&self, state: &IntMap<PipeState>) {
         // Print header
         println!(
-            "  {:<6} {:>16} {:>12} {:>12} {:>12} {:>12} {:>12} {:>12} {:>12} {:>12} {:>12} {:>12} {:>12} {:>12}",
+            "  {:<6} {:>16} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9} {:>9}",
             "ID",
             "Name",
             "Volume [L]",
@@ -446,13 +446,13 @@ impl FlowNetOde<'_> {
             "Area A [cm2]",
             "Area B [cm2]"
         );
-        println!("{}", "-".repeat(6 + 16 + 12 * 12 + 15)); // separator
+        println!("{}", "-".repeat(6 + 16 + 12 * 9 + 15)); // separator
 
         // Print each pipe
         for (id, scr) in self.pipe_scratch.borrow().iter() {
             // let pipe = &self.net.pipes[id];
             println!(
-                "  {:<6} {:>16} {:>12.6} {:>12.3} {:>12.3} {:>12.3} {:>12.3} {:>12.3} {:>12.3} {:>12.3} {:>12.3} {:>12.3} {:>12.3} {:>12.3}",
+                "  {:<6} {:>16} {:>9.6} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3}",
                 id,
                 self.net.pipes[id].name,
                 volume_to_liters(state[id].volume),

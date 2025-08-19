@@ -22,6 +22,7 @@ impl Mocca for GosSimDebugMocca {
         let cfg = world.singleton_mut::<FlowSimConfig>();
         cfg.pipe_stats_csv_path = Some("I:/Ikabur/gos/tmp/heart/".into());
         cfg.graph_topology_path = Some("I:/Ikabur/gos/tmp/heart/".into());
+        cfg.debug_print_ode_solution = true;
 
         Self
     }
