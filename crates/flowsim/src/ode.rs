@@ -85,8 +85,8 @@ impl<'a> ODE<PipeStateCol> for FlowNetOde<'a> {
             // port area to avoid diminishing force due to vessel collapse.
             // We compute it as acceleration so it also works with m = 0:
             // F = P A = m a => a = P * A / m
-            let elas_pressure = pipe.elasticity_pressure_model.pressure(volume);
-            let elas_accel = -elas_pressure * scr.area_per_mass;
+            scr.elas_pressure = pipe.elasticity_pressure_model.pressure(volume);
+            let elas_accel = -scr.elas_pressure * scr.area_per_mass;
             scr.elas_accel = elas_accel;
 
             // We use half the pipe length for both viscous and turbulent force for each
