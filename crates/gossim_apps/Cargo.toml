@@ -6,8 +6,9 @@ edition = "2024"
 [dependencies]
 approx = { workspace = true }
 env_logger = { workspace = true }
+excess = { workspace = true }
 eyre = { workspace = true }
-flecs_ecs = { workspace = true }
+flowsim = { workspace = true }
 gems = { workspace = true }
 gosim = { workspace = true }
 log = { workspace = true }
@@ -16,7 +17,7 @@ num-traits = { workspace = true }
 paste = { workspace = true }
 rust_decimal = { workspace = true }
 serde = { workspace = true }
-flowsim = { workspace = true }
+simplecs = { workspace = true }
 
 [dev-dependencies]
 approx = { workspace = true }

@@ -1,5 +1,4 @@
 use approx::{assert_abs_diff_eq, assert_relative_eq};
-use flecs_ecs::prelude::*;
 use flowsim::{models::ElasticTube, FluidComposition, PortMap};
 use gems::{volume_to_liters, Cylinder, VolumeModel};
 use gosim::{
@@ -7,7 +6,7 @@ use gosim::{
     FlowNetPipeVessel, FlowSimMocca, PipeBuilder, PipeConnectionHelper, PipeFlowState, Time,
     TimeMocca, ValveBuilder, ValveDef, ValveKind,
 };
-use mocca::{Mocca, MoccaDeps};
+use simplecs::prelude::*;
 
 // 10 pipes connected in a circle: (pipe9) - pump - pipe1 - pipe2 - pipe3 - .. - (pump)
 // The first pipe has a pump which periodically applies external pressure.

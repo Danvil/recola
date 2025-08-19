@@ -2,7 +2,7 @@
 macro_rules! decimal_component {
     ($(#[$meta:meta])* $name:ident) => {
         $(#[$meta])*
-        #[derive(flecs_ecs::prelude::Component, Debug, Clone, Copy)]
+        #[derive(simplecs::prelude::Component, Debug, Clone, Copy)]
         pub struct $name(f64);
 
         impl $name {

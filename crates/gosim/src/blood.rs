@@ -1,14 +1,15 @@
-use crate::{BloodOxygenContent, FlowSimMocca, HemoglobinOxygenSaturationHill, TimeMocca, Tissue};
-use flecs_ecs::prelude::*;
+use crate::{
+    ecs::prelude::*, BloodOxygenContent, FlowSimMocca, HemoglobinOxygenSaturationHill, TimeMocca,
+    Tissue,
+};
 use gems::Lerp;
-use mocca::{Mocca, MoccaDeps};
 use std::sync::Arc;
 
 /// Blood carries oxygen, nutrients and pollutants between body parts.
 #[derive(Component)]
 pub struct BloodMocca;
 
-#[derive(Component, Clone)]
+#[derive(Singleton, Clone)]
 pub struct BloodConfig {
     pub hill: Arc<HemoglobinOxygenSaturationHill<f64>>,
     pub o2_content: Arc<BloodOxygenContent<f64>>,
@@ -115,17 +116,17 @@ pub struct BloodStats {
 
 impl Mocca for BloodMocca {
     fn load(mut dep: MoccaDeps) {
-        dep.dep::<TimeMocca>();
-        dep.dep::<FlowSimMocca>();
+        dep.depends_on::<TimeMocca>();
+        dep.depends_on::<FlowSimMocca>();
     }
 
-    fn register_components(world: &World) {
-        world.component::<BloodConfig>();
-        world.component::<BloodStats>();
+    fn register_components(world: &mut World) {
+        world.register_component::<BloodConfig>();
+        world.register_component::<BloodStats>();
     }
 
-    fn start(world: &World) -> Self {
-        world.set(BloodConfig {
+    fn start(world: &mut World) -> Self {
+        world.set_singleton(BloodConfig {
             hill: HemoglobinOxygenSaturationHill::default().into(),
             o2_content: BloodOxygenContent::default().into(),
             transport_factor: 0.002,
@@ -134,7 +135,7 @@ impl Mocca for BloodMocca {
         Self
     }
 
-    fn step(&mut self, _world: &World) {
+    fn step(&mut self, _world: &mut World) {
         // // Exchange nutrients between blood and tissue
         // world
         //     .query::<(&Time, &BloodConfig, &mut FlowNetPipeVessel, &mut Tissue)>()

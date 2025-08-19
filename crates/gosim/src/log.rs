@@ -1,6 +1,5 @@
-use flecs_ecs::prelude::*;
+use crate::ecs::prelude::*;
 use log::{Level, LevelFilter, Metadata, Record};
-use mocca::Mocca;
 use std::{
     collections::VecDeque,
     sync::{Arc, RwLock},
@@ -61,7 +60,7 @@ impl Backend {
     }
 }
 
-#[derive(Component)]
+#[derive(Singleton)]
 pub struct Log {
     backend: Arc<RwLock<Backend>>,
     enable_print_to_console: bool,
@@ -74,14 +73,14 @@ impl Log {
 }
 
 impl Mocca for LogMocca {
-    fn register_components(world: &World) {
-        world.component::<Log>();
+    fn register_components(world: &mut World) {
+        world.register_component::<Log>();
     }
 
-    fn start(world: &World) -> Self {
+    fn start(world: &mut World) -> Self {
         let backend = Arc::new(RwLock::new(Backend::default()));
 
-        world.set(Log {
+        world.set_singleton(Log {
             backend: backend.clone(),
             enable_print_to_console: true,
         });
@@ -95,19 +94,17 @@ impl Mocca for LogMocca {
         Self
     }
 
-    fn step(&mut self, world: &World) {
-        world.get::<&mut Log>(|log| {
-            if log.enable_print_to_console {
-                log.print_to_console();
-            }
-        });
+    fn step(&mut self, world: &mut World) {
+        let log = world.singleton_mut::<Log>();
+        if log.enable_print_to_console {
+            log.print_to_console();
+        }
     }
 
-    fn fini(&mut self, world: &World) {
-        world.get::<&mut Log>(|log| {
-            if log.enable_print_to_console {
-                log.print_to_console();
-            }
-        });
+    fn fini(&mut self, world: &mut World) {
+        let log = world.singleton_mut::<Log>();
+        if log.enable_print_to_console {
+            log.print_to_console();
+        }
     }
 }

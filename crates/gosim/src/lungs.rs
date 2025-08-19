@@ -1,11 +1,9 @@
 use crate::{
-    create_blood_vessels, stat_component, utils::EntityBuilder, BloodMocca, BloodProperties,
-    PipeConnectionHelper, TimeMocca, TissueBuilder,
+    create_blood_vessels, ecs::prelude::*, stat_component, utils::EntityBuilder, BloodMocca,
+    BloodProperties, PipeConnectionHelper, TimeMocca, TissueBuilder,
 };
-use flecs_ecs::prelude::*;
 use flowsim::PortTag;
 use gems::volume_from_liters;
-use mocca::{Mocca, MoccaDeps};
 
 /// Breathing transfers oxygen (and other components) from the surrounding air into the blood
 /// stream.
@@ -52,7 +50,7 @@ stat_component!(
 //     pub pollution_absorption_mod: Modifier,
 // }
 
-#[derive(Component)]
+#[derive(Singleton)]
 pub struct LungsConfig {
     pub oxygen_diffusion_rate: f64,
     // pub critical_blood_oxygen_value_range: RangeF64,
@@ -73,45 +71,67 @@ pub struct AlveoliTag;
 
 /// Create a pair of standard human lungs
 pub fn create_lungs<'a>(
-    world: &'a World,
-    lungs: EntityView<'a>,
+    mut lungs: EntityWorldMut<'a>,
     con: &mut PipeConnectionHelper,
 ) -> LungsJunctions {
     // TODO create two lungs
 
-    let part_f = |name| world.entity_named(name).child_of(lungs);
+    fn part_f<'a>(world: &'a mut World, name: &'static str) -> EntityWorldMut<'a> {
+        // TODO make .child_of(lungs);
+        world.spawn_empty().with_name(name)
+    }
 
     // The pulmonary part enriches blood with oxygen
 
-    let pulmonary_in =
-        create_blood_vessels(&world, part_f("pulmonary_in"), volume_from_liters(0.100));
+    let pulmonary_in = create_blood_vessels(
+        part_f(lungs.world_mut(), "pulmonary_in"),
+        volume_from_liters(0.100),
+    )
+    .id();
 
-    let alveoli = create_blood_vessels(&world, part_f("alveoli"), volume_from_liters(0.300));
-    alveoli.set(Alveoli { dummy: 0. }).add(AlveoliTag);
+    let alveoli = create_blood_vessels(
+        part_f(lungs.world_mut(), "alveoli"),
+        volume_from_liters(0.300),
+    )
+    .and_set(Alveoli { dummy: 0. })
+    .and_add(AlveoliTag)
+    .id();
 
-    let pulmonary_out =
-        create_blood_vessels(&world, part_f("pulmonary_out"), volume_from_liters(0.200));
+    let pulmonary_out = create_blood_vessels(
+        part_f(lungs.world_mut(), "pulmonary_out"),
+        volume_from_liters(0.200),
+    )
+    .id();
 
-    con.connect_chain(&[pulmonary_in, alveoli, pulmonary_out]);
+    con.connect_chain(lungs.world_mut(), &[pulmonary_in, alveoli, pulmonary_out]);
 
     // The bronchial blood supply provides nutrient blood to the lungs
 
-    let bronchial_in =
-        create_blood_vessels(&world, part_f("bronchial_in"), volume_from_liters(0.050));
+    let bronchial_in = create_blood_vessels(
+        part_f(lungs.world_mut(), "bronchial_in"),
+        volume_from_liters(0.050),
+    )
+    .id();
 
-    let bronchial = create_blood_vessels(&world, part_f("bronchial"), volume_from_liters(0.150));
-    TissueBuilder { volume: 1. }.build(&world, bronchial);
+    let bronchial = create_blood_vessels(
+        part_f(lungs.world_mut(), "bronchial"),
+        volume_from_liters(0.150),
+    );
+    let bronchial = TissueBuilder { volume: 1. }.build(bronchial).id();
 
-    let bronchial_out =
-        create_blood_vessels(&world, part_f("bronchial_out"), volume_from_liters(0.100));
+    let bronchial_out = create_blood_vessels(
+        part_f(lungs.world_mut(), "bronchial_out"),
+        volume_from_liters(0.100),
+    )
+    .id();
 
-    con.connect_chain(&[bronchial_in, bronchial, bronchial_out]);
+    con.connect_chain(lungs.world_mut(), &[bronchial_in, bronchial, bronchial_out]);
 
     LungsJunctions {
-        pulmonary_in: con.connect_to_new_junction((pulmonary_in, PortTag::A)),
-        pulmonary_out: con.connect_to_new_junction((pulmonary_out, PortTag::B)),
-        bronchial_in: con.connect_to_new_junction((bronchial_in, PortTag::A)),
-        bronchial_out: con.connect_to_new_junction((bronchial_out, PortTag::B)),
+        pulmonary_in: con.connect_to_new_junction(lungs.world_mut(), (pulmonary_in, PortTag::A)),
+        pulmonary_out: con.connect_to_new_junction(lungs.world_mut(), (pulmonary_out, PortTag::B)),
+        bronchial_in: con.connect_to_new_junction(lungs.world_mut(), (bronchial_in, PortTag::A)),
+        bronchial_out: con.connect_to_new_junction(lungs.world_mut(), (bronchial_out, PortTag::B)),
     }
 }
 
@@ -132,23 +152,25 @@ pub struct LungsJunctions {
 
 impl Mocca for LungsMocca {
     fn load(mut dep: MoccaDeps) {
-        dep.dep::<TimeMocca>();
-        dep.dep::<BloodMocca>();
+        dep.depends_on::<TimeMocca>();
+        dep.depends_on::<BloodMocca>();
     }
 
-    fn register_components(world: &World) {
-        // world.component::<BreathingOrgan>();
-        // world.component::<CurrentBreathingOrgan>();
-        world.component::<LungsConfig>();
-        world.component::<AlveoliTag>();
-        // world.component::<Air>();
-        world.component::<Alveoli>();
-        // world.component::<Rebreather>();
+    fn register_components(world: &mut World) {
+        // world.register_component::<BreathingOrgan>();
+        // world.register_component::<CurrentBreathingOrgan>();
+        world.register_component::<LungsConfig>();
+        world.register_component::<AlveoliTag>();
+        // world.register_component::<Air>();
+        world.register_component::<Alveoli>();
+        // world.register_component::<Rebreather>();
+        LungOxygenAbsorption::register_components(world);
+        LungPollutionAbsorption::register_components(world);
     }
 
-    fn start(world: &World) -> Self {
+    fn start(world: &mut World) -> Self {
         // Initialize configuration
-        world.set(LungsConfig {
+        world.set_singleton(LungsConfig {
             oxygen_diffusion_rate: 0.000002,
             // blood_oxygen_range: RangeF64::new(0., 150.0),
             // critical_blood_oxygen_value_range: RangeF64::new(0., 40.0),
@@ -158,7 +180,10 @@ impl Mocca for LungsMocca {
         Self
     }
 
-    fn step(&mut self, world: &World) {
+    fn step(&mut self, world: &mut World) {
+        LungOxygenAbsorption::step(world);
+        LungPollutionAbsorption::step(world);
+
         // // Alevoli exchange oxygen from air into the blood
         // world
         //     .system_named::<(&Time, &LungsConfig, &Air, &Alveoli, &mut BloodVessel)>(
@@ -239,10 +264,6 @@ impl Mocca for LungsMocca {
         //         loam.set_mod(REBREATHER_LUNG_OXYGEN_MOD, mask.oxygen_absorption_mod);
         //         lpam.set_mod(REBREATHER_LUNG_OXYGEN_MOD, mask.pollution_absorption_mod);
         //     });
-
-        LungOxygenAbsorption::setup(world);
-
-        LungPollutionAbsorption::setup(world);
 
         // // Accumulate pollution from breathing
         // // Air($location), CurrentBreathingOrgan($), BodyTox($),

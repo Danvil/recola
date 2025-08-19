@@ -1,6 +1,4 @@
-use crate::{op_mark_completed, OpStatePending, OpsMocca};
-use flecs_ecs::prelude::*;
-use mocca::{Mocca, MoccaDeps};
+use crate::{ecs::prelude::*, op_mark_completed, OpStatePending, OpsMocca};
 
 #[derive(Component)]
 pub struct InventoryMocca;
@@ -65,11 +63,13 @@ impl Mocca for InventoryMocca {
         world.component::<ContainerTag>();
         world
             .component::<ContainedBy>()
-            .add_trait::<flecs::Exclusive>();
+            // .add_trait::<flecs::Exclusive>()
+            ;
         world.component::<HasInventory>();
         world
             .component::<HasInventory>()
-            .add_trait::<flecs::Exclusive>();
+            // .add_trait::<flecs::Exclusive>()
+            ;
         world.component::<TransferItemOp>();
         world.component::<DestroyContainerOp>();
         world.component::<DestroyItemOp>();

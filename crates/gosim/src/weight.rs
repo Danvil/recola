@@ -1,6 +1,4 @@
-use crate::decimal_component;
-use flecs_ecs::prelude::{Component, World};
-use mocca::Mocca;
+use crate::{decimal_component, ecs::prelude::*};
 
 /// The weight of a physical object
 decimal_component!(Weight);

@@ -1,4 +1,4 @@
-use flecs_ecs::prelude::*;
+use crate::ecs::prelude::*;
 
 pub struct SimTimings {
     /// Time elapsed since last update

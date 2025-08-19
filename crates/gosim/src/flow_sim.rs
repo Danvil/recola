@@ -1,12 +1,10 @@
-use crate::{utils::FlecsQueryRelationHelpers, Arg, EntityBuilder, This, Time, TimeMocca};
-use flecs_ecs::prelude::{World, *};
+use crate::{ecs::prelude::*, EntityBuilder, Time, TimeMocca};
 use flowsim::{
     models::{Bundle, ElasticTube, HoopTubePressureModel, PressureModel},
     FlowNet, FlowNetSolver, FluidChunk, FluidComposition, FluidDensityViscosity, JuncId, PipeDef,
     PipeId, PipeSolution, PipeState, PipeVessel, PortMap, PortTag, ReservoirVessel,
 };
 use gems::{volume_from_milli_liters, Ema, IntMap, RateEma, VolumeModel};
-use mocca::{Mocca, MoccaDeps};
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -232,14 +230,9 @@ pub struct JunctionState {
     pub dummy: u32,
 }
 
-/// Indicates the junction to which port A of a pipe is connected. There can only be one junction
-/// per port.
+/// Indicates that a pipe is connected to a junction and provides the pipe port.
 #[derive(Component)]
-pub struct PortAJunction;
-
-/// Indicates the junction to which port B of a pipe is connected.
-#[derive(Component)]
-pub struct PortBJunction;
+pub struct PortJunction(pub PortTag);
 
 /// Automatically creates junctions when connecting pipes
 pub struct PipeConnectionHelper {
@@ -264,57 +257,54 @@ impl PipeConnectionHelper {
 
     /// Joins the second junction into the first one thus connecting all pipe ports they are
     /// connected to.
-    pub fn join_junctions(&mut self, world: &World, j1: Entity, j2: Entity) {
+    pub fn join_junctions(&mut self, world: &mut World, j1: Entity, j2: Entity) {
         // Find all pipe-ports connected to J2
         let j2_pps: Vec<(Entity, PortTag)> = self
             .pipe_to_junc
             .iter()
-            .filter_map(|(k, v)| (**v == *j2).then(|| *k))
+            .filter_map(|(k, v)| (*v == j2).then(|| *k))
             .collect::<Vec<_>>();
 
         // Connect them to J1 instead
         for pp in j2_pps {
-            let pe = world.entity_from_id(pp.0);
-            Self::connect_f(pe, pp.1, j1);
+            Self::connect_f(world, pp.0, pp.1, j1);
             self.pipe_to_junc.insert(pp, j1);
         }
 
         // Delete J2
-        world.remove(j2);
+        world.despawn(j2);
     }
 
     /// Connect a pipe port to a junction
-    pub fn connect_to_junction<'a>(&mut self, p: (EntityView<'a>, PortTag), j: Entity) {
-        self.pipe_to_junc.insert((*p.0, p.1), j);
+    pub fn connect_to_junction<'a>(&mut self, p: (Entity, PortTag), j: Entity) {
+        self.pipe_to_junc.insert((p.0, p.1), j);
     }
 
     /// Connect a pipe port to a new junction
-    pub fn connect_to_new_junction<'a>(&mut self, p: (EntityView<'a>, PortTag)) -> Entity {
-        let key = (*p.0, p.1);
+    pub fn connect_to_new_junction<'a>(
+        &mut self,
+        world: &mut World,
+        p: (Entity, PortTag),
+    ) -> Entity {
+        let key = (p.0, p.1);
         match self.pipe_to_junc.get(&key) {
             Some(junc) => *junc,
             None => {
-                let world = p.0.world();
-                let j = self.builder.build_unamed(&world);
-                self.pipe_to_junc.insert(key, *j);
-                *j
+                let j = self.builder.build_unamed(world);
+                self.pipe_to_junc.insert(key, j.id());
+                j.id()
             }
         }
     }
 
-    fn connect_f<'b>(e: EntityView<'b>, p: PortTag, j: Entity) {
-        match p {
-            PortTag::A => e.add((PortAJunction, j)),
-            PortTag::B => e.add((PortBJunction, j)),
-        };
+    fn connect_f<'b>(world: &mut World, e: Entity, p: PortTag, j: Entity) {
+        world.entity(e).add((PortJunction(p), j))
     }
 
     /// Connects two ports of a pipe at a junction, building and merging junctions as necessary.
-    pub fn connect<'a>(&mut self, p1: (EntityView<'a>, PortTag), p2: (EntityView<'a>, PortTag)) {
-        let key1 = (*p1.0, p1.1);
-        let key2 = (*p2.0, p2.1);
-
-        let world = p1.0.world();
+    pub fn connect<'a>(&mut self, world: &mut World, p1: (Entity, PortTag), p2: (Entity, PortTag)) {
+        let key1 = (p1.0, p1.1);
+        let key2 = (p2.0, p2.1);
 
         match (
             self.pipe_to_junc.get(&key1).cloned(),
@@ -323,48 +313,46 @@ impl PipeConnectionHelper {
             (None, None) => {
                 // Neither pipe port is connected to a junction yet: create a new junction.
 
-                let j = self.builder.build_unamed(&world);
+                let j = self.builder.build_unamed(world).id();
 
-                Self::connect_f(p1.0, p1.1, *j);
-                self.pipe_to_junc.insert(key1, *j);
+                Self::connect_f(world, p1.0, p1.1, j);
+                self.pipe_to_junc.insert(key1, j);
 
-                Self::connect_f(p2.0, p2.1, *j);
-                self.pipe_to_junc.insert(key2, *j);
+                Self::connect_f(world, p2.0, p2.1, j);
+                self.pipe_to_junc.insert(key2, j);
             }
             (Some(j), None) => {
                 // First pipe is connected to a junction already: also connect the other one.
-                let j = world.entity_from_id(*j);
-                Self::connect_f(p2.0, p2.1, *j);
-                self.pipe_to_junc.insert(key2, *j);
+                Self::connect_f(world, p2.0, p2.1, j);
+                self.pipe_to_junc.insert(key2, j);
             }
             (None, Some(j)) => {
                 // Second pipe is connected to a junction already: also connect the other one.
-                let j = world.entity_from_id(*j);
-                Self::connect_f(p1.0, p1.1, *j);
-                self.pipe_to_junc.insert(key1, *j);
+                Self::connect_f(world, p1.0, p1.1, j);
+                self.pipe_to_junc.insert(key1, j);
             }
             (Some(j1), Some(j2)) => {
                 // Both pipes are connected to a junction already: merge the junctions into one.
-                self.join_junctions(&world, j1, j2);
+                self.join_junctions(world, j1, j2);
             }
         }
     }
 
     /// Forms a chain of pipes. Ports are connected in their naturally order:
     ///   P1-B  A-P2-B  A-P3-B  ..  A-PN
-    pub fn connect_chain<'a>(&mut self, p: &[EntityView<'a>]) {
-        for ab in p.windows(2) {
-            self.connect((ab[0], PortTag::B), (ab[1], PortTag::A));
+    pub fn connect_chain(&mut self, world: &mut World, pipes: &[Entity]) {
+        for ab in pipes.windows(2) {
+            self.connect(world, (ab[0], PortTag::B), (ab[1], PortTag::A));
         }
     }
 
     /// Forms a loop of pipes. Ports are connected in their naturally order:
     ///   P1-B  A-P2-B  A-P3-B  ..  A-PN-B  A-P1
-    pub fn connect_loop<'a>(&mut self, p: &[EntityView<'a>]) {
-        self.connect_chain(p);
+    pub fn connect_loop(&mut self, world: &mut World, pipes: &[Entity]) {
+        self.connect_chain(world, pipes);
 
-        if let (Some(pn), Some(p1)) = (p.last(), p.first()) {
-            self.connect((*pn, PortTag::B), (*p1, PortTag::A));
+        if let (Some(pn), Some(p1)) = (pipes.last(), pipes.first()) {
+            self.connect(world, (*pn, PortTag::B), (*p1, PortTag::A));
         }
     }
 }
@@ -437,7 +425,7 @@ pub struct PipeBuilder {
 }
 
 impl EntityBuilder for PipeBuilder {
-    fn build<'a>(&self, _world: &'a World, entity: EntityView<'a>) -> EntityView<'a> {
+    fn build<'a>(&self, entity: EntityWorldMut<'a>) -> EntityWorldMut<'a> {
         let shape = Bundle {
             model: self.tube.shape.clone(),
             count: self.strand_count,
@@ -463,7 +451,7 @@ impl EntityBuilder for PipeBuilder {
             };
 
         let pipe = PipeDef {
-            name: entity.name(),
+            name: entity.name().to_string(),
             shape,
             fluid: FluidDensityViscosity::blood(),
             external_port_pressure: PortMap::from_array([0., 0.]),
@@ -475,12 +463,12 @@ impl EntityBuilder for PipeBuilder {
         };
 
         entity
-            .set(FlowNetPipeDef(pipe))
-            .set(FlowNetPipeState(PipeState {
+            .and_set(FlowNetPipeDef(pipe))
+            .and_set(FlowNetPipeState(PipeState {
                 volume,
                 velocity: PortMap::default(),
             }))
-            .set(FlowNetPipeVessel(
+            .and_set(FlowNetPipeVessel(
                 PipeVessel::new()
                     .filled(
                         PortTag::A,
@@ -488,8 +476,8 @@ impl EntityBuilder for PipeBuilder {
                     )
                     .with_min_chunk_volume(volume_from_milli_liters(50.)),
             ))
-            .set(PipeFlowState::default())
-            .set(PipeFlowStats::default())
+            .and_set(PipeFlowState::default())
+            .and_set(PipeFlowStats::default())
     }
 }
 
@@ -497,11 +485,11 @@ impl EntityBuilder for PipeBuilder {
 pub struct JunctionBuilder;
 
 impl EntityBuilder for JunctionBuilder {
-    fn build<'a>(&self, _world: &'a World, entity: EntityView<'a>) -> EntityView<'a> {
+    fn build<'a>(&self, entity: EntityWorldMut<'a>) -> EntityWorldMut<'a> {
         entity
-            .add(Junction)
-            .set(FlowNetReservoirVessel(ReservoirVessel::default()))
-            .set(JunctionState::default())
+            .and_add(Junction)
+            .and_set(FlowNetReservoirVessel(ReservoirVessel::default()))
+            .and_set(JunctionState::default())
     }
 }
 
@@ -510,11 +498,11 @@ pub struct PumpBuilder<'a> {
 }
 
 impl EntityBuilder for PumpBuilder<'_> {
-    fn build<'a>(&self, _world: &'a World, entity: EntityView<'a>) -> EntityView<'a> {
+    fn build<'a>(&self, entity: EntityWorldMut<'a>) -> EntityWorldMut<'a> {
         entity
-            .set(self.def.clone())
-            .set(PumpState::default())
-            .set(PumpStats::default())
+            .and_set(self.def.clone())
+            .and_set(PumpState::default())
+            .and_set(PumpStats::default())
     }
 }
 
@@ -523,12 +511,14 @@ pub struct ValveBuilder<'a> {
 }
 
 impl EntityBuilder for ValveBuilder<'_> {
-    fn build<'a>(&self, _world: &'a World, entity: EntityView<'a>) -> EntityView<'a> {
-        entity.set(self.def.clone()).set(ValveState::default())
+    fn build<'a>(&self, entity: EntityWorldMut<'a>) -> EntityWorldMut<'a> {
+        entity
+            .and_set(self.def.clone())
+            .and_set(ValveState::default())
     }
 }
 
-#[derive(Component, Default, Clone)]
+#[derive(Singleton, Default, Clone)]
 pub struct FlowSimConfig {
     /// If set writes pipe statistics to CSV file
     pub pipe_stats_csv_path: Option<PathBuf>,
@@ -542,50 +532,47 @@ pub struct FlowSimConfig {
 
 impl Mocca for FlowSimMocca {
     fn load(mut dep: MoccaDeps) {
-        dep.dep::<TimeMocca>();
+        dep.depends_on::<TimeMocca>();
     }
 
-    fn register_components(world: &World) {
-        world.component::<FlowSimConfig>();
+    fn register_components(world: &mut World) {
+        world.register_component::<FlowSimConfig>();
 
-        world.component::<FlowNetPipeDef>();
-        world.component::<FlowNetPipeState>();
-        world.component::<FlowNetPipeVessel>();
-        world.component::<FlowNetReservoirVessel>();
-        // world.component::<PipeFlowState>();
-        world.component::<PipeFlowState>();
-        world.component::<PipeFlowStats>();
-        world.component::<ExternalPipePressure>();
+        world.register_component::<FlowNetPipeDef>();
+        world.register_component::<FlowNetPipeState>();
+        world.register_component::<FlowNetPipeVessel>();
+        world.register_component::<FlowNetReservoirVessel>();
+        // world.register_component::<PipeFlowState>();
+        world.register_component::<PipeFlowState>();
+        world.register_component::<PipeFlowStats>();
+        world.register_component::<ExternalPipePressure>();
 
-        world.component::<ValveDef>();
-        world.component::<ValveState>();
+        world.register_component::<ValveDef>();
+        world.register_component::<ValveState>();
 
-        world.component::<Junction>();
-        world.component::<JunctionState>();
-        world
-            .component::<PortAJunction>()
-            .add_trait::<flecs::Exclusive>();
-        world
-            .component::<PortBJunction>()
-            .add_trait::<flecs::Exclusive>();
+        world.register_component::<Junction>();
+        world.register_component::<JunctionState>();
+        world.register_component::<PortJunction>();
 
-        world.component::<PumpDef>();
-        world.component::<PumpPowerFactor>();
-        world.component::<PumpState>();
-        world.component::<PumpStats>();
+        world.register_component::<PumpDef>();
+        world.register_component::<PumpPowerFactor>();
+        world.register_component::<PumpState>();
+        world.register_component::<PumpStats>();
     }
 
-    fn start(world: &World) -> Self {
-        world.set(FlowSimConfig::default());
+    fn start(world: &mut World) -> Self {
+        world.set_singleton(FlowSimConfig::default());
 
         Self
     }
 
-    fn step(&mut self, world: &World) {
+    fn step(&mut self, world: &mut World) {
         // Apply external pressure  on pipes
-        world.each::<(&ExternalPipePressure, &mut FlowNetPipeDef)>(|(ext, state)| {
-            state.0.external_port_pressure = ext.0;
-        });
+        world
+            .query::<(&ExternalPipePressure, &mut FlowNetPipeDef)>()
+            .each(|(ext, state)| {
+                state.0.external_port_pressure = ext.0;
+            });
 
         // Extract flow net topology and pipe state
 
@@ -596,103 +583,55 @@ impl Mocca for FlowSimMocca {
 
         world
             .query::<(&FlowNetPipeDef, &FlowNetPipeState)>()
-            .build()
             .each_entity(|epipe, (def, state)| {
                 let id = net.insert_pipe(def.0.clone());
-                pipe_entity_id_map.insert(*epipe, id);
+                pipe_entity_id_map.insert(epipe, id);
                 net_pipe_state.set(*id, state.0.clone());
             });
 
         // println!("net: {:?}", net);
         // println!("pipe_entity_id_map: {:?}", pipe_entity_id_map);
 
-        fn build_flow_net<R>(
-            world: &World,
-            net: &mut FlowNet,
-            pipe_entity_id_map: &mut HashMap<Entity, PipeId>,
-            junc_entity_id_map: &mut HashMap<Entity, JuncId>,
-            rel: R,
-            side: PortTag,
-        ) where
-            Access: FromAccessArg<R>,
-        {
-            let topo_query = world
-                .query::<(&FlowNetPipeDef, &mut JunctionState)>()
-                .related(This, rel, "$junc")
-                .tagged("$junc", Arg(1))
-                .build();
+        world
+            .query_filtered::<(
+                (&PortJunction, (This, E1)),
+            ), (With<(FlowNetPipeDef, This)>, With<(JunctionState, E1)>)>(
+            ).each_entity(|(epipe, ejunc), (pj,)| {
+                let side = pj.0;
+                let pipe_id = pipe_entity_id_map.get(&epipe).unwrap();
 
-            let junc_var = topo_query.find_var("junc").unwrap();
-
-            topo_query.run(|mut it| {
-                while it.next() {
-                    for i in it.iter() {
-                        let epipe = it.entity(i).unwrap();
-                        let pipe_id = pipe_entity_id_map.get(&epipe).unwrap();
-                        let ejunc = it.get_var(junc_var);
-
-                        match junc_entity_id_map.get(&*ejunc) {
-                            Some(junc_id) => {
-                                net.topology.connect_to_junction((*pipe_id, side), *junc_id);
-                            }
-                            None => {
-                                let junc_id =
-                                    net.topology.connect_to_new_junction((*pipe_id, side));
-                                junc_entity_id_map.insert(*ejunc, junc_id);
-                            }
-                        }
+                match junc_entity_id_map.get(&ejunc) {
+                    Some(junc_id) => {
+                        net.topology.connect_to_junction((*pipe_id, side), *junc_id);
+                    }
+                    None => {
+                        let junc_id = net.topology.connect_to_new_junction((*pipe_id, side));
+                        junc_entity_id_map.insert(ejunc, junc_id);
                     }
                 }
-            })
-        }
-        build_flow_net(
-            world,
-            &mut net,
-            &mut pipe_entity_id_map,
-            &mut junc_entity_id_map,
-            PortAJunction,
-            PortTag::A,
-        );
-        build_flow_net(
-            world,
-            &mut net,
-            &mut pipe_entity_id_map,
-            &mut junc_entity_id_map,
-            PortBJunction,
-            PortTag::B,
-        );
+            });
 
         // println!("{:?}", net.topology);
-
         // get current sim timestep
-        let dt = world.get::<&Time>(|t| t.sim_dt_f64());
+        let dt = world.singleton::<Time>().sim_dt_f64();
 
         // solve flow net
         let (ode, solution, next) = FlowNetSolver::new().step(&mut net, net_pipe_state, dt);
 
-        if world.get::<&FlowSimConfig>(|c| c.debug_print_ode_solution) {
+        if world.singleton::<FlowSimConfig>().debug_print_ode_solution {
             ode.print_overview(&next);
             // println!("solution: {:?}", solution);
         }
 
         // Phase 1: liquid flows from pipes vessels into the transionary junction vessels
-        fn pipe_outflow_impl<R>(
-            world: &World,
-            pipe_entity_id_map: &HashMap<Entity, PipeId>,
-            solution: &IntMap<PipeSolution>,
-            rel: R,
-            port: PortTag,
-        ) where
-            Access: FromAccessArg<R> + FromAccessArg<Junction>,
-        {
-            let topo_query = world
-                .query::<(&mut FlowNetPipeVessel, &mut FlowNetReservoirVessel)>()
-                .related(This, rel, "$junc")
-                .tagged("$junc", Junction)
-                .tagged("$junc", Arg(1))
-                .build();
-
-            topo_query.each_entity(|epipe, (pipe_vessel, junc_vessel)| {
+        world
+            .query_filtered::<(
+                &mut FlowNetPipeVessel,
+                (&PortJunction, (This, E1)),
+                (&mut FlowNetReservoirVessel, E1),
+            ), (With<(Junction, E1)>,)>()
+            .each_entity(|(epipe, _ejunc), (pipe_vessel, pj, junc_vessel)| {
+                let port = pj.0;
                 let pipe_id = pipe_entity_id_map.get(&epipe).unwrap();
                 let delta_volume = solution[**pipe_id].delta_volume[port];
                 if delta_volume < 0. {
@@ -701,40 +640,16 @@ impl Mocca for FlowSimMocca {
                     }
                 }
             });
-        }
-        pipe_outflow_impl(
-            world,
-            &pipe_entity_id_map,
-            &solution,
-            PortAJunction,
-            PortTag::A,
-        );
-        pipe_outflow_impl(
-            world,
-            &pipe_entity_id_map,
-            &solution,
-            PortBJunction,
-            PortTag::B,
-        );
 
-        // Phase 2: liquid flows from transionary junction vessels into pipe vessels
-        fn pipe_inflow_impl<R>(
-            world: &World,
-            pipe_entity_id_map: &HashMap<Entity, PipeId>,
-            solution: &IntMap<PipeSolution>,
-            rel: R,
-            port: PortTag,
-        ) where
-            Access: FromAccessArg<R> + FromAccessArg<Junction>,
-        {
-            let topo_query = world
-                .query::<(&mut FlowNetPipeVessel, &mut FlowNetReservoirVessel)>()
-                .related(This, rel, "$junc")
-                .tagged("$junc", Junction)
-                .tagged("$junc", Arg(1))
-                .build();
-
-            topo_query.each_entity(|epipe, (pipe_vessel, junc_vessel)| {
+        // Phase 2: liquid flow from junction vessels into pipes
+        world
+            .query_filtered::<(
+                &mut FlowNetPipeVessel,
+                (&PortJunction, (This, E1)),
+                (&mut FlowNetReservoirVessel, E1),
+            ), (With<(Junction, E1)>,)>()
+            .each_entity(|(epipe, _ejunc), (pipe_vessel, pj, junc_vessel)| {
+                let port = pj.0;
                 let pipe_id = pipe_entity_id_map.get(&epipe).unwrap();
                 let delta_volume = solution[**pipe_id].delta_volume[port];
                 if delta_volume > 0. {
@@ -743,21 +658,6 @@ impl Mocca for FlowSimMocca {
                     }
                 }
             });
-        }
-        pipe_inflow_impl(
-            world,
-            &pipe_entity_id_map,
-            &solution,
-            PortAJunction,
-            PortTag::A,
-        );
-        pipe_inflow_impl(
-            world,
-            &pipe_entity_id_map,
-            &solution,
-            PortBJunction,
-            PortTag::B,
-        );
 
         // write back state
         world
@@ -767,7 +667,6 @@ impl Mocca for FlowSimMocca {
                 &mut PipeFlowState,
                 &mut PipeFlowStats,
             )>()
-            .build()
             .each_entity(|epipe, (_def, fls, state, stats)| {
                 let pipe_id = **pipe_entity_id_map.get(&epipe).unwrap();
                 let scr = &ode.pipe_scratch()[pipe_id];
@@ -797,7 +696,6 @@ impl Mocca for FlowSimMocca {
                 &mut FlowNetPipeDef,
                 &mut PipeFlowState,
             )>()
-            .build()
             .each(|(valve_def, valve_state, pipe_def, pipe_state)| {
                 let port_flow_kind = valve_def.kind.port_kind();
 
@@ -832,16 +730,16 @@ impl Mocca for FlowSimMocca {
             });
 
         // Write pipe data to CSV
-        if let Some(path) = world.get::<&FlowSimConfig>(|c| c.pipe_stats_csv_path.clone()) {
-            let step = world.get::<&Time>(|t| t.frame_count);
+        if let Some(path) = &world.singleton::<FlowSimConfig>().pipe_stats_csv_path {
+            let step = world.singleton::<Time>().frame_count;
             let file_path = path.join(format!("flow_net_pipes_{step:05}.csv"));
 
             write_flow_net_pipes_csv(world, &file_path).ok();
         }
 
         // Write graph topology to CSV
-        if let Some(path) = world.get::<&FlowSimConfig>(|c| c.graph_topology_path.clone()) {
-            let step = world.get::<&Time>(|t| t.frame_count);
+        if let Some(path) = &world.singleton::<FlowSimConfig>().graph_topology_path {
+            let step = world.singleton::<Time>().frame_count;
             let file_path = path.join(format!("topology_{step:05}.csv"));
 
             write_flow_net_topology_dot(world, &file_path).ok();
@@ -860,7 +758,7 @@ fn hysteresis(active: bool, current: f64, threshold: f64, factor: f64) -> bool {
     }
 }
 
-fn write_flow_net_pipes_csv(world: &World, file_path: &Path) -> std::io::Result<()> {
+fn write_flow_net_pipes_csv(world: &mut World, file_path: &Path) -> std::io::Result<()> {
     use std::{
         fs::File,
         io::{BufWriter, Write},
@@ -876,9 +774,8 @@ fn write_flow_net_pipes_csv(world: &World, file_path: &Path) -> std::io::Result<
     )?;
 
     world
-        .query::<(&FlowNetPipeDef, &PipeFlowState, &FlowNetPipeVessel)>()
-        .build()
-        .each_entity(|entity, (def, state, vessel)| {
+        .query::<(&FlowNetPipeDef, &PipeFlowState, &FlowNetPipeVessel, Option<&Name>)>()
+        .each_entity(|entity, (def, state, vessel, name)| {
             let volume = vessel.0.volume();
             let length = def.0.shape.model.length;
             let pressure_a = state.pressure[PortTag::A];
@@ -896,8 +793,8 @@ fn write_flow_net_pipes_csv(world: &World, file_path: &Path) -> std::io::Result<
 
             writeln!(
                 writer,
-                "{},{},{volume},{length},{pressure_a},{pressure_b},{junction_a},{junction_b},{flow_a},{flow_b},{open_a},{open_b}",
-                *entity,entity.name()
+                "{},{:?},{volume},{length},{pressure_a},{pressure_b},{junction_a},{junction_b},{flow_a},{flow_b},{open_a},{open_b}",
+                entity, name
             )
             .unwrap();
         });
@@ -905,7 +802,7 @@ fn write_flow_net_pipes_csv(world: &World, file_path: &Path) -> std::io::Result<
     Ok(())
 }
 
-fn write_flow_net_topology_dot(world: &World, file_path: &Path) -> std::io::Result<()> {
+fn write_flow_net_topology_dot(world: &mut World, file_path: &Path) -> std::io::Result<()> {
     use std::{
         collections::HashSet,
         fs::File,
@@ -913,15 +810,22 @@ fn write_flow_net_topology_dot(world: &World, file_path: &Path) -> std::io::Resu
     };
 
     // Helper: stable Graphviz ID for an entity and a safe label.
-    fn gv_id(e: EntityView) -> String {
-        format!("e{}", e.id())
+    fn gv_id(e: Entity) -> String {
+        format!("e{}", e)
     }
 
-    fn gv_label(e: EntityView) -> String {
+    fn gv_label(e: Entity, name: Option<&Name>) -> String {
         // Use the entity's name if present; otherwise fall back to its id.
-        match Some(e.name()) {
-            Some(n) if !n.is_empty() => n.replace('"', r#"\""#),
-            _ => format!("id={}", e.id()),
+        match name {
+            Some(n) => {
+                let n = n.as_str();
+                if !n.is_empty() {
+                    n.replace('"', r#"\""#)
+                } else {
+                    format!("id={}", e)
+                }
+            }
+            _ => format!("id={}", e),
         }
     }
 
@@ -936,73 +840,38 @@ fn write_flow_net_topology_dot(world: &World, file_path: &Path) -> std::io::Resu
     let mut seen_juncs: HashSet<Entity> = HashSet::new();
     let mut seen_edges: HashSet<(Entity, Entity)> = HashSet::new();
 
-    fn walk_rel<R>(
-        world: &World,
-        rel: R,
-        w: &mut BufWriter<File>,
-        seen_pipes: &mut HashSet<Entity>,
-        seen_juncs: &mut HashSet<Entity>,
-        seen_edges: &mut HashSet<(Entity, Entity)>,
-    ) where
-        Access: FromAccessArg<R>,
-    {
-        let topo = world
-            .query::<(&mut FlowNetPipeVessel, &mut FlowNetReservoirVessel)>()
-            .related(This, rel, "$junc")
-            .tagged("$junc", Junction)
-            .tagged("$junc", Arg(1))
-            .build();
+    world.query_filtered::<(Option<&Name>,), (
+        With<(FlowNetPipeVessel, This)>,
+        With<(PortJunction, This, E1)>,
+        With<(Junction, E1)>,
+        With<(FlowNetReservoirVessel, E1)>,
+    )>().each_entity(|(pipe, junc),(pipe_name,)| {
+            let pipe_gv_id = gv_id(pipe);
+            let pipe_gv_label = gv_label(pipe, pipe_name);
+            let junc_gv_id = gv_id(junc);
 
-        let junc_var = topo.find_var("junc").expect("var $junc");
+            // Node declarations (once).
+            if seen_pipes.insert(pipe.id()) {
+                writeln!(
+                    w,
+                    "  {} [label=\"{}\", shape=box, style=rounded, penwidth=1.2];",
+                    pipe_gv_id,
+                    pipe_gv_label
+                ).ok();
+            }
+            if seen_juncs.insert(junc.id()) {
+                writeln!(
+                    w,
+                    "  {} [label=\"\", shape=circle, width=0.15, fixedsize=true, style=filled, fillcolor=\"#666666\"];",
+                    junc_gv_id
+                ).ok();
+            }
 
-        topo.run(|mut it| {
-            while it.next() {
-                for i in it.iter() {
-                    let pipe = it.entity(i).unwrap();
-                    let junc = it.get_var(junc_var);
-
-                    // Node declarations (once).
-                    if seen_pipes.insert(pipe.id()) {
-                        writeln!(
-                            w,
-                            "  {} [label=\"{}\", shape=box, style=rounded, penwidth=1.2];",
-                            gv_id(pipe),
-                            gv_label(pipe)
-                        ).ok();
-                    }
-                    if seen_juncs.insert(junc.id()) {
-                        writeln!(
-                            w,
-                            "  {} [label=\"\", shape=circle, width=0.15, fixedsize=true, style=filled, fillcolor=\"#666666\"];",
-                            gv_id(junc)
-                        ).ok();
-                    }
-
-                    // Edges (once across both PortA/PortB passes).
-                    if seen_edges.insert((pipe.id(), junc.id())) {
-                        writeln!(w, "  {} -- {};", gv_id(pipe), gv_id(junc)).ok();
-                    }
-                }
+            // Edges (once across both PortA/PortB passes).
+            if seen_edges.insert((pipe.id(), junc.id())) {
+                writeln!(w, "  {} -- {};", pipe_gv_id, junc_gv_id).ok();
             }
         });
-    }
-
-    walk_rel(
-        world,
-        PortAJunction,
-        &mut w,
-        &mut seen_pipes,
-        &mut seen_juncs,
-        &mut seen_edges,
-    );
-    walk_rel(
-        world,
-        PortBJunction,
-        &mut w,
-        &mut seen_pipes,
-        &mut seen_juncs,
-        &mut seen_edges,
-    );
 
     writeln!(w, "}}")?;
     Ok(())

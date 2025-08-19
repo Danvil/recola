@@ -1,41 +1,47 @@
 mod agent;
 mod blood;
 mod lungs;
-// // mod consumption;
-// // mod hunger;
+// // // mod consumption;
+// // // mod hunger;
 mod body_part;
 mod flow_sim;
 mod gos_sim;
 mod heart;
-mod inventory;
+// mod inventory;
 mod log;
-// mod map;
+// // mod map;
 mod market;
 mod med;
-mod ops;
+// mod ops;
 mod time;
-// mod toxicity;
+// // mod toxicity;
 mod utils;
-// mod waterfront;
-mod weight;
+// // mod waterfront;
+// mod weight;
 
 pub use agent::*;
 pub use blood::*;
 pub use lungs::*;
-// // pub use consumption::*;
-// // pub use hunger::*;
+// // // pub use consumption::*;
+// // // pub use hunger::*;
 pub use body_part::*;
 pub use flow_sim::*;
 pub use gos_sim::*;
 pub use heart::*;
-pub use inventory::*;
+// pub use inventory::*;
 pub use log::*;
-// pub use map::*;
+// // pub use map::*;
 pub use market::*;
 pub use med::*;
-pub use ops::*;
+// pub use ops::*;
 pub use time::*;
-// pub use toxicity::*;
+// // pub use toxicity::*;
 pub use utils::*;
-// pub use waterfront::*;
-pub use weight::*;
+// // pub use waterfront::*;
+// pub use weight::*;
+
+pub mod ecs {
+    pub mod prelude {
+        pub use simplecs::prelude::*;
+    }
+}

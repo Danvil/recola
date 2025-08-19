@@ -12,12 +12,15 @@ macro_rules! stat_component {
         paste::paste! {
 
             impl $name {
-                pub fn setup(world: &World) {
-                    world.component::<Self>();
-                    world.component::<[<$name Base>]>();
-                    world.component::<[<$name Mods>]>();
+                pub fn register_components(world: &mut World) {
+                    world.register_component::<Self>();
+                    world.register_component::<[<$name Base>]>();
+                    world.register_component::<[<$name Mods>]>();
+                }
+
+                pub fn step(world: &mut World) {
                     world
-                        .system::<(&[<$name Base>], &[<$name Mods>], &mut Self)>()
+                        .query::<(&[<$name Base>], &[<$name Mods>], &mut Self)>()
                         .each(|(base, modf, eff)| {
                             **eff = base.value() * modf.factor();
                         });

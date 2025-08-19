@@ -1,16 +1,14 @@
-use crate::{create_human, AgentMocca};
-use flecs_ecs::prelude::World;
-use mocca::{Mocca, MoccaDeps};
+use crate::{create_human, ecs::prelude::*, AgentMocca};
 
 pub struct GosSimMocca;
 
 impl Mocca for GosSimMocca {
     fn load(mut dep: MoccaDeps) {
-        dep.dep::<AgentMocca>();
+        dep.depends_on::<AgentMocca>();
     }
 
-    fn start(world: &World) -> Self {
-        create_human(world.entity_named("Bob"));
+    fn start(world: &mut World) -> Self {
+        create_human(world.spawn_empty().with_name("Bob"));
 
         Self
     }

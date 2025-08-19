@@ -1,5 +1,4 @@
-use flecs_ecs::prelude::*;
-use mocca::Mocca;
+use crate::ecs::prelude::*;
 
 #[derive(Component)]
 pub struct OpsMocca;
@@ -32,11 +31,11 @@ impl Mocca for OpsMocca {
     }
 }
 
-pub fn op_mark_completed(e: EntityView<'_>) {
+pub fn op_mark_completed(e: EntityMut<'_>) {
     e.remove(OpStatePending);
     e.add(OpStateCompleted);
 }
 
-pub fn op_new<Op: ComponentId>(world: &World, op: Op) -> EntityView<'_> {
+pub fn op_new<Op: Component>(world: &World, op: Op) -> EntityMut<'_> {
     world.entity().set(op).add(OpStatePending)
 }

@@ -1,8 +1,8 @@
 use crate::{
-    create_human, AgentModule, Air, ContainedBy, ContainerTag, HasInventory, InventoryModule,
-    ItemTag, MapModule, OpsModule, PlayerTag, Tile, TimeModule, Weight, WeightModule,
+    create_human, ecs::prelude::*, AgentModule, Air, ContainedBy, ContainerTag, HasInventory,
+    InventoryModule, ItemTag, MapModule, OpsModule, PlayerTag, Tile, TimeModule, Weight,
+    WeightModule,
 };
-use flecs_ecs::prelude::*;
 
 #[derive(Component)]
 pub struct WaterfrontModule;

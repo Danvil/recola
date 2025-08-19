@@ -1,22 +1,28 @@
-mod flecs_query_relation_helpers;
+// mod flecs_query_relation_helpers;
 mod newtype_decimal_component;
 mod stats;
 
-pub use flecs_query_relation_helpers::*;
+// pub use flecs_query_relation_helpers::*;
 
-use flecs_ecs::prelude::{EntityView, World};
+use simplecs::prelude::{EntityWorldMut, World};
+use std::borrow::Cow;
 
 pub trait EntityBuilder {
-    fn build_unamed<'a>(&self, world: &'a World) -> EntityView<'a> {
-        self.build(world, world.entity())
+    fn build_unamed<'a>(&self, world: &'a mut World) -> EntityWorldMut<'a> {
+        self.build(world.spawn_empty())
     }
 
-    fn new_named<'a, S>(&self, world: &'a World, name: S) -> EntityView<'a>
-    where
-        S: AsRef<str>,
-    {
-        self.build(world, world.entity_named(name.as_ref()))
+    fn new_named<'a>(
+        &self,
+        world: &'a mut World,
+        name: impl Into<Cow<'static, str>>,
+    ) -> EntityWorldMut<'a> {
+        self.build(world.spawn_empty_named(name))
     }
 
-    fn build<'a>(&self, world: &'a World, entity: EntityView<'a>) -> EntityView<'a>;
+    fn build<'a>(&self, entity: EntityWorldMut<'a>) -> EntityWorldMut<'a>;
+
+    // fn build_inplace<'a>(&self, entity: &mut EntityWorldMut<'a>) {
+    //     *entity = self.build(*entity);
+    // }
 }

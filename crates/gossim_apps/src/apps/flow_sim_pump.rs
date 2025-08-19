@@ -1,11 +1,11 @@
 use crate::TestRunner;
 use approx::{assert_abs_diff_eq, assert_relative_eq};
-use flecs_ecs::prelude::*;
 use gosim::{
     setup_flow_net, volume_from_liters, volume_to_liters, ElasticTubeBundle, EntityBuilder,
     FlowDirection, FlowNetModule, Pipe, PipeBuilder, PipeConnectionHelper, PipeFlowState,
     PipeGeometry, PortTag, PumpBuilder, PumpDef,
 };
+use simplecs::prelude::*;
 
 // Four pipes connected in a circle: (pipe4) - pump - pipe2 - pipe3 - pipe4 - (pump)
 // The first pipe is a pump.

@@ -1,11 +1,10 @@
-use flecs_ecs::prelude::*;
 use flowsim::{models::ElasticTube, FluidComposition, PortMap};
 use gems::{volume_to_liters, Cylinder, VolumeModel};
 use gosim::{
     EntityBuilder, ExternalPipePressure, FlowNetPipeDef, FlowNetPipeState, FlowNetPipeVessel,
     FlowSimMocca, PipeBuilder, PipeConnectionHelper, Time, TimeMocca,
 };
-use mocca::{Mocca, MoccaDeps};
+use simplecs::prelude::*;
 
 // Four pipes connected in a line: pipe1 - pipe2 - pipe3 - pipe4
 // External pressure on first pipe.

@@ -1,19 +1,17 @@
 use crate::{
-    create_blood_vessels, stat_component, utils::EntityBuilder, BloodMocca, BloodVesselBuilder,
-    BodyPartMocca, CardiacCycle, CardiacCycleStage, ExternalPipePressure,
-    FlecsQueryRelationHelpers, FlowDirection, FlowSimMocca, PipeConnectionHelper, Time, TimeMocca,
-    TissueBuilder, ValveBuilder, ValveDef, ValveKind,
+    create_blood_vessels, ecs::prelude::*, stat_component, utils::EntityBuilder, BloodMocca,
+    BloodVesselBuilder, BodyPartMocca, CardiacCycle, CardiacCycleStage, ExternalPipePressure,
+    FlowDirection, FlowSimMocca, PipeConnectionHelper, Time, TimeMocca, TissueBuilder,
+    ValveBuilder, ValveDef, ValveKind,
 };
-use flecs_ecs::prelude::*;
 use flowsim::{models::ElasticTube, PortTag};
 use gems::{volume_from_liters, BeatEma, Cylinder};
-use mocca::{Mocca, MoccaDeps};
 
 /// The heart is an organ which pumps blood through the body.
 #[derive(Component)]
 pub struct HeartMocca;
 
-#[derive(Component)]
+#[derive(Singleton)]
 pub struct HeartConfig {}
 
 /// Internal state used for computation of heart beat
@@ -88,16 +86,15 @@ impl HeartRateMonitor {
 /// We run a simulation for the heart beat and correspondingly apply external pressure to the
 /// ventricle pipes.
 pub fn create_heart<'a>(
-    world: &'a World,
-    entity: EntityView<'a>,
+    entity: EntityWorldMut<'a>,
     con: &mut PipeConnectionHelper,
 ) -> HeartJunctions {
-    let heart = entity
-        .set(HeartBeatState::default())
-        .set(HeartRateBpm::new(60.))
-        .set(HeartRateBpmBase::new(60.))
-        .set(HeartRateBpmMods::default())
-        .set(HeartStats {
+    let mut heart = entity
+        .and_set(HeartBeatState::default())
+        .and_set(HeartRateBpm::new(60.))
+        .and_set(HeartRateBpmBase::new(60.))
+        .and_set(HeartRateBpmMods::default())
+        .and_set(HeartStats {
             heart_rate: BeatEma::from_halflife(5.),
             monitor: HeartRateMonitor::with_len(40),
             ..Default::default()
@@ -216,24 +213,26 @@ pub fn create_heart<'a>(
     };
 
     // [vein, atrium, ventricle, artery]
-    let mut heart_chamber_f = |names: [&str; 4], builder: [BloodVesselBuilder; 4]| {
-        let entities = names
-            .iter()
-            .zip(builder.iter())
-            .map(|(name, b)| b.build(world, world.entity_named(name)))
-            .collect::<Vec<_>>();
+    let mut heart_chamber_f = |names: [&'static str; 4], builder: [BloodVesselBuilder; 4]| {
+        let vein = builder[0].new_named(heart.world_mut(), names[0]).id();
 
-        entities[1].child_of(heart);
-        entities[2].child_of(heart);
+        let atrium = builder[1].new_named(heart.world_mut(), names[1]).id();
+        // entities[1].child_of(heart);
 
-        valve_builder.build(world, entities[2]);
+        let ventricle = builder[2].new_named(heart.world_mut(), names[2]);
+        let ventricle = valve_builder.build(ventricle).id();
+        // entities[2].child_of(heart);
 
-        con.connect_chain(&entities);
+        let artery = builder[3].new_named(heart.world_mut(), names[3]).id();
 
-        con.connect_to_new_junction((entities[0], PortTag::A));
-        con.connect_to_new_junction((entities[3], PortTag::B));
+        let ids = [vein, atrium, ventricle, artery];
 
-        entities
+        con.connect_chain(heart.world_mut(), &ids);
+
+        con.connect_to_new_junction(heart.world_mut(), (vein, PortTag::A));
+        con.connect_to_new_junction(heart.world_mut(), (artery, PortTag::B));
+
+        ids
     };
 
     let blue = heart_chamber_f(
@@ -257,25 +256,26 @@ pub fn create_heart<'a>(
     );
 
     heart.set(HeartChambers {
-        blue_atrium: *blue[1],
-        blue_ventricle: *blue[2],
-        red_atrium: *red[1],
-        red_ventricle: *red[2],
+        blue_atrium: blue[1],
+        blue_ventricle: blue[2],
+        red_atrium: red[1],
+        red_ventricle: red[2],
     });
 
     // The heart is a body part which needs blood itself
-    TissueBuilder { volume: 1.0 }.build(world, heart);
-    let heart_vessel = create_blood_vessels(world, heart, volume_from_liters(0.050));
+    let heart = TissueBuilder { volume: 1.0 }.build(heart);
+    let mut heart = create_blood_vessels(heart, volume_from_liters(0.050));
+    let heart_id = heart.id();
 
     // Connect heart blood supply directly
-    con.connect_chain(&[red[3], heart_vessel]);
-    con.connect_chain(&[heart_vessel, blue[0]]);
+    con.connect_chain(heart.world_mut(), &[red[3], heart_id]);
+    con.connect_chain(heart.world_mut(), &[heart_id, blue[0]]);
 
     HeartJunctions {
-        red_in: con.junction(*red[0], PortTag::A).unwrap(),
-        red_out: con.junction(*red[3], PortTag::B).unwrap(),
-        blue_in: con.junction(*blue[0], PortTag::A).unwrap(),
-        blue_out: con.junction(*blue[3], PortTag::B).unwrap(),
+        red_in: con.junction(red[0], PortTag::A).unwrap(),
+        red_out: con.junction(red[3], PortTag::B).unwrap(),
+        blue_in: con.junction(blue[0], PortTag::A).unwrap(),
+        blue_out: con.junction(blue[3], PortTag::B).unwrap(),
     }
 }
 
@@ -289,93 +289,101 @@ pub struct HeartJunctions {
 
 impl Mocca for HeartMocca {
     fn load(mut dep: MoccaDeps) {
-        dep.dep::<TimeMocca>();
-        dep.dep::<BodyPartMocca>();
-        dep.dep::<BloodMocca>();
-        dep.dep::<FlowSimMocca>();
+        dep.depends_on::<TimeMocca>();
+        dep.depends_on::<BodyPartMocca>();
+        dep.depends_on::<BloodMocca>();
+        dep.depends_on::<FlowSimMocca>();
     }
 
-    fn register_components(world: &World) {
-        world.component::<HeartConfig>();
-        world.component::<HeartBeatState>();
-        world.component::<HeartRateBpm>();
-        world.component::<HeartChambers>();
-        world.component::<HeartStats>();
+    fn register_components(world: &mut World) {
+        world.register_component::<HeartConfig>();
+        world.register_component::<HeartBeatState>();
+        world.register_component::<HeartRateBpm>();
+        world.register_component::<HeartChambers>();
+        world.register_component::<HeartStats>();
+        HeartRateBpm::register_components(world);
     }
 
-    fn start(world: &World) -> Self {
-        HeartRateBpm::setup(world);
-
-        world.add(HeartConfig {});
+    fn start(world: &mut World) -> Self {
+        world.set_singleton(HeartConfig {});
 
         Self
     }
 
-    fn step(&mut self, world: &World) {
-        // Check if the heart beats
-        world
-            .query::<(&Time, &HeartRateBpm, &mut HeartBeatState)>()
-            .singleton_at(0)
-            .build()
-            .each(|(t, rate, state)| {
-                state.cycle.set_target_bpm(**rate);
-                state.cycle.step(t.sim_dt_f64());
-            });
-
-        // Apply pressure to chambers
-        world
-            .query::<(&Time, &HeartChambers, &HeartBeatState)>()
-            .singleton_at(0)
-            .build()
-            .each_entity(|e, (_t, chambers, state)| {
-                let world = e.world();
-
-                let red_atrium = world.entity_from_id(chambers.red_atrium);
-                let blue_atrium = world.entity_from_id(chambers.blue_atrium);
-                let red_ventricle = world.entity_from_id(chambers.red_ventricle);
-                let blue_ventricle = world.entity_from_id(chambers.blue_ventricle);
-
-                match state.cycle.stage() {
-                    (CardiacCycleStage::DiastolePhase1, _) => {
-                        red_atrium.set(ExternalPipePressure::ubiquous(0.));
-                        blue_atrium.set(ExternalPipePressure::ubiquous(0.));
-                        red_ventricle.set(ExternalPipePressure::ubiquous(0.));
-                        blue_ventricle.set(ExternalPipePressure::ubiquous(0.));
-                    }
-                    (CardiacCycleStage::ArterialSystole, q) => {
-                        let a = attack(q);
-                        red_atrium.set(ExternalPipePressure::ubiquous(-1_000. * a));
-                        blue_atrium.set(ExternalPipePressure::ubiquous(-1_000. * a));
-                        red_ventricle.set(ExternalPipePressure::ubiquous(0.));
-                        blue_ventricle.set(ExternalPipePressure::ubiquous(0.));
-                    }
-                    (CardiacCycleStage::Systole, q) => {
-                        let a = attack(q);
-                        red_atrium.set(ExternalPipePressure::ubiquous(0.));
-                        blue_atrium.set(ExternalPipePressure::ubiquous(0.));
-                        red_ventricle.set(ExternalPipePressure::ubiquous(-16_000. * a));
-                        blue_ventricle.set(ExternalPipePressure::ubiquous(-3_300. * a));
-                    }
-                }
-            });
-
-        // Update heart statistics
-        world
-            .query::<(&Time, &HeartBeatState, &mut HeartStats)>()
-            .singleton_at(0)
-            .build()
-            .each(|(t, state, stats)| {
-                let beat = state.cycle.beat();
-                stats.beat = beat;
-                stats.heart_rate.step(t.sim_dt_f64(), beat);
-                stats.monitor.step(beat);
-                stats.stage = state.cycle.stage().0;
-                stats.stage_progress = state.cycle.stage().1;
-            });
+    fn step(&mut self, world: &mut World) {
+        HeartRateBpm::step(world);
+        world.run(heart_beat);
+        world.run(heart_pressure);
+        world.run(heart_stats_update);
     }
+}
+
+// Check if the heart beats
+fn heart_beat(q: Query<(&HeartRateBpm, &mut HeartBeatState)>, time: Singleton<&Time>) {
+    q.each(|(rate, state)| {
+        state.cycle.set_target_bpm(**rate);
+        state.cycle.step(time.sim_dt_f64());
+    });
+}
+
+// Apply pressure to chambers
+fn heart_pressure(
+    q: Query<(&HeartChambers, &HeartBeatState)>,
+    _time: Singleton<&Time>,
+    mut cmd: Commands,
+) {
+    q.each(|(chambers, state)| {
+        let [red_atrium_pressure, blue_atrium_pressure, red_ventricle_pressure, blue_ventricle_pressure] = match state.cycle.stage() {
+            (CardiacCycleStage::DiastolePhase1, _) => [
+                ExternalPipePressure::ubiquous(0.),
+                ExternalPipePressure::ubiquous(0.),
+                ExternalPipePressure::ubiquous(0.),
+                ExternalPipePressure::ubiquous(0.)
+            ],
+            (CardiacCycleStage::ArterialSystole, q) => {
+                let a = attack(q);
+                [
+                    ExternalPipePressure::ubiquous(-1_000. * a),
+                    ExternalPipePressure::ubiquous(-1_000. * a),
+                    ExternalPipePressure::ubiquous(0.),
+                    ExternalPipePressure::ubiquous(0.)
+                ]
+            }
+            (CardiacCycleStage::Systole, q) => {
+                let a = attack(q);
+                [
+                    ExternalPipePressure::ubiquous(0.),
+                    ExternalPipePressure::ubiquous(0.),
+                    ExternalPipePressure::ubiquous(-16_000. * a),
+                    ExternalPipePressure::ubiquous(-3_300. * a)
+                ]
+            }
+        };
+
+        cmd.entity(chambers.red_atrium)
+            .set(red_atrium_pressure);
+        cmd.entity(chambers.blue_atrium)
+            .set(blue_atrium_pressure);
+        cmd.entity(chambers.red_ventricle)
+            .set(red_ventricle_pressure);
+        cmd.entity(chambers.blue_ventricle)
+            .set(blue_ventricle_pressure);
+    });
 }
 
 fn attack(q: f64) -> f64 {
     use core::f64::consts::PI;
     (q * PI).sin().sqrt()
+}
+
+// Update heart statistics
+fn heart_stats_update(q: Query<(&HeartBeatState, &mut HeartStats)>, time: Singleton<&Time>) {
+    q.each(|(state, stats)| {
+        let beat = state.cycle.beat();
+        stats.beat = beat;
+        stats.heart_rate.step(time.sim_dt_f64(), beat);
+        stats.monitor.step(beat);
+        stats.stage = state.cycle.stage().0;
+        stats.stage_progress = state.cycle.stage().1;
+    });
 }

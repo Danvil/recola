@@ -1,12 +1,11 @@
-use flecs_ecs::prelude::*;
-use mocca::Mocca;
+use crate::ecs::prelude::*;
 use std::time::{Duration, Instant};
 
 /// Measures time
 #[derive(Default)]
 pub struct TimeMocca;
 
-#[derive(Component, Clone)]
+#[derive(Singleton, Clone)]
 pub struct Time {
     /// Current system time
     pub walltime: Instant,
@@ -32,12 +31,12 @@ impl Time {
 }
 
 impl Mocca for TimeMocca {
-    fn register_components(world: &World) {
-        world.component::<Time>();
+    fn register_components(world: &mut World) {
+        world.register_component::<Time>();
     }
 
-    fn start(world: &World) -> Self {
-        world.set(Time {
+    fn start(world: &mut World) -> Self {
+        world.set_singleton(Time {
             walltime: Instant::now(),
             frame_count: 0,
             sim_time: Duration::default(),
@@ -47,12 +46,11 @@ impl Mocca for TimeMocca {
         Self
     }
 
-    fn step(&mut self, world: &World) {
+    fn step(&mut self, world: &mut World) {
         // Progress time
-        world.get::<&mut Time>(|time| {
-            time.walltime = Instant::now();
-            time.frame_count += 1;
-            time.sim_time += time.sim_dt;
-        });
+        let time = world.singleton_mut::<Time>();
+        time.walltime = Instant::now();
+        time.frame_count += 1;
+        time.sim_time += time.sim_dt;
     }
 }

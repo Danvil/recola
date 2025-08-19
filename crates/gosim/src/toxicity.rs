@@ -1,4 +1,4 @@
-use flecs_ecs::prelude::*;
+use crate::ecs::prelude::*;
 
 #[derive(Component, Debug, Clone)]
 pub struct BodyTox {

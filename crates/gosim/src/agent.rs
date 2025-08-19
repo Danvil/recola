@@ -1,12 +1,10 @@
 use crate::{
-    create_blood_vessels, create_heart, create_lungs, utils::EntityBuilder, BloodMocca, BodyPart,
-    BodyPartMocca, HeartJunctions, HeartMocca, LungsJunctions, LungsMocca, PipeConnectionHelper,
-    TissueBuilder,
+    create_blood_vessels, create_heart, create_lungs, ecs::prelude::*, utils::EntityBuilder,
+    BloodMocca, BodyPart, BodyPartMocca, HeartJunctions, HeartMocca, LungsJunctions, LungsMocca,
+    PipeConnectionHelper, TissueBuilder,
 };
-use flecs_ecs::prelude::*;
 use flowsim::PortTag;
 use gems::volume_from_liters;
-use mocca::{Mocca, MoccaDeps};
 
 #[derive(Component)]
 pub struct AgentMocca;
@@ -17,70 +15,79 @@ pub struct PlayerTag;
 
 impl Mocca for AgentMocca {
     fn load(mut dep: MoccaDeps) {
-        dep.dep::<BodyPartMocca>();
-        dep.dep::<BloodMocca>();
-        dep.dep::<HeartMocca>();
-        dep.dep::<LungsMocca>();
+        dep.depends_on::<BodyPartMocca>();
+        dep.depends_on::<BloodMocca>();
+        dep.depends_on::<HeartMocca>();
+        dep.depends_on::<LungsMocca>();
     }
 
-    fn register_components(world: &World) {
-        world.component::<PlayerTag>();
+    fn register_components(world: &mut World) {
+        world.register_component::<PlayerTag>();
     }
 
-    fn start(_world: &World) -> Self {
+    fn start(_world: &mut World) -> Self {
         Self
     }
 }
 
-pub fn create_human(human: EntityView) -> EntityView {
-    let world = human.world();
-
+pub fn create_human(mut human: EntityWorldMut) -> EntityWorldMut {
     let mut con = PipeConnectionHelper::default();
 
-    let part_f = |name| world.entity_named(name).child_of(human);
+    fn part_f<'a>(world: &'a mut World, name: &'static str) -> EntityWorldMut<'a> {
+        // TODO make .child_of(human);
+        world.spawn_empty().with_name(name)
+    }
 
-    let heart = part_f("heart");
+    let heart = part_f(human.world_mut(), "heart").and_set(BodyPart::Heart);
     let HeartJunctions {
         red_in,
         red_out,
         blue_in,
         blue_out,
-    } = create_heart(&world, heart, &mut con);
-    heart.set(BodyPart::Heart);
+    } = create_heart(heart, &mut con);
 
     // lungs
     {
-        let lungs = part_f("lungs");
+        let lungs = part_f(human.world_mut(), "lungs").and_set(BodyPart::Lungs);
         let LungsJunctions {
             pulmonary_in,
             pulmonary_out,
             bronchial_in,
             bronchial_out,
-        } = create_lungs(&world, lungs, &mut con);
-        lungs.set(BodyPart::Lungs);
-        con.join_junctions(&world, blue_out, pulmonary_in);
-        con.join_junctions(&world, red_in, pulmonary_out);
-        con.join_junctions(&world, red_out, bronchial_in);
-        con.join_junctions(&world, blue_in, bronchial_out);
+        } = create_lungs(lungs, &mut con);
+        con.join_junctions(human.world_mut(), blue_out, pulmonary_in);
+        con.join_junctions(human.world_mut(), red_in, pulmonary_out);
+        con.join_junctions(human.world_mut(), red_out, bronchial_in);
+        con.join_junctions(human.world_mut(), blue_in, bronchial_out);
     }
 
     // torso
     {
-        let torso_artery =
-            create_blood_vessels(&world, part_f("torso artery"), volume_from_liters(0.100));
+        let torso_artery = create_blood_vessels(
+            part_f(human.world_mut(), "torso artery"),
+            volume_from_liters(0.100),
+        )
+        .id();
 
-        let torso = create_blood_vessels(&world, part_f("torso"), volume_from_liters(0.500));
-        TissueBuilder {
+        let torso = create_blood_vessels(
+            part_f(human.world_mut(), "torso"),
+            volume_from_liters(0.500),
+        );
+        let torso = TissueBuilder {
             volume: volume_from_liters(10.),
         }
-        .build(&world, torso)
-        .set(BodyPart::Torso);
+        .build(torso)
+        .and_set(BodyPart::Torso)
+        .id();
 
-        let torso_vein =
-            create_blood_vessels(&world, part_f("torso vein"), volume_from_liters(0.400));
+        let torso_vein = create_blood_vessels(
+            part_f(human.world_mut(), "torso vein"),
+            volume_from_liters(0.400),
+        )
+        .id();
 
         con.connect_to_junction((torso_artery, PortTag::A), red_out);
-        con.connect_chain(&[torso_artery, torso, torso_vein]);
+        con.connect_chain(human.world_mut(), &[torso_artery, torso, torso_vein]);
         con.connect_to_junction((torso_vein, PortTag::B), blue_in);
     }
 

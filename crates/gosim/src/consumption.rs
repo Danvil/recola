@@ -1,5 +1,4 @@
-use crate::{op_mark_completed, OpStatePending};
-use flecs_ecs::prelude::*;
+use crate::{ecs::prelude::*, op_mark_completed, OpStatePending};
 
 #[derive(Component)]
 pub struct ConsumptionModule;
