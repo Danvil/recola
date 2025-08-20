@@ -262,8 +262,11 @@ name = "flowsim"
 version = "0.1.0"
 dependencies = [
  "approx",
+ "excess",
+ "excess_macros",
  "gems",
  "nalgebra",
+ "simplecs",
  "slab",
 ]
 

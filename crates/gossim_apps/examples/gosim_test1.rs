@@ -1,4 +1,4 @@
-use flowsim::PortTag;
+use flowsim::{PipeDef, PipeVessel, PortTag};
 use gems::{pressure_to_mm_hg, volume_to_milli_liters, VolumeModel};
 use gosim::*;
 use simplecs::prelude::*;
@@ -128,8 +128,8 @@ fn print_report(world: &mut World) {
         .query::<(
             Option<&BodyPart>,
             &BloodStats,
-            &FlowNetPipeDef,
-            &FlowNetPipeVessel,
+            &PipeDef,
+            &PipeVessel,
             &PipeFlowState,
             Option<&Name>,
         )>()
@@ -142,8 +142,8 @@ fn print_report(world: &mut World) {
                 pressure_to_mm_hg(state.pressure(PortTag::B)),
                 volume_to_milli_liters(state.flow(PortTag::A)),
                 volume_to_milli_liters(state.flow(PortTag::B)),
-                volume_to_milli_liters(vessel.0.volume()),
-                volume_to_milli_liters(def.0.shape.nominal_volume()),
+                volume_to_milli_liters(vessel.volume()),
+                volume_to_milli_liters(def.shape.nominal_volume()),
                 100. * blood.so2,
                 blood.po2
             );

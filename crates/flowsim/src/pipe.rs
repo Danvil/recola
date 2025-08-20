@@ -3,12 +3,11 @@ use crate::{
     FluidDensityViscosity, PortMap, PortTag,
 };
 use gems::Cylinder;
+use simplecs::prelude::*;
 use std::ops::{Add, Mul, Sub};
 
-#[derive(Clone, Debug)]
+#[derive(Component, Clone, Debug)]
 pub struct PipeDef {
-    pub name: String,
-
     pub shape: Bundle<Cylinder>,
 
     /// Fluid stored in the pipe
@@ -41,13 +40,22 @@ impl PipeDef {
     }
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Component, Clone, Debug, Default)]
 pub struct PipeState {
     /// Volume stored in the pipe
     pub volume: f64,
 
     /// Flow velocity at ports (positive flows inwards)
     pub velocity: PortMap<f64>,
+}
+
+#[derive(Component, Clone, Debug, Default)]
+pub struct PipeStateDerivative {
+    /// Change of volume stored in the pipe (total out/inflow over both ports)
+    pub flow: f64,
+
+    /// Total liquid acceleration on ports
+    pub accel: PortMap<f64>,
 }
 
 impl PipeState {
@@ -101,7 +109,7 @@ impl Mul<f64> for PipeState {
     }
 }
 
-#[derive(Default, Clone, Debug)]
+#[derive(Component, Default, Clone, Debug)]
 pub struct PipeScratch {
     /// Number of strands in the bundle. All properties not prefixed with strand_ are are wrt to
     /// the whole bundel.
@@ -140,15 +148,12 @@ pub struct PipeScratch {
     /// Sum of drag forcesopposing liquid movement.
     pub drag_forces: [f64; 2],
 
-    /// Total liquid acceleration on ports (external and drag)
-    pub total_accel: [f64; 2],
-
     /// Junction pressure at ports
     pub junction_pressure: [Option<f64>; 2],
 }
 
 /// Solution variables for one pipe
-#[derive(Clone, Debug, Default)]
+#[derive(Component, Clone, Debug, Default)]
 pub struct PipeSolution {
     /// Flow speed at each port
     pub velocity: PortMap<f64>,
@@ -156,3 +161,22 @@ pub struct PipeSolution {
     /// Volume of fluid which flowed through each port during the timestep
     pub delta_volume: PortMap<f64>,
 }
+#[derive(Component, Default)]
+pub struct SolutionDeltaVolume {
+    pub delta_volume: PortMap<f64>,
+}
+
+#[derive(Component, Default, Clone, Debug)]
+pub struct JunctionScratch {
+    pub(crate) pressure: Option<f64>,
+    pub(crate) supply_count: usize,
+    pub(crate) demand_count: usize,
+    pub(crate) supply: f64,
+    pub(crate) demand: f64,
+    pub(crate) supply_fullfillment: f64,
+    pub(crate) demand_fullfillment: f64,
+}
+
+/// Indicates that a pipe is connected to a junction and provides the pipe port.
+#[derive(Component)]
+pub struct PipeJunctionPort(pub PortTag);

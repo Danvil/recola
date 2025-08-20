@@ -1,9 +1,10 @@
 use crate::{FluidChunk, Mix, PortTag};
+use simplecs::prelude::*;
 use std::collections::VecDeque;
 
 /// A fluid vessel which with two ends which stores chunks as a directed list. Fluid can flow in
 /// and out on both sides and order is preserved.
-#[derive(Clone, Debug)]
+#[derive(Component, Clone, Debug)]
 pub struct PipeVessel {
     /// Fluid chunks currently contained by the vessels
     chunks: VecDeque<FluidChunk>,

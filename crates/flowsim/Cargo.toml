@@ -5,6 +5,9 @@ edition = "2024"
 
 [dependencies]
 approx = { workspace = true }
+excess = { workspace = true }
+excess_macros = { workspace = true }
 gems = { workspace = true }
 nalgebra = { workspace = true }
+simplecs = { workspace = true }
 slab = { workspace = true }

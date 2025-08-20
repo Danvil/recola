@@ -1,7 +1,8 @@
 use crate::{FluidChunk, FluidComposition, Mix};
+use simplecs::prelude::*;
 
 /// A vessel stores a single chunk of fluid. Inflow mixes perfectly.
-#[derive(Clone, Debug)]
+#[derive(Component, Clone, Debug)]
 pub struct ReservoirVessel {
     chunk: Option<FluidChunk>,
 }

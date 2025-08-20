@@ -1,28 +1,17 @@
 use crate::{ecs::prelude::*, EntityBuilder, Time, TimeMocca};
 use flowsim::{
     models::{Bundle, ElasticTube, HoopTubePressureModel, PressureModel},
-    FlowNet, FlowNetSolver, FluidChunk, FluidComposition, FluidDensityViscosity, JuncId, PipeDef,
-    PipeId, PipeSolution, PipeState, PipeVessel, PortMap, PortTag, ReservoirVessel,
+    FlowNetSolver, FluidChunk, FluidComposition, FluidDensityViscosity, PipeDef, PipeJunctionPort,
+    PipeScratch, PipeState, PipeStateDerivative, PipeVessel, PortMap, PortTag, ReservoirVessel,
+    SolutionDeltaVolume,
 };
-use gems::{volume_from_milli_liters, Ema, IntMap, RateEma, VolumeModel};
+use gems::{volume_from_milli_liters, Ema, RateEma, VolumeModel};
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
 };
 
 pub struct FlowSimMocca;
-
-#[derive(Component, Clone, Debug)]
-pub struct FlowNetPipeDef(pub flowsim::PipeDef);
-
-#[derive(Component, Clone, Debug)]
-pub struct FlowNetPipeState(pub flowsim::PipeState);
-
-#[derive(Component, Clone, Debug)]
-pub struct FlowNetPipeVessel(pub flowsim::PipeVessel);
-
-#[derive(Component, Clone, Debug)]
-pub struct FlowNetReservoirVessel(pub flowsim::ReservoirVessel);
 
 /// Statistics for pipe
 #[derive(Component, Clone, Default)]
@@ -230,10 +219,6 @@ pub struct JunctionState {
     pub dummy: u32,
 }
 
-/// Indicates that a pipe is connected to a junction and provides the pipe port.
-#[derive(Component)]
-pub struct PortJunction(pub PortTag);
-
 /// Automatically creates junctions when connecting pipes
 pub struct PipeConnectionHelper {
     pipe_to_junc: HashMap<(Entity, PortTag), Entity>,
@@ -298,7 +283,7 @@ impl PipeConnectionHelper {
     }
 
     fn connect_f<'b>(world: &mut World, e: Entity, p: PortTag, j: Entity) {
-        world.entity(e).add((PortJunction(p), j))
+        world.entity(e).add((PipeJunctionPort(p), j))
     }
 
     /// Connects two ports of a pipe at a junction, building and merging junctions as necessary.
@@ -451,7 +436,6 @@ impl EntityBuilder for PipeBuilder {
             };
 
         let pipe = PipeDef {
-            name: entity.name().to_string(),
             shape,
             fluid: FluidDensityViscosity::blood(),
             external_port_pressure: PortMap::from_array([0., 0.]),
@@ -463,19 +447,19 @@ impl EntityBuilder for PipeBuilder {
         };
 
         entity
-            .and_set(FlowNetPipeDef(pipe))
-            .and_set(FlowNetPipeState(PipeState {
+            .and_set(pipe)
+            .and_set(PipeState {
                 volume,
                 velocity: PortMap::default(),
-            }))
-            .and_set(FlowNetPipeVessel(
+            })
+            .and_set(
                 PipeVessel::new()
                     .filled(
                         PortTag::A,
                         FluidChunk::from_fluid_with_volume(self.fluid.clone(), volume),
                     )
                     .with_min_chunk_volume(volume_from_milli_liters(50.)),
-            ))
+            )
             .and_set(PipeFlowState::default())
             .and_set(PipeFlowStats::default())
     }
@@ -488,7 +472,7 @@ impl EntityBuilder for JunctionBuilder {
     fn build<'a>(&self, entity: EntityWorldMut<'a>) -> EntityWorldMut<'a> {
         entity
             .and_add(Junction)
-            .and_set(FlowNetReservoirVessel(ReservoirVessel::default()))
+            .and_set(ReservoirVessel::default())
             .and_set(JunctionState::default())
     }
 }
@@ -538,11 +522,10 @@ impl Mocca for FlowSimMocca {
     fn register_components(world: &mut World) {
         world.register_component::<FlowSimConfig>();
 
-        world.register_component::<FlowNetPipeDef>();
-        world.register_component::<FlowNetPipeState>();
-        world.register_component::<FlowNetPipeVessel>();
-        world.register_component::<FlowNetReservoirVessel>();
-        // world.register_component::<PipeFlowState>();
+        world.register_component::<PipeDef>();
+        world.register_component::<PipeState>();
+        world.register_component::<PipeVessel>();
+        world.register_component::<ReservoirVessel>();
         world.register_component::<PipeFlowState>();
         world.register_component::<PipeFlowStats>();
         world.register_component::<ExternalPipePressure>();
@@ -552,7 +535,7 @@ impl Mocca for FlowSimMocca {
 
         world.register_component::<Junction>();
         world.register_component::<JunctionState>();
-        world.register_component::<PortJunction>();
+        world.register_component::<PipeJunctionPort>();
 
         world.register_component::<PumpDef>();
         world.register_component::<PumpPowerFactor>();
@@ -569,119 +552,78 @@ impl Mocca for FlowSimMocca {
     fn step(&mut self, world: &mut World) {
         // Apply external pressure  on pipes
         world
-            .query::<(&ExternalPipePressure, &mut FlowNetPipeDef)>()
+            .query::<(&ExternalPipePressure, &mut PipeDef)>()
             .each(|(ext, state)| {
-                state.0.external_port_pressure = ext.0;
+                state.external_port_pressure = ext.0;
             });
-
-        // Extract flow net topology and pipe state
-
-        let mut net = FlowNet::new();
-        let mut net_pipe_state = IntMap::new();
-        let mut pipe_entity_id_map = HashMap::new();
-        let mut junc_entity_id_map = HashMap::new();
-
-        world
-            .query::<(&FlowNetPipeDef, &FlowNetPipeState)>()
-            .each_entity(|epipe, (def, state)| {
-                let id = net.insert_pipe(def.0.clone());
-                pipe_entity_id_map.insert(epipe, id);
-                net_pipe_state.set(*id, state.0.clone());
-            });
-
-        // println!("net: {:?}", net);
-        // println!("pipe_entity_id_map: {:?}", pipe_entity_id_map);
-
-        world
-            .query_filtered::<(
-                (&PortJunction, (This, E1)),
-            ), (With<(FlowNetPipeDef, This)>, With<(JunctionState, E1)>)>(
-            ).each_entity(|(epipe, ejunc), (pj,)| {
-                let side = pj.0;
-                let pipe_id = pipe_entity_id_map.get(&epipe).unwrap();
-
-                match junc_entity_id_map.get(&ejunc) {
-                    Some(junc_id) => {
-                        net.topology.connect_to_junction((*pipe_id, side), *junc_id);
-                    }
-                    None => {
-                        let junc_id = net.topology.connect_to_new_junction((*pipe_id, side));
-                        junc_entity_id_map.insert(ejunc, junc_id);
-                    }
-                }
-            });
-
-        // println!("{:?}", net.topology);
-        // get current sim timestep
-        let dt = world.singleton::<Time>().sim_dt_f64();
 
         // solve flow net
-        let (ode, solution, next) = FlowNetSolver::new().step(&mut net, net_pipe_state, dt);
+        let dt = world.singleton::<Time>().sim_dt_f64();
+        FlowNetSolver::new().step(world, dt);
 
         if world.singleton::<FlowSimConfig>().debug_print_ode_solution {
-            ode.print_overview(&next);
-            // println!("solution: {:?}", solution);
+            world.run(flowsim::print_junction_overview);
+            world.run(flowsim::print_pipe_overview);
         }
 
         // Phase 1: liquid flows from pipes vessels into the transionary junction vessels
         world
             .query_filtered::<(
-                &mut FlowNetPipeVessel,
-                (&PortJunction, (This, E1)),
-                (&mut FlowNetReservoirVessel, E1),
+                &SolutionDeltaVolume,
+                &mut PipeVessel,
+                (&PipeJunctionPort, (This, E1)),
+                (&mut ReservoirVessel, E1),
             ), (With<(Junction, E1)>,)>()
-            .each_entity(|(epipe, _ejunc), (pipe_vessel, pj, junc_vessel)| {
-                let port = pj.0;
-                let pipe_id = pipe_entity_id_map.get(&epipe).unwrap();
-                let delta_volume = solution[**pipe_id].delta_volume[port];
-                if delta_volume < 0. {
-                    for chunk in pipe_vessel.0.drain(port, -delta_volume) {
-                        junc_vessel.0.fill(chunk);
+            .each(
+                |(delta, pipe_vessel, &PipeJunctionPort(port), junc_vessel)| {
+                    let delta_volume = delta.delta_volume[port];
+                    if delta_volume < 0. {
+                        for chunk in pipe_vessel.drain(port, -delta_volume) {
+                            junc_vessel.fill(chunk);
+                        }
                     }
-                }
-            });
+                },
+            );
 
         // Phase 2: liquid flow from junction vessels into pipes
         world
             .query_filtered::<(
-                &mut FlowNetPipeVessel,
-                (&PortJunction, (This, E1)),
-                (&mut FlowNetReservoirVessel, E1),
+                &SolutionDeltaVolume,
+                &mut PipeVessel,
+                (&PipeJunctionPort, (This, E1)),
+                (&mut ReservoirVessel, E1),
             ), (With<(Junction, E1)>,)>()
-            .each_entity(|(epipe, _ejunc), (pipe_vessel, pj, junc_vessel)| {
-                let port = pj.0;
-                let pipe_id = pipe_entity_id_map.get(&epipe).unwrap();
-                let delta_volume = solution[**pipe_id].delta_volume[port];
-                if delta_volume > 0. {
-                    if let Some(chunk) = junc_vessel.0.drain(delta_volume) {
-                        pipe_vessel.0.fill(port, chunk);
+            .each(
+                |(delta, pipe_vessel, &PipeJunctionPort(port), junc_vessel)| {
+                    let delta_volume = delta.delta_volume[port];
+                    if delta_volume > 0. {
+                        if let Some(chunk) = junc_vessel.drain(delta_volume) {
+                            pipe_vessel.fill(port, chunk);
+                        }
                     }
-                }
-            });
+                },
+            );
 
         // write back state
         world
             .query::<(
-                &FlowNetPipeDef,
-                &mut FlowNetPipeState,
+                &PipeDef,
+                &PipeScratch,
+                &PipeStateDerivative,
+                &SolutionDeltaVolume,
                 &mut PipeFlowState,
                 &mut PipeFlowStats,
             )>()
-            .each_entity(|epipe, (_def, fls, state, stats)| {
-                let pipe_id = **pipe_entity_id_map.get(&epipe).unwrap();
-                let scr = &ode.pipe_scratch()[pipe_id];
-
-                fls.0 = next[pipe_id].clone();
-
+            .each(|(_def, scr, derivative, delta, state, stats)| {
                 state.junction_pressure = PortMap::from_array(scr.junction_pressure);
 
                 for i in [0, 1] {
                     // P = F/A = a / (A/m)
-                    let pressure = scr.total_accel[i] / scr.area_per_mass;
+                    let pressure = derivative.accel[i] / scr.area_per_mass;
                     state.pressure[i] = pressure;
                     stats.pressure_ema[i].step(dt, pressure);
 
-                    let delta_volume = solution[pipe_id].delta_volume[i];
+                    let delta_volume = delta.delta_volume[i];
                     let flow = delta_volume / dt;
                     state.flow[i] = flow;
                     stats.flow_ema[i].step(dt, delta_volume);
@@ -690,12 +632,7 @@ impl Mocca for FlowSimMocca {
 
         // Operate valves based on pressure differential
         world
-            .query::<(
-                &ValveDef,
-                &mut ValveState,
-                &mut FlowNetPipeDef,
-                &mut PipeFlowState,
-            )>()
+            .query::<(&ValveDef, &mut ValveState, &mut PipeDef, &mut PipeFlowState)>()
             .each(|(valve_def, valve_state, pipe_def, pipe_state)| {
                 let port_flow_kind = valve_def.kind.port_kind();
 
@@ -724,7 +661,7 @@ impl Mocca for FlowSimMocca {
                     };
 
                     valve_state.is_open[i] = is_open;
-                    pipe_def.0.port_area_factor[i] = if is_open { 1. } else { 0. };
+                    pipe_def.port_area_factor[i] = if is_open { 1. } else { 0. };
                     // println!("VALVE: {}", is_open);
                 }
             });
@@ -774,10 +711,10 @@ fn write_flow_net_pipes_csv(world: &mut World, file_path: &Path) -> std::io::Res
     )?;
 
     world
-        .query::<(&FlowNetPipeDef, &PipeFlowState, &FlowNetPipeVessel, Option<&Name>)>()
+        .query::<(&PipeDef, &PipeFlowState, &PipeVessel, Option<&Name>)>()
         .each_entity(|entity, (def, state, vessel, name)| {
-            let volume = vessel.0.volume();
-            let length = def.0.shape.model.length;
+            let volume = vessel.volume();
+            let length = def.shape.model.length;
             let pressure_a = state.pressure[PortTag::A];
             let pressure_b = state.pressure[PortTag::B];
             let junction_a = state.junction_pressure[PortTag::A]
@@ -788,13 +725,13 @@ fn write_flow_net_pipes_csv(world: &mut World, file_path: &Path) -> std::io::Res
                 .unwrap_or_else(|| String::new());
             let flow_a = state.flow[PortTag::A];
             let flow_b = state.flow[PortTag::B];
-            let open_a = def.0.port_area_factor[PortTag::A];
-            let open_b = def.0.port_area_factor[PortTag::B];
+            let open_a = def.port_area_factor[PortTag::A];
+            let open_b = def.port_area_factor[PortTag::B];
 
             writeln!(
                 writer,
                 "{},{:?},{volume},{length},{pressure_a},{pressure_b},{junction_a},{junction_b},{flow_a},{flow_b},{open_a},{open_b}",
-                entity, name
+                entity, name.unwrap_or_str("N/A")
             )
             .unwrap();
         });
@@ -841,10 +778,10 @@ fn write_flow_net_topology_dot(world: &mut World, file_path: &Path) -> std::io::
     let mut seen_edges: HashSet<(Entity, Entity)> = HashSet::new();
 
     world.query_filtered::<(Option<&Name>,), (
-        With<(FlowNetPipeVessel, This)>,
-        With<(PortJunction, This, E1)>,
+        With<(PipeVessel, This)>,
+        With<(PipeJunctionPort, This, E1)>,
         With<(Junction, E1)>,
-        With<(FlowNetReservoirVessel, E1)>,
+        With<(ReservoirVessel, E1)>,
     )>().each_entity(|(pipe, junc),(pipe_name,)| {
             let pipe_gv_id = gv_id(pipe);
             let pipe_gv_label = gv_label(pipe, pipe_name);

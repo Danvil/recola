@@ -1,4 +1,3 @@
-mod flow_net;
 mod flow_net_solver;
 mod fluid;
 mod fluid_chunk;
@@ -6,11 +5,11 @@ mod ode;
 mod pipe;
 mod pipe_vessel;
 mod port;
+mod print;
 mod reservoire_vessel;
 
 pub mod models;
 
-pub use flow_net::*;
 pub use flow_net_solver::*;
 pub use fluid::*;
 pub use fluid_chunk::*;
@@ -18,6 +17,7 @@ pub use ode::*;
 pub use pipe::*;
 pub use pipe_vessel::*;
 pub use port::*;
+pub use print::*;
 pub use reservoire_vessel::*;
 
 pub trait Mix: Sized {

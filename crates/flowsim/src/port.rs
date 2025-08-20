@@ -1,5 +1,4 @@
-use crate::PipeId;
-use std::ops::{Add, Index, IndexMut, Mul, Sub};
+use std::ops::{Add, AddAssign, Index, IndexMut, Mul, Sub, SubAssign};
 
 /// A pipe has two ports
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
@@ -29,11 +28,6 @@ impl PortTag {
             PortTag::B => "B",
         }
     }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Port {
-    PipeOutlet { pipe_id: PipeId, side: PortTag },
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -112,5 +106,51 @@ impl<T: Copy + Mul<f64, Output = T>> Mul<f64> for &PortMap<T> {
     type Output = PortMap<T>;
     fn mul(self, rhs: f64) -> Self::Output {
         PortMap([self[0] * rhs, self[1] * rhs])
+    }
+}
+
+impl<T> AddAssign for PortMap<T>
+where
+    T: AddAssign<T>,
+{
+    #[inline]
+    fn add_assign(&mut self, rhs: Self) {
+        let [r0, r1] = rhs.0;
+        self.0[0] += r0;
+        self.0[1] += r1;
+    }
+}
+
+impl<T> SubAssign for PortMap<T>
+where
+    T: SubAssign<T>,
+{
+    #[inline]
+    fn sub_assign(&mut self, rhs: Self) {
+        let [r0, r1] = rhs.0;
+        self.0[0] -= r0;
+        self.0[1] -= r1;
+    }
+}
+
+impl<T> AddAssign<T> for PortMap<T>
+where
+    T: Copy + AddAssign<T>,
+{
+    #[inline]
+    fn add_assign(&mut self, rhs: T) {
+        self.0[0] += rhs;
+        self.0[1] += rhs;
+    }
+}
+
+impl<T> SubAssign<T> for PortMap<T>
+where
+    T: Copy + SubAssign<T>,
+{
+    #[inline]
+    fn sub_assign(&mut self, rhs: T) {
+        self.0[0] -= rhs;
+        self.0[1] -= rhs;
     }
 }
