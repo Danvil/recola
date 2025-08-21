@@ -711,8 +711,8 @@ fn write_flow_net_pipes_csv(world: &mut World, file_path: &Path) -> std::io::Res
     )?;
 
     world
-        .query::<(&PipeDef, &PipeFlowState, &PipeVessel, Option<&Name>)>()
-        .each_entity(|entity, (def, state, vessel, name)| {
+        .query::<(This, &PipeDef, &PipeFlowState, &PipeVessel, Option<&Name>)>()
+        .each(|(entity, def, state, vessel, name)| {
             let volume = vessel.volume();
             let length = def.shape.model.length;
             let pressure_a = state.pressure[PortTag::A];
@@ -777,12 +777,12 @@ fn write_flow_net_topology_dot(world: &mut World, file_path: &Path) -> std::io::
     let mut seen_juncs: HashSet<Entity> = HashSet::new();
     let mut seen_edges: HashSet<(Entity, Entity)> = HashSet::new();
 
-    world.query_filtered::<(Option<&Name>,), (
+    world.query_filtered::<(This, E1, Option<&Name>), (
         With<(PipeVessel, This)>,
         With<(PipeJunctionPort, This, E1)>,
         With<(Junction, E1)>,
         With<(ReservoirVessel, E1)>,
-    )>().each_entity(|(pipe, junc),(pipe_name,)| {
+    )>().each(|(pipe, junc,pipe_name,)| {
             let pipe_gv_id = gv_id(pipe);
             let pipe_gv_label = gv_label(pipe, pipe_name);
             let junc_gv_id = gv_id(junc);

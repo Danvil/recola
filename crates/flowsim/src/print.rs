@@ -3,17 +3,17 @@ use gems::volume_to_liters;
 use simplecs::prelude::*;
 use std::error::Error;
 
-pub fn print_junction_overview(q: Query<&JunctionScratch>) {
+pub fn print_junction_overview(query: Query<(This, &JunctionScratch)>) {
     println!(">> Junctions:");
     println!("  {:<6} {:>12} ", "ID", "Pressure [Pa]");
     println!("{}", "-".repeat(6 + 12 * 4 + 6));
 
-    for (id, j) in q.iter_entity() {
+    for (id, j) in query.iter() {
         println!("  {:<6} {:?}", id, j.pressure,);
     }
 }
 
-pub fn print_pipe_overview(q: Query<(Option<&Name>, &PipeState, &PipeScratch)>) {
+pub fn print_pipe_overview(query: Query<(This, Option<&Name>, &PipeState, &PipeScratch)>) {
     // Print header
     println!(">> Pipes:");
     println!(
@@ -36,7 +36,7 @@ pub fn print_pipe_overview(q: Query<(Option<&Name>, &PipeState, &PipeScratch)>) 
     println!("{}", "-".repeat(6 + 16 + 12 * 9 + 15)); // separator
 
     // Print each pipe
-    for (id, (name, state, scr)) in q.iter_entity() {
+    for (id, name, state, scr) in query.iter() {
         println!(
                 "  {:<6} {:>16} {:>9.6} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3}",
                 id,
@@ -58,7 +58,12 @@ pub fn print_pipe_overview(q: Query<(Option<&Name>, &PipeState, &PipeScratch)>) 
 
     println!(
         "Total Volume: {} L",
-        volume_to_liters(q.iter().map(|(_, state, _)| state.volume).sum::<f64>())
+        volume_to_liters(
+            query
+                .iter()
+                .map(|(_, _, state, _)| state.volume)
+                .sum::<f64>()
+        )
     )
 }
 

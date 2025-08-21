@@ -319,8 +319,8 @@ impl Mocca for HeartMocca {
 }
 
 // Check if the heart beats
-fn heart_beat(q: Query<(&HeartRateBpm, &mut HeartBeatState)>, time: Singleton<&Time>) {
-    q.each(|(rate, state)| {
+fn heart_beat(query: Query<(&HeartRateBpm, &mut HeartBeatState)>, time: Singleton<Time>) {
+    query.each(|(rate, state)| {
         state.cycle.set_target_bpm(**rate);
         state.cycle.step(time.sim_dt_f64());
     });
@@ -328,11 +328,11 @@ fn heart_beat(q: Query<(&HeartRateBpm, &mut HeartBeatState)>, time: Singleton<&T
 
 // Apply pressure to chambers
 fn heart_pressure(
-    q: Query<(&HeartChambers, &HeartBeatState)>,
-    _time: Singleton<&Time>,
+    query: Query<(&HeartChambers, &HeartBeatState)>,
+    _time: Singleton<Time>,
     mut cmd: Commands,
 ) {
-    q.each(|(chambers, state)| {
+    query.each(|(chambers, state)| {
         let [red_atrium_pressure, blue_atrium_pressure, red_ventricle_pressure, blue_ventricle_pressure] = match state.cycle.stage() {
             (CardiacCycleStage::DiastolePhase1, _) => [
                 ExternalPipePressure::ubiquous(0.),
@@ -377,8 +377,8 @@ fn attack(q: f64) -> f64 {
 }
 
 // Update heart statistics
-fn heart_stats_update(q: Query<(&HeartBeatState, &mut HeartStats)>, time: Singleton<&Time>) {
-    q.each(|(state, stats)| {
+fn heart_stats_update(query: Query<(&HeartBeatState, &mut HeartStats)>, time: Singleton<Time>) {
+    query.each(|(state, stats)| {
         let beat = state.cycle.beat();
         stats.beat = beat;
         stats.heart_rate.step(time.sim_dt_f64(), beat);

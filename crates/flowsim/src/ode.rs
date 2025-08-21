@@ -53,23 +53,23 @@ impl<'w> ODE<na::DVector<f64>> for FlowNetOde<'w> {
     }
 }
 
-fn ode_init_junc(q: Query<(), With<(PipeJunctionPort, E1, This)>>, mut cmd: Commands) {
-    for (ejunc, _) in q.iter_entity() {
+fn ode_init_junc(q: Query<This, With<(PipeJunctionPort, E1, This)>>, mut cmd: Commands) {
+    for ejunc in q.iter() {
         cmd.entity(ejunc).set(JunctionScratch::default());
     }
 }
 
-fn ode_vectorize_assign_indices(q: Query<(&PipeDef,)>, mut cmd: Commands) {
+fn ode_vectorize_assign_indices(q: Query<This, With<PipeDef>>, mut cmd: Commands) {
     let mut len = 0;
-    q.each_entity(|e, _| {
+    q.each(|e| {
         cmd.entity(e).set(VecIndex(len));
         len += 1;
     });
     cmd.set_singleton(VecCount(len));
 }
 
-fn ode_assure_components(q: Query<(&PipeDef,)>, mut cmd: Commands) {
-    q.each_entity(|e, _| {
+fn ode_assure_components(q: Query<This, With<PipeDef>>, mut cmd: Commands) {
+    q.each(|e| {
         cmd.entity(e).set(PipeScratch::default());
         cmd.entity(e).set(PipeStateDerivative::default());
         cmd.entity(e).set(PipeSolution::default());
@@ -79,7 +79,7 @@ fn ode_assure_components(q: Query<(&PipeDef,)>, mut cmd: Commands) {
 
 fn ode_state_to_vec(
     q: Query<(&VecIndex, &PipeState)>,
-    vec_len: Singleton<&VecCount>,
+    vec_len: Singleton<VecCount>,
 ) -> na::DVector<f64> {
     let mut out = na::DVector::zeros(3 * vec_len.0);
     q.each(|(&VecIndex(i), state)| {
@@ -92,7 +92,7 @@ fn ode_state_to_vec(
 
 fn ode_derivative_to_vec(
     q: Query<(&VecIndex, &PipeStateDerivative)>,
-    vec_len: Singleton<&VecCount>,
+    vec_len: Singleton<VecCount>,
 ) -> na::DVector<f64> {
     let mut out = na::DVector::zeros(3 * vec_len.0);
     q.each(|(&VecIndex(i), derivative)| {
@@ -214,10 +214,10 @@ fn ode_pipe_preprocess(q: Query<(&PipeDef, &PipeState, &mut PipeScratch)>) {
 }
 
 fn ode_junction_equalize_pressure(
-    q_junc: Query<&mut JunctionScratch>,
+    q_junc: Query<(This, &mut JunctionScratch)>,
     mut q_junc_pipes: Query<(&mut PipeScratch, (&PipeJunctionPort, (This, E1)))>,
 ) {
-    for (ejunc, junc_scr) in q_junc.iter_entity() {
+    for (ejunc, junc_scr) in q_junc.iter() {
         // Narrow the query to only pipes which connect to this specific junction
         let q = q_junc_pipes.with_variable_assignment(E1, ejunc);
 
@@ -292,7 +292,7 @@ fn ode_derivatives(q: Query<(&PipeState, &mut PipeScratch, &mut PipeStateDerivat
 
 fn ode_solution_fullfillment(
     dt: In<f64>,
-    q_junc: Query<&mut JunctionScratch>,
+    q_junc: Query<(This, &mut JunctionScratch)>,
     mut q_junc_pipes: Query<(
         &PipeState,
         &PipeScratch,
@@ -300,7 +300,7 @@ fn ode_solution_fullfillment(
         (&PipeJunctionPort, (This, E1)),
     )>,
 ) {
-    for (ejunc, junc_scr) in q_junc.iter_entity() {
+    for (ejunc, junc_scr) in q_junc.iter() {
         // Narrow the query to only pipes which connect to this specific junction
         let q = q_junc_pipes.with_variable_assignment(E1, ejunc);
 
