@@ -553,7 +553,7 @@ impl Mocca for FlowSimMocca {
         // Apply external pressure  on pipes
         world
             .query::<(&ExternalPipePressure, &mut PipeDef)>()
-            .each(|(ext, state)| {
+            .each_mut(|(ext, state)| {
                 state.external_port_pressure = ext.0;
             });
 
@@ -571,10 +571,10 @@ impl Mocca for FlowSimMocca {
             .query_filtered::<(
                 &SolutionDeltaVolume,
                 &mut PipeVessel,
-                (&PipeJunctionPort, (This, E1)),
+                (This, &PipeJunctionPort, E1),
                 (&mut ReservoirVessel, E1),
             ), (With<(Junction, E1)>,)>()
-            .each(
+            .each_mut(
                 |(delta, pipe_vessel, &PipeJunctionPort(port), junc_vessel)| {
                     let delta_volume = delta.delta_volume[port];
                     if delta_volume < 0. {
@@ -590,10 +590,10 @@ impl Mocca for FlowSimMocca {
             .query_filtered::<(
                 &SolutionDeltaVolume,
                 &mut PipeVessel,
-                (&PipeJunctionPort, (This, E1)),
+                (This, &PipeJunctionPort, E1),
                 (&mut ReservoirVessel, E1),
             ), (With<(Junction, E1)>,)>()
-            .each(
+            .each_mut(
                 |(delta, pipe_vessel, &PipeJunctionPort(port), junc_vessel)| {
                     let delta_volume = delta.delta_volume[port];
                     if delta_volume > 0. {
@@ -614,7 +614,7 @@ impl Mocca for FlowSimMocca {
                 &mut PipeFlowState,
                 &mut PipeFlowStats,
             )>()
-            .each(|(_def, scr, derivative, delta, state, stats)| {
+            .each_mut(|(_def, scr, derivative, delta, state, stats)| {
                 state.junction_pressure = PortMap::from_array(scr.junction_pressure);
 
                 for i in [0, 1] {
@@ -633,7 +633,7 @@ impl Mocca for FlowSimMocca {
         // Operate valves based on pressure differential
         world
             .query::<(&ValveDef, &mut ValveState, &mut PipeDef, &mut PipeFlowState)>()
-            .each(|(valve_def, valve_state, pipe_def, pipe_state)| {
+            .each_mut(|(valve_def, valve_state, pipe_def, pipe_state)| {
                 let port_flow_kind = valve_def.kind.port_kind();
 
                 for i in 0..2 {
@@ -779,7 +779,7 @@ fn write_flow_net_topology_dot(world: &mut World, file_path: &Path) -> std::io::
 
     world.query_filtered::<(This, E1, Option<&Name>), (
         With<(PipeVessel, This)>,
-        With<(PipeJunctionPort, This, E1)>,
+        With<(This, PipeJunctionPort, E1)>,
         With<(Junction, E1)>,
         With<(ReservoirVessel, E1)>,
     )>().each(|(pipe, junc,pipe_name,)| {

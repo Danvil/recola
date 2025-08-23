@@ -53,7 +53,7 @@ impl<'w> ODE<na::DVector<f64>> for FlowNetOde<'w> {
     }
 }
 
-fn ode_init_junc(q: Query<This, With<(PipeJunctionPort, E1, This)>>, mut cmd: Commands) {
+fn ode_init_junc(q: Query<This, With<(E1, PipeJunctionPort, This)>>, mut cmd: Commands) {
     for ejunc in q.iter() {
         cmd.entity(ejunc).set(JunctionScratch::default());
     }
@@ -103,16 +103,16 @@ fn ode_derivative_to_vec(
     out
 }
 
-fn ode_vec_to_state(vec: In<na::DVector<f64>>, q: Query<(&VecIndex, &mut PipeState)>) {
-    q.each(|(&VecIndex(i), state)| {
+fn ode_vec_to_state(vec: In<na::DVector<f64>>, mut q: Query<(&VecIndex, &mut PipeState)>) {
+    q.each_mut(|(&VecIndex(i), state)| {
         state.volume = vec[3 * i];
         state.velocity[0] = vec[3 * i + 1];
         state.velocity[1] = vec[3 * i + 2];
     });
 }
 
-fn ode_pipe_preprocess(q: Query<(&PipeDef, &PipeState, &mut PipeScratch)>) {
-    q.each(|(pipe, state, scr)| {
+fn ode_pipe_preprocess(mut q: Query<(&PipeDef, &PipeState, &mut PipeScratch)>) {
+    q.each_mut(|(pipe, state, scr)| {
         scr.strand_count = pipe.strand_count();
         assert!(scr.strand_count > 0.);
 
@@ -214,26 +214,26 @@ fn ode_pipe_preprocess(q: Query<(&PipeDef, &PipeState, &mut PipeScratch)>) {
 }
 
 fn ode_junction_equalize_pressure(
-    q_junc: Query<(This, &mut JunctionScratch)>,
-    mut q_junc_pipes: Query<(&mut PipeScratch, (&PipeJunctionPort, (This, E1)))>,
+    mut q_junc: Query<(This, &mut JunctionScratch)>,
+    mut q_junc_pipes: Query<(&mut PipeScratch, (This, &PipeJunctionPort, E1))>,
 ) {
-    for (ejunc, junc_scr) in q_junc.iter() {
+    for (ejunc, junc_scr) in q_junc.iter_mut() {
         // Narrow the query to only pipes which connect to this specific junction
-        let q = q_junc_pipes.with_variable_assignment(E1, ejunc);
+        let mut q = q_junc_pipes.bind(E1, ejunc);
 
         // Compute equalized junction pressure
         junc_scr.pressure =
             junction_zero_flow_pressure(q.iter().map(|(pipe_scr, pj)| (&*pipe_scr, pj.0)));
 
         // Store junction pressure in pipe scratch space
-        for (pipe_scr, pj) in q.iter() {
+        for (pipe_scr, pj) in q.iter_mut() {
             pipe_scr.junction_pressure[pj.0.index()] = junc_scr.pressure;
         }
     }
 }
 
-fn ode_derivatives(q: Query<(&PipeState, &mut PipeScratch, &mut PipeStateDerivative)>) {
-    for (state, scr, derivative) in q.iter() {
+fn ode_derivatives(mut q: Query<(&PipeState, &mut PipeScratch, &mut PipeStateDerivative)>) {
+    for (state, scr, derivative) in q.iter_mut() {
         // a = F_drag/m + (a_mix - F_junc/m)
         // F_junc = P_junc * A
         // a = F_drag/m + a_mix - P_junc * (A/m)
@@ -292,20 +292,20 @@ fn ode_derivatives(q: Query<(&PipeState, &mut PipeScratch, &mut PipeStateDerivat
 
 fn ode_solution_fullfillment(
     dt: In<f64>,
-    q_junc: Query<(This, &mut JunctionScratch)>,
+    mut q_junc: Query<(This, &mut JunctionScratch)>,
     mut q_junc_pipes: Query<(
         &PipeState,
         &PipeScratch,
         &mut PipeSolution,
-        (&PipeJunctionPort, (This, E1)),
+        (This, &PipeJunctionPort, E1),
     )>,
 ) {
-    for (ejunc, junc_scr) in q_junc.iter() {
+    for (ejunc, junc_scr) in q_junc.iter_mut() {
         // Narrow the query to only pipes which connect to this specific junction
-        let q = q_junc_pipes.with_variable_assignment(E1, ejunc);
+        let mut q = q_junc_pipes.bind(E1, ejunc);
 
         // Compute total supply and demand on the junction
-        for (pipe_state, pipe_scr, pipe_sol, &PipeJunctionPort(side)) in q.iter() {
+        for (pipe_state, pipe_scr, pipe_sol, &PipeJunctionPort(side)) in q.iter_mut() {
             let delta_volume =
                 pipe_state.velocity[side] * *dt * pipe_scr.port_cross_section_area[side.index()];
             pipe_sol.delta_volume[side] = delta_volume;
@@ -342,7 +342,7 @@ fn ode_solution_fullfillment(
         // );
 
         // adjust flow to guarantee fullfillment
-        for (_, _, pipe_sol, &PipeJunctionPort(side)) in q.iter() {
+        for (_, _, pipe_sol, &PipeJunctionPort(side)) in q.iter_mut() {
             let dv = &mut pipe_sol.delta_volume[side];
 
             if *dv < 0. {
@@ -354,8 +354,8 @@ fn ode_solution_fullfillment(
     }
 }
 
-fn ode_solution_velocity(dt: In<f64>, q: Query<(&PipeScratch, &mut PipeSolution)>) {
-    for (scr, sol) in q.iter() {
+fn ode_solution_velocity(dt: In<f64>, mut q: Query<(&PipeScratch, &mut PipeSolution)>) {
+    for (scr, sol) in q.iter_mut() {
         for side in [PortTag::A, PortTag::B] {
             let area = scr.port_cross_section_area[side.index()];
 
@@ -368,9 +368,9 @@ fn ode_solution_velocity(dt: In<f64>, q: Query<(&PipeScratch, &mut PipeSolution)
     }
 }
 
-fn ode_apply_solution(q: Query<(&PipeSolution, &mut PipeState, &mut SolutionDeltaVolume)>) {
+fn ode_apply_solution(mut q: Query<(&PipeSolution, &mut PipeState, &mut SolutionDeltaVolume)>) {
     let mut total_delta_volume = 0.;
-    for (sol, state, delta) in q.iter() {
+    for (sol, state, delta) in q.iter_mut() {
         let delta_volume = sol.delta_volume[PortTag::A] + sol.delta_volume[PortTag::B];
 
         total_delta_volume += delta_volume;

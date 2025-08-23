@@ -319,8 +319,8 @@ impl Mocca for HeartMocca {
 }
 
 // Check if the heart beats
-fn heart_beat(query: Query<(&HeartRateBpm, &mut HeartBeatState)>, time: Singleton<Time>) {
-    query.each(|(rate, state)| {
+fn heart_beat(mut query: Query<(&HeartRateBpm, &mut HeartBeatState)>, time: Singleton<Time>) {
+    query.each_mut(|(rate, state)| {
         state.cycle.set_target_bpm(**rate);
         state.cycle.step(time.sim_dt_f64());
     });
@@ -377,8 +377,8 @@ fn attack(q: f64) -> f64 {
 }
 
 // Update heart statistics
-fn heart_stats_update(query: Query<(&HeartBeatState, &mut HeartStats)>, time: Singleton<Time>) {
-    query.each(|(state, stats)| {
+fn heart_stats_update(mut query: Query<(&HeartBeatState, &mut HeartStats)>, time: Singleton<Time>) {
+    query.each_mut(|(state, stats)| {
         let beat = state.cycle.beat();
         stats.beat = beat;
         stats.heart_rate.step(time.sim_dt_f64(), beat);

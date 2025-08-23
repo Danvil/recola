@@ -2,8 +2,8 @@ use crate::{
     models::{Bundle, HoopTubePressureModel},
     FluidDensityViscosity, PortMap, PortTag,
 };
+use excess::prelude::*;
 use gems::Cylinder;
-use simplecs::prelude::*;
 use std::ops::{Add, Mul, Sub};
 
 #[derive(Component, Clone, Debug)]
@@ -178,5 +178,5 @@ pub struct JunctionScratch {
 }
 
 /// Indicates that a pipe is connected to a junction and provides the pipe port.
-#[derive(Component)]
+#[derive(Relation)]
 pub struct PipeJunctionPort(pub PortTag);

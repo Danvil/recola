@@ -21,7 +21,7 @@ macro_rules! stat_component {
                 pub fn step(world: &mut World) {
                     world
                         .query::<(&[<$name Base>], &[<$name Mods>], &mut Self)>()
-                        .each(|(base, modf, eff)| {
+                        .each_mut(|(base, modf, eff)| {
                             **eff = base.value() * modf.factor();
                         });
                 }
