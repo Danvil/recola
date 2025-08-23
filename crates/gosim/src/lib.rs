@@ -42,6 +42,7 @@ pub use utils::*;
 
 pub mod ecs {
     pub mod prelude {
+        pub use excess::prelude::*;
         pub use simplecs::prelude::*;
     }
 }

@@ -1,5 +1,5 @@
 use crate::{FluidChunk, Mix, PortTag};
-use simplecs::prelude::*;
+use excess::prelude::*;
 use std::collections::VecDeque;
 
 /// A fluid vessel which with two ends which stores chunks as a directed list. Fluid can flow in

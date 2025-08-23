@@ -1,4 +1,5 @@
 use crate::{JunctionScratch, PipeScratch, PipeState, PortTag};
+use excess::prelude::*;
 use gems::volume_to_liters;
 use simplecs::prelude::*;
 use std::error::Error;

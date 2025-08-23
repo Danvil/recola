@@ -2,6 +2,7 @@ use crate::{
     models::PressureModel, JunctionScratch, PipeDef, PipeJunctionPort, PipeScratch, PipeSolution,
     PipeState, PipeStateDerivative, PortTag, SolutionDeltaVolume,
 };
+use excess::prelude::*;
 use gems::{GRAVITY_CONSTANT, ODE};
 use nalgebra as na;
 use simplecs::prelude::*;

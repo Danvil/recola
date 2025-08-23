@@ -1,5 +1,5 @@
 use crate::{FluidChunk, FluidComposition, Mix};
-use simplecs::prelude::*;
+use excess::prelude::*;
 
 /// A vessel stores a single chunk of fluid. Inflow mixes perfectly.
 #[derive(Component, Clone, Debug)]
