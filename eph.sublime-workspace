@@ -523,18 +523,15 @@
 			"file": "crates/gosim/src/heart.rs",
 			"settings":
 			{
-				"buffer_size": 11582,
+				"buffer_size": 11643,
 				"line_ending": "Windows"
-			},
-			"undo_stack":
-			[
-			]
+			}
 		},
 		{
 			"file": "crates/gosim/src/gos_sim.rs",
 			"settings":
 			{
-				"buffer_size": 339,
+				"buffer_size": 316,
 				"line_ending": "Windows"
 			}
 		},
@@ -542,31 +539,17 @@
 			"file": "crates/gosim/src/flow_sim.rs",
 			"settings":
 			{
-				"buffer_size": 32928,
+				"buffer_size": 26874,
 				"line_ending": "Windows"
-			},
-			"undo_stack":
-			[
-			]
+			}
 		},
 		{
 			"file": "crates/flowsim/src/pipe.rs",
 			"settings":
 			{
-				"buffer_size": 4116,
+				"buffer_size": 4886,
 				"line_ending": "Windows"
 			}
-		},
-		{
-			"file": "crates/mocca/src/runner.rs",
-			"settings":
-			{
-				"buffer_size": 7398,
-				"line_ending": "Windows"
-			},
-			"undo_stack":
-			[
-			]
 		}
 	],
 	"build_system": "",
@@ -992,32 +975,11 @@
 	},
 	"expanded_folders":
 	[
-		"/I/Ikabur/gos",
-		"/I/Ikabur/gos/assets",
-		"/I/Ikabur/gos/crates",
-		"/I/Ikabur/gos/crates/flowsim",
-		"/I/Ikabur/gos/crates/flowsim/src",
-		"/I/Ikabur/gos/crates/gems",
-		"/I/Ikabur/gos/crates/gems/src",
-		"/I/Ikabur/gos/crates/gos_common",
-		"/I/Ikabur/gos/crates/gos_common/src",
-		"/I/Ikabur/gos/crates/goscl",
-		"/I/Ikabur/gos/crates/goscl/src",
-		"/I/Ikabur/gos/crates/goscl/src/controller",
-		"/I/Ikabur/gos/crates/goscl/src/model",
-		"/I/Ikabur/gos/crates/goscl/src/view",
-		"/I/Ikabur/gos/crates/gosim",
-		"/I/Ikabur/gos/crates/gosim/src",
-		"/I/Ikabur/gos/crates/gosim/src/utils",
-		"/I/Ikabur/gos/crates/gosrv",
-		"/I/Ikabur/gos/crates/gosrv/src",
-		"/I/Ikabur/gos/crates/mocca",
-		"/I/Ikabur/gos/crates/mocca/src",
-		"/I/Ikabur/gos/deploy",
-		"/I/Ikabur/gos/deploy/main"
+		"/I/Ikabur/gos"
 	],
 	"file_history":
 	[
+		"/I/Ikabur/eph/crates/mocca/src/runner.rs",
 		"/I/Ikabur/gos/flecs_crash/Cargo.toml",
 		"/I/Ikabur/gos/crates/gosim/src/agent.rs",
 		"/I/Ikabur/gos/crates/gosrv/src/main.rs",
@@ -1144,8 +1106,7 @@
 		"/I/hand/fibs/crates/forge/src/model/translation_gizmo.rs",
 		"/I/hand/fibs/crates/candy/shaders/particle.wgsl",
 		"/I/hand/fibs/crates/candy/src/window_renderer_resources.rs",
-		"/I/hand/fibs/crates/candy/src/vertex.rs",
-		"/I/hand/fibs/crates/forge/src/renderer/egui_renderer.rs"
+		"/I/hand/fibs/crates/candy/src/vertex.rs"
 	],
 	"find":
 	{
@@ -1326,15 +1287,15 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 11582,
+						"buffer_size": 11643,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								8607,
-								8607
+								0,
+								0
 							]
 						],
 						"settings":
@@ -1357,7 +1318,7 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 339,
+						"buffer_size": 316,
 						"regions":
 						{
 						},
@@ -1389,15 +1350,15 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 32928,
+						"buffer_size": 26874,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								18196,
-								18201
+								0,
+								0
 							]
 						],
 						"settings":
@@ -1420,7 +1381,7 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 4116,
+						"buffer_size": 4886,
 						"regions":
 						{
 						},
@@ -1450,38 +1411,6 @@
 		{
 			"sheets":
 			[
-				{
-					"buffer": 4,
-					"file": "crates/mocca/src/runner.rs",
-					"selected": true,
-					"semi_transient": false,
-					"settings":
-					{
-						"buffer_size": 7398,
-						"regions":
-						{
-						},
-						"selection":
-						[
-							[
-								4738,
-								4738
-							]
-						],
-						"settings":
-						{
-							"syntax": "Packages/Rust Enhanced/RustEnhanced.sublime-syntax",
-							"tab_size": 4,
-							"translate_tabs_to_spaces": true
-						},
-						"translation.x": 0.0,
-						"translation.y": 3770.0,
-						"zoom_level": 1.0
-					},
-					"stack_index": 0,
-					"stack_multiselect": false,
-					"type": "text"
-				}
 			]
 		},
 		{

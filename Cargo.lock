@@ -226,6 +226,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "eph"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "env_logger",
+ "excess",
+ "eyre",
+ "flowsim",
+ "gems",
+ "gosim",
+ "log",
+ "mocca",
+ "num-traits",
+ "paste",
+ "rust_decimal",
+ "serde",
+ "simplecs",
+]
+
+[[package]]
 name = "equivalent"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -413,26 +433,6 @@ dependencies = [
  "flowsim",
  "gems",
  "log",
- "num-traits",
- "paste",
- "rust_decimal",
- "serde",
- "simplecs",
-]
-
-[[package]]
-name = "gossim_apps"
-version = "0.1.0"
-dependencies = [
- "approx",
- "env_logger",
- "excess",
- "eyre",
- "flowsim",
- "gems",
- "gosim",
- "log",
- "mocca",
  "num-traits",
  "paste",
  "rust_decimal",

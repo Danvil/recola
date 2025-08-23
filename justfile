@@ -14,6 +14,9 @@ format:
 check:
   cargo check
 
+eph:
+	cargo run --release -p eph
+
 [windows]
 deploy_goscl:
 	cargo build --release -p goscl
