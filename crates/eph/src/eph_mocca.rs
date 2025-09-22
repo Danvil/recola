@@ -1,0 +1,310 @@
+use bigtalk::{BigtalkMocca, Outbox, Router, add_route, spawn_agent};
+use candy::{AssetInstance, AssetLibrary, AssetUid, CandyMocca, GltfAssetDescriptor};
+use candy_camera::{
+    CameraCommand, CameraMatrices, CameraState, CandyCameraMocca, Projection, WindowResizedEvent,
+    fly_camera_controller::FlyCameraController,
+};
+use candy_input::{CandyInputMocca, InputEventMessage};
+use candy_log::CandyLogMocca;
+use candy_mesh::{CandyMeshMocca, Cuboid};
+use candy_scene_tree::{CandySceneTreeMocca, ChildOf, Transform3};
+use candy_sky::CandySkyMocca;
+use candy_terra::{CandyTerraMocca, HeightMap, LoadTerraAsset};
+use candy_time::{CandyTimeMocca, Tick, Time};
+use candy_utils::{
+    CameraLink, ImageLocation, ImageShape, Material, PbrMaterial, WindowDef, WindowLayout,
+};
+use excess::prelude::*;
+use eyre::Result;
+use flowsim::{PipeDef, PipeVessel, PortTag};
+use gems::{VolumeModel, pressure_to_mm_hg, volume_to_milli_liters};
+use glam::{Vec2, Vec3};
+use gosim::*;
+use magi_color::LinearColor;
+use magi_rng::{Range2F32, Rng};
+use simplecs::prelude::*;
+use std::path::PathBuf;
+
+pub struct EphMocca;
+
+impl Mocca for EphMocca {
+    fn load(mut deps: MoccaDeps) {
+        deps.depends_on_raw::<BigtalkMocca>();
+        deps.depends_on::<CandyCameraMocca>();
+        deps.depends_on::<CandyInputMocca>();
+        deps.depends_on::<CandyLogMocca>();
+        deps.depends_on::<CandyMeshMocca>();
+        deps.depends_on::<CandyMocca>();
+        deps.depends_on::<CandySceneTreeMocca>();
+        deps.depends_on::<CandySkyMocca>();
+        deps.depends_on::<CandyTerraMocca>();
+        deps.depends_on::<CandyTimeMocca>();
+        // deps.depends_on::<GosSimMocca>();
+    }
+
+    fn start(world: &mut World) -> Self {
+        world.run(load_assets);
+        world.run(setup_window_and_camera);
+        world.run(spawn_terrain);
+        world.run(spawn_cacti).unwrap();
+        // world.run(enable_flow_sim_logging);
+        Self
+    }
+
+    fn step(&mut self, world: &mut World) {
+        // print_report(world);
+    }
+
+    fn fini(&mut self, _world: &mut World) {
+        log::info!("terminated.");
+    }
+}
+
+fn enable_flow_sim_logging(mut cfg: SingletonMut<FlowSimConfig>) {
+    cfg.pipe_stats_csv_path = Some("I:/Ikabur/gos/tmp/heart/".into());
+    cfg.graph_topology_path = Some("I:/Ikabur/gos/tmp/heart/".into());
+    cfg.debug_print_ode_solution = true;
+}
+
+fn setup_window_and_camera(time: Singleton<Time>, mut cmd: Commands) {
+    let cam = spawn_agent(
+        &mut cmd,
+        CameraState::from_eye_target_up(
+            Vec3::new(30., 30., 1.70),
+            Vec3::new(35., 35., 2.00),
+            Vec3::Z,
+            Projection::Perspective {
+                fov: 45.0_f32.to_radians(),
+                near: 0.25,
+                far: 1500.,
+            },
+        ),
+    );
+    cmd.entity(cam).set(CameraMatrices::new());
+
+    let cam_ctrl = spawn_agent(&mut cmd, FlyCameraController::new());
+    add_route::<CameraCommand, _>(&mut cmd, cam_ctrl, cam);
+
+    let win = cmd
+        .spawn((
+            WindowDef {
+                title: "EARTH POWER HOUSE".to_string(),
+                layout: WindowLayout {
+                    shape: ImageShape::from_width_height(1920, 1080),
+                    position: ImageLocation::from_horizontal_vertical(200., 200.),
+                },
+            },
+            Outbox::new(),
+            Router::new(),
+            (CameraLink, cam),
+        ))
+        .id();
+
+    add_route::<WindowResizedEvent, _>(&mut cmd, win, cam);
+    add_route::<InputEventMessage, _>(&mut cmd, win, cam_ctrl);
+    add_route::<Tick, _>(&mut cmd, time.tick_agent, cam_ctrl);
+}
+
+fn spawn_terrain(mut cmd: Commands) {
+    cmd.spawn((
+        Name::from_str("terra"),
+        LoadTerraAsset {
+            path: PathBuf::from("I:/Ikabur/eph/assets/terrain/eph_world.json"),
+        },
+    ));
+
+    cmd.spawn((
+        Name::from_str("water plane"),
+        Transform3::identity()
+            .with_translation(Vec3::new(2048., 2048., -0.5))
+            .with_scale(Vec3::new(4096., 4096., 1.)),
+        Cuboid,
+        Material::Pbr(PbrMaterial {
+            base_color: LinearColor::from_rgb(0.5, 0.5, 0.55),
+            metallic: 0.,
+            roughness: 0.05,
+            reflectance: 0.35,
+            coat_strength: 0.,
+            coat_roughness: 0.,
+        }),
+    ));
+}
+
+fn load_assets(mut asli: SingletonMut<AssetLibrary>) {
+    let cactus_aid = AssetUid::new("cactus");
+    asli.load_gltf(
+        &cactus_aid,
+        GltfAssetDescriptor {
+            path: PathBuf::from("I:/Ikabur/eph/assets/models/flora/cactus.glb"),
+            scene: None,
+            node: None,
+        },
+    );
+}
+
+fn spawn_cacti(mut cmd: Commands) -> Result<()> {
+    let cacti = cmd
+        .spawn((Name::from_str("cacti"), Transform3::identity()))
+        .id();
+
+    let cactus_aid = AssetUid::new("cactus");
+
+    let height_map_path =
+        PathBuf::from("I:/Ikabur/eph/assets/terrain/eph_world/out/bay.tile_1001.exr");
+
+    let hm = HeightMap::load_file(height_map_path, [-80., 250.])?;
+    let hma = hm.array();
+
+    let mut rng = Rng::new();
+
+    let area_size = 16;
+    let area_count = 256 / area_size;
+    let roi_size = Vec2::new(0.8 * area_size as f32, 0.8 * area_size as f32);
+
+    for i in 0..area_count {
+        for j in 0..area_count {
+            let roi_corner = Vec2::new(i as f32 * area_size as f32, j as f32 * area_size as f32);
+            let roi = Range2F32::from_min_size(roi_corner, roi_size);
+            let p = rng.uniform_roi2_f32(&roi);
+
+            let pxi = p.x.round() as usize;
+            let pyi = p.y.round() as usize;
+            let pz = hma[[255 - pyi, pxi]];
+
+            cmd.spawn((
+                Transform3::from_translation_xyz(p.x, p.y, pz),
+                AssetInstance(cactus_aid.clone()),
+                (ChildOf, cacti),
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+fn print_report(world: &mut World) {
+    // world
+    //     .query::<(&CurrentBloodOxygen, &BodyTox, &CurrentBreathingOrgan)>()
+    //     .build()
+    //     .each_entity(|e, (oxy, tox, organ)| {
+    //         println!(
+    //             "{}: oxy:{:6.03?}, tox: {:6.03?}, abs:{:6.03?}, poll:{:6.03?}",
+    //             e.name(),
+    //             oxy.value,
+    //             tox.amount,
+    //             organ.oxygen_absorption,
+    //             organ.pollution_absorption
+    //         );
+    //     });
+
+    // world
+    //     .query::<()>()
+    //     .with(PlayerTag)
+    //     .build()
+    //     .each_entity(|e, ()| {
+    //         println!("{:?}", e.name());
+    //     });
+
+    // world
+    //     .query::<(&Pipe<BloodProperties>, &PipeFlowState)>()
+    //     .related("$this", flecs::ChildOf, "$player")
+    //     .tagged("$player", PlayerTag)
+    //     .build()
+    //     .each_entity(|e, (v, state)| {
+    //         println!(
+    //             "{:?}: V: {:.03?} l, flow: {:.03?} ml/s",
+    //             e.name(),
+    //             v.volume(),
+    //             state.flow()
+    //         );
+    //     });
+
+    world
+        .query::<(&HeartRateBpm, &HeartStats, Option<&Name>)>()
+        .each(|(bpm, stats, name)| {
+            println!(
+                "{:?}: {} BPM, beat: {}, stage: {:?} [{:4.1}%]",
+                name,
+                **bpm,
+                stats.beat,
+                stats.stage,
+                stats.stage_progress * 100.
+            );
+        });
+
+    world.query::<(&HeartStats,)>().each(|(stats,)| {
+        if stats.beat {
+            println!(">>>>> BUM BUM <<<<<");
+        }
+    });
+
+    // world
+    //     .query::<(&BloodStats,)>()
+    //     .with(AlveoliTag)
+    //     .build()
+    //     .each_entity(|e, (blood,)| {
+    //         println!("Alveoli {:?}: SO2: {:.1}%", e.name(), 100. * blood.so2);
+    //     });
+
+    // world
+    //     .query::<(Option<&BodyPart>, &BloodVessel)>()
+    //     .build()
+    //     .each_entity(|e, (part, vessel)| {
+    //         println!(
+    //             "Vessel {:?} [{part:?}]: frags: {}",
+    //             e.name(),
+    //             vessel.chunks().len()
+    //         );
+    //     });
+
+    println!("CARDIOVASCULAR Summary:");
+    println!("{}", "-".repeat(108));
+    println!(
+        "| {:<16} [{:>12}] | {:>15} | {:>15} | {:>11} | {:>7} | {:>10} |",
+        "Name",
+        "Body Part",
+        "Pressure [mmHg]",
+        "Flow [mL/s]",
+        "Volume [mL]",
+        "SO2 [%]",
+        "PO2 [mmHg]"
+    );
+    println!("{}", "-".repeat(108));
+    world
+        .query::<(
+            Option<&BodyPart>,
+            &BloodStats,
+            &PipeDef,
+            &PipeVessel,
+            &PipeFlowState,
+            Option<&Name>,
+        )>()
+        .each(|(part, blood, def, vessel, state, name)| {
+            println!(
+                "| {:<16} [{:>12}] | {:7.1} {:7.1} | {:7.1} {:7.1} | {:5.1} {:5.1} | {:7.1} | {:10.0} |",
+                name.map_or("", |n| n.as_str()),
+                part.map_or_else(|| String::new(), |x| format!("{x:?}")),
+                pressure_to_mm_hg(state.pressure(PortTag::A)),
+                pressure_to_mm_hg(state.pressure(PortTag::B)),
+                volume_to_milli_liters(state.flow(PortTag::A)),
+                volume_to_milli_liters(state.flow(PortTag::B)),
+                volume_to_milli_liters(vessel.volume()),
+                volume_to_milli_liters(def.shape.nominal_volume()),
+                100. * blood.so2,
+                blood.po2
+            );
+        });
+    println!("{}", "-".repeat(108));
+
+    // world
+    //     .query::<(Option<&BodyPart>, &Tissue, &TissueStats)>()
+    //     .build()
+    //     .each_entity(|e, (part, tissue, stats)| {
+    //         println!(
+    //             "Tissue {:?} [{part:?}]: SO2: {:0.0}%, O2 cont: {:0.0} mL/dL",
+    //             e.name(),
+    //             100. * stats.o2_saturation,
+    //             100. * tissue.o2_content
+    //         );
+    //     });
+}

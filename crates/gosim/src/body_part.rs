@@ -1,8 +1,9 @@
 use crate::{
-    ecs::prelude::*, stat_component, BloodMocca, BloodOxygenContent, BloodStats, EntityBuilder,
-    HemoglobinOxygenSaturationHill, PipeBuilder, TimeMocca,
+    BloodMocca, BloodOxygenContent, BloodStats, EntityBuilder, HemoglobinOxygenSaturationHill,
+    PipeBuilder, ecs::prelude::*, stat_component,
 };
-use flowsim::{models::ElasticTube, FluidComposition};
+use candy_time::CandyTimeMocca;
+use flowsim::{FluidComposition, models::ElasticTube};
 use gems::Cylinder;
 
 #[derive(Component)]
@@ -63,7 +64,7 @@ pub struct TissueStats {
 
 impl Mocca for BodyPartMocca {
     fn load(mut dep: MoccaDeps) {
-        dep.depends_on::<TimeMocca>();
+        dep.depends_on::<CandyTimeMocca>();
         dep.depends_on::<BloodMocca>();
     }
 

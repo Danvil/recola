@@ -8,6 +8,7 @@ approx = { workspace = true }
 excess = { workspace = true }
 excess_macros = { workspace = true }
 gems = { workspace = true }
+magi_gems = { workspace = true }
 nalgebra = { workspace = true }
 simplecs = { workspace = true }
 slab = { workspace = true }

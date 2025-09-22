@@ -1,7 +1,7 @@
 use crate::{
-    ecs::prelude::*, BloodOxygenContent, FlowSimMocca, HemoglobinOxygenSaturationHill, TimeMocca,
-    Tissue,
+    BloodOxygenContent, FlowSimMocca, HemoglobinOxygenSaturationHill, Tissue, ecs::prelude::*,
 };
+use candy_time::CandyTimeMocca;
 use gems::Lerp;
 use std::sync::Arc;
 
@@ -116,7 +116,7 @@ pub struct BloodStats {
 
 impl Mocca for BloodMocca {
     fn load(mut dep: MoccaDeps) {
-        dep.depends_on::<TimeMocca>();
+        dep.depends_on::<CandyTimeMocca>();
         dep.depends_on::<FlowSimMocca>();
     }
 

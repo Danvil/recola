@@ -1,11 +1,12 @@
-use crate::{ecs::prelude::*, EntityBuilder, Time, TimeMocca};
+use crate::{EntityBuilder, ecs::prelude::*};
+use candy_time::{CandyTimeMocca, Time};
 use flowsim::{
-    models::{Bundle, ElasticTube, HoopTubePressureModel, PressureModel},
     FlowNetSolver, FluidChunk, FluidComposition, FluidDensityViscosity, PipeDef, PipeJunctionPort,
     PipeScratch, PipeState, PipeStateDerivative, PipeVessel, PortMap, PortTag, ReservoirVessel,
     SolutionDeltaVolume,
+    models::{Bundle, ElasticTube, HoopTubePressureModel, PressureModel},
 };
-use gems::{volume_from_milli_liters, Ema, RateEma, VolumeModel};
+use gems::{Ema, RateEma, VolumeModel, volume_from_milli_liters};
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -283,7 +284,7 @@ impl PipeConnectionHelper {
     }
 
     fn connect_f<'b>(world: &mut World, e: Entity, p: PortTag, j: Entity) {
-        world.entity(e).add((PipeJunctionPort(p), j))
+        world.entity(e).unwrap().add((PipeJunctionPort(p), j))
     }
 
     /// Connects two ports of a pipe at a junction, building and merging junctions as necessary.
@@ -516,7 +517,7 @@ pub struct FlowSimConfig {
 
 impl Mocca for FlowSimMocca {
     fn load(mut dep: MoccaDeps) {
-        dep.depends_on::<TimeMocca>();
+        dep.depends_on::<CandyTimeMocca>();
     }
 
     fn register_components(world: &mut World) {
@@ -668,16 +669,16 @@ impl Mocca for FlowSimMocca {
 
         // Write pipe data to CSV
         if let Some(path) = &world.singleton::<FlowSimConfig>().pipe_stats_csv_path {
-            let step = world.singleton::<Time>().frame_count;
-            let file_path = path.join(format!("flow_net_pipes_{step:05}.csv"));
+            let step = world.singleton::<Time>().frame_number();
+            let file_path = path.join(format!("flow_net_pipes_{:05}.csv", step.as_u64()));
 
             write_flow_net_pipes_csv(world, &file_path).ok();
         }
 
         // Write graph topology to CSV
         if let Some(path) = &world.singleton::<FlowSimConfig>().graph_topology_path {
-            let step = world.singleton::<Time>().frame_count;
-            let file_path = path.join(format!("topology_{step:05}.csv"));
+            let step = world.singleton::<Time>().frame_number();
+            let file_path = path.join(format!("topology_{:05}.csv", step.as_u64()));
 
             write_flow_net_topology_dot(world, &file_path).ok();
         }
@@ -788,7 +789,7 @@ fn write_flow_net_topology_dot(world: &mut World, file_path: &Path) -> std::io::
             let junc_gv_id = gv_id(junc);
 
             // Node declarations (once).
-            if seen_pipes.insert(pipe.id()) {
+            if seen_pipes.insert(pipe) {
                 writeln!(
                     w,
                     "  {} [label=\"{}\", shape=box, style=rounded, penwidth=1.2];",
@@ -796,7 +797,7 @@ fn write_flow_net_topology_dot(world: &mut World, file_path: &Path) -> std::io::
                     pipe_gv_label
                 ).ok();
             }
-            if seen_juncs.insert(junc.id()) {
+            if seen_juncs.insert(junc) {
                 writeln!(
                     w,
                     "  {} [label=\"\", shape=circle, width=0.15, fixedsize=true, style=filled, fillcolor=\"#666666\"];",
@@ -805,7 +806,7 @@ fn write_flow_net_topology_dot(world: &mut World, file_path: &Path) -> std::io::
             }
 
             // Edges (once across both PortA/PortB passes).
-            if seen_edges.insert((pipe.id(), junc.id())) {
+            if seen_edges.insert((pipe, junc)) {
                 writeln!(w, "  {} -- {};", pipe_gv_id, junc_gv_id).ok();
             }
         });

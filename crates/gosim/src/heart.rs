@@ -1,11 +1,12 @@
 use crate::{
-    create_blood_vessels, ecs::prelude::*, stat_component, utils::EntityBuilder, BloodMocca,
-    BloodVesselBuilder, BodyPartMocca, CardiacCycle, CardiacCycleStage, ExternalPipePressure,
-    FlowDirection, FlowSimMocca, PipeConnectionHelper, Time, TimeMocca, TissueBuilder,
-    ValveBuilder, ValveDef, ValveKind,
+    BloodMocca, BloodVesselBuilder, BodyPartMocca, CardiacCycle, CardiacCycleStage,
+    ExternalPipePressure, FlowDirection, FlowSimMocca, PipeConnectionHelper, TissueBuilder,
+    ValveBuilder, ValveDef, ValveKind, create_blood_vessels, ecs::prelude::*, stat_component,
+    utils::EntityBuilder,
 };
-use flowsim::{models::ElasticTube, PortTag};
-use gems::{volume_from_liters, BeatEma, Cylinder};
+use candy_time::{CandyTimeMocca, Time};
+use flowsim::{PortTag, models::ElasticTube};
+use gems::{BeatEma, Cylinder, volume_from_liters};
 
 /// The heart is an organ which pumps blood through the body.
 #[derive(Component)]
@@ -289,7 +290,7 @@ pub struct HeartJunctions {
 
 impl Mocca for HeartMocca {
     fn load(mut dep: MoccaDeps) {
-        dep.depends_on::<TimeMocca>();
+        dep.depends_on::<CandyTimeMocca>();
         dep.depends_on::<BodyPartMocca>();
         dep.depends_on::<BloodMocca>();
         dep.depends_on::<FlowSimMocca>();
@@ -333,12 +334,17 @@ fn heart_pressure(
     mut cmd: Commands,
 ) {
     query.each(|(chambers, state)| {
-        let [red_atrium_pressure, blue_atrium_pressure, red_ventricle_pressure, blue_ventricle_pressure] = match state.cycle.stage() {
+        let [
+            red_atrium_pressure,
+            blue_atrium_pressure,
+            red_ventricle_pressure,
+            blue_ventricle_pressure,
+        ] = match state.cycle.stage() {
             (CardiacCycleStage::DiastolePhase1, _) => [
                 ExternalPipePressure::ubiquous(0.),
                 ExternalPipePressure::ubiquous(0.),
                 ExternalPipePressure::ubiquous(0.),
-                ExternalPipePressure::ubiquous(0.)
+                ExternalPipePressure::ubiquous(0.),
             ],
             (CardiacCycleStage::ArterialSystole, q) => {
                 let a = attack(q);
@@ -346,7 +352,7 @@ fn heart_pressure(
                     ExternalPipePressure::ubiquous(-1_000. * a),
                     ExternalPipePressure::ubiquous(-1_000. * a),
                     ExternalPipePressure::ubiquous(0.),
-                    ExternalPipePressure::ubiquous(0.)
+                    ExternalPipePressure::ubiquous(0.),
                 ]
             }
             (CardiacCycleStage::Systole, q) => {
@@ -355,15 +361,13 @@ fn heart_pressure(
                     ExternalPipePressure::ubiquous(0.),
                     ExternalPipePressure::ubiquous(0.),
                     ExternalPipePressure::ubiquous(-16_000. * a),
-                    ExternalPipePressure::ubiquous(-3_300. * a)
+                    ExternalPipePressure::ubiquous(-3_300. * a),
                 ]
             }
         };
 
-        cmd.entity(chambers.red_atrium)
-            .set(red_atrium_pressure);
-        cmd.entity(chambers.blue_atrium)
-            .set(blue_atrium_pressure);
+        cmd.entity(chambers.red_atrium).set(red_atrium_pressure);
+        cmd.entity(chambers.blue_atrium).set(blue_atrium_pressure);
         cmd.entity(chambers.red_ventricle)
             .set(red_ventricle_pressure);
         cmd.entity(chambers.blue_ventricle)

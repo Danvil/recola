@@ -1,7 +1,8 @@
 use crate::{
-    create_blood_vessels, ecs::prelude::*, stat_component, utils::EntityBuilder, BloodMocca,
-    BloodProperties, PipeConnectionHelper, TimeMocca, TissueBuilder,
+    BloodMocca, BloodProperties, PipeConnectionHelper, TissueBuilder, create_blood_vessels,
+    ecs::prelude::*, stat_component, utils::EntityBuilder,
 };
+use candy_time::CandyTimeMocca;
 use flowsim::PortTag;
 use gems::volume_from_liters;
 
@@ -152,7 +153,7 @@ pub struct LungsJunctions {
 
 impl Mocca for LungsMocca {
     fn load(mut dep: MoccaDeps) {
-        dep.depends_on::<TimeMocca>();
+        dep.depends_on::<CandyTimeMocca>();
         dep.depends_on::<BloodMocca>();
     }
 

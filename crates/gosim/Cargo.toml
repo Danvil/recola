@@ -5,6 +5,8 @@ edition = "2024"
 
 [dependencies]
 approx = { workspace = true }
+candy_scene_tree = { workspace = true }
+candy_time = { workspace = true }
 env_logger = { workspace = true }
 excess = { workspace = true }
 eyre = { workspace = true }

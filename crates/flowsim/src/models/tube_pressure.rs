@@ -1,7 +1,5 @@
-use gems::{
-    cylinder_radius, cylinder_volume, newton_root_solver, Cylinder, NewtonRootSolverError,
-    VolumeModel,
-};
+use gems::{Cylinder, VolumeModel, cylinder_radius, cylinder_volume};
+use magi_gems::{NewtonRootSolverError, newton_root_solver};
 
 pub trait PressureModel {
     /// Pressure for given volume

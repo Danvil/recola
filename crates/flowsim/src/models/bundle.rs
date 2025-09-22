@@ -1,5 +1,6 @@
 use crate::models::{FlowModel, PressureModel};
-use gems::{AreaVolumeModel, NewtonRootSolverError, VolumeModel};
+use gems::{AreaVolumeModel, VolumeModel};
+use magi_gems::NewtonRootSolverError;
 
 /// Bundle of models in parallel
 #[derive(Clone, Debug)]
