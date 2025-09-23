@@ -46,6 +46,7 @@ impl Mocca for EphMocca {
         world.run(load_assets);
         world.run(setup_window_and_camera);
         world.run(spawn_terrain);
+        world.run(spawn_charn);
         world.run(spawn_cacti).unwrap();
         // world.run(enable_flow_sim_logging);
         Self
@@ -131,11 +132,18 @@ fn spawn_terrain(mut cmd: Commands) {
 }
 
 fn load_assets(mut asli: SingletonMut<AssetLibrary>) {
-    let cactus_aid = AssetUid::new("cactus");
     asli.load_gltf(
-        &cactus_aid,
+        &AssetUid::new("cactus"),
         GltfAssetDescriptor {
             path: PathBuf::from("I:/Ikabur/eph/assets/models/flora/cactus.glb"),
+            scene: None,
+            node: None,
+        },
+    );
+    asli.load_gltf(
+        &AssetUid::new("char-red_priest_germanicus"),
+        GltfAssetDescriptor {
+            path: PathBuf::from("I:/Ikabur/eph/assets/models/characters/red_priest_germanicus.glb"),
             scene: None,
             node: None,
         },
@@ -180,6 +188,13 @@ fn spawn_cacti(mut cmd: Commands) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn spawn_charn(mut cmd: Commands) {
+    cmd.spawn((
+        Transform3::from_translation_xyz(35., 35., 0.).with_rotation_z_deg(180.),
+        AssetInstance(AssetUid::new("char-red_priest_germanicus")),
+    ));
 }
 
 fn print_report(world: &mut World) {
