@@ -5,20 +5,21 @@ use candy_camera::{
     fly_camera_controller::FlyCameraController,
 };
 use candy_input::{CandyInputMocca, InputEventMessage};
-use candy_log::CandyLogMocca;
 use candy_mesh::{CandyMeshMocca, Cuboid};
 use candy_scene_tree::{CandySceneTreeMocca, ChildOf, Transform3};
 use candy_sky::CandySkyMocca;
-use candy_terra::{CandyTerraMocca, HeightMap, LoadTerraAsset};
+use candy_terra::{
+    CandyTerraMocca, ChunkId, Ground, LoadTerrainCommand, TerraChunkStreamingStatusLoaded, Terrain,
+    TerrainChunk,
+};
 use candy_time::{CandyTimeMocca, Tick, Time};
 use candy_utils::{
     CameraLink, ImageLocation, ImageShape, Material, PbrMaterial, WindowDef, WindowLayout,
 };
 use excess::prelude::*;
-use eyre::Result;
 use flowsim::{PipeDef, PipeVessel, PortTag};
 use gems::{VolumeModel, pressure_to_mm_hg, volume_to_milli_liters};
-use glam::{Vec2, Vec3};
+use glam::{UVec2, Vec2, Vec3};
 use gosim::*;
 use magi_color::LinearColor;
 use magi_rng::{Range2F32, Rng};
@@ -32,7 +33,6 @@ impl Mocca for EphMocca {
         deps.depends_on_raw::<BigtalkMocca>();
         deps.depends_on::<CandyCameraMocca>();
         deps.depends_on::<CandyInputMocca>();
-        deps.depends_on::<CandyLogMocca>();
         deps.depends_on::<CandyMeshMocca>();
         deps.depends_on::<CandyMocca>();
         deps.depends_on::<CandySceneTreeMocca>();
@@ -42,17 +42,21 @@ impl Mocca for EphMocca {
         // deps.depends_on::<GosSimMocca>();
     }
 
+    fn register_components(world: &mut World) {
+        world.register_component::<TerrainTileFoliageSpawned>();
+    }
+
     fn start(world: &mut World) -> Self {
         world.run(load_assets);
         world.run(setup_window_and_camera);
         world.run(spawn_terrain);
         world.run(spawn_charn);
-        world.run(spawn_cacti).unwrap();
         // world.run(enable_flow_sim_logging);
         Self
     }
 
     fn step(&mut self, world: &mut World) {
+        world.run(spawn_terrain_tile_foliage);
         // print_report(world);
     }
 
@@ -107,18 +111,21 @@ fn setup_window_and_camera(time: Singleton<Time>, mut cmd: Commands) {
 }
 
 fn spawn_terrain(mut cmd: Commands) {
-    cmd.spawn((
-        Name::from_str("terra"),
-        LoadTerraAsset {
-            path: PathBuf::from("I:/Ikabur/eph/assets/terrain/eph_world.json"),
-        },
-    ));
+    cmd.spawn(LoadTerrainCommand {
+        path: PathBuf::from("I:/Ikabur/eph/assets/terrain/eph_world.json"),
+    });
+
+    const WATER_PLANE_SIZE: f32 = 1024.;
 
     cmd.spawn((
         Name::from_str("water plane"),
         Transform3::identity()
-            .with_translation(Vec3::new(2048., 2048., -0.5))
-            .with_scale(Vec3::new(4096., 4096., 1.)),
+            .with_translation(Vec3::new(
+                0.5 * WATER_PLANE_SIZE,
+                0.5 * WATER_PLANE_SIZE,
+                -0.5,
+            ))
+            .with_scale(Vec3::new(WATER_PLANE_SIZE, WATER_PLANE_SIZE, 1.)),
         Cuboid,
         Material::Pbr(PbrMaterial {
             base_color: LinearColor::from_rgb(0.5, 0.5, 0.55),
@@ -150,44 +157,79 @@ fn load_assets(mut asli: SingletonMut<AssetLibrary>) {
     );
 }
 
-fn spawn_cacti(mut cmd: Commands) -> Result<()> {
-    let cacti = cmd
-        .spawn((Name::from_str("cacti"), Transform3::identity()))
-        .id();
+#[derive(Component)]
+struct TerrainTileFoliageSpawned;
 
+fn spawn_terrain_tile_foliage(
+    terrain: Singleton<Terrain>,
+    query_tiles: Query<
+        (Entity, &TerrainChunk),
+        (
+            With<TerraChunkStreamingStatusLoaded>,
+            Without<TerrainTileFoliageSpawned>,
+        ),
+    >,
+    mut cmd: Commands,
+) {
     let cactus_aid = AssetUid::new("cactus");
-
-    let height_map_path =
-        PathBuf::from("I:/Ikabur/eph/assets/terrain/eph_world/out/bay.tile_1001.exr");
-
-    let hm = HeightMap::load_file(height_map_path, [-80., 250.])?;
-    let hma = hm.array();
 
     let mut rng = Rng::new();
 
-    let area_size = 16;
-    let area_count = 256 / area_size;
-    let roi_size = Vec2::new(0.8 * area_size as f32, 0.8 * area_size as f32);
+    let spacing = 30.0;
 
-    for i in 0..area_count {
-        for j in 0..area_count {
-            let roi_corner = Vec2::new(i as f32 * area_size as f32, j as f32 * area_size as f32);
-            let roi = Range2F32::from_min_size(roi_corner, roi_size);
-            let p = rng.uniform_roi2_f32(&roi);
+    let terrain = terrain.read();
 
-            let pxi = p.x.round() as usize;
-            let pyi = p.y.round() as usize;
-            let pz = hma[[255 - pyi, pxi]];
+    let mut count = 0;
 
-            cmd.spawn((
-                Transform3::from_translation_xyz(p.x, p.y, pz),
-                AssetInstance(cactus_aid.clone()),
-                (ChildOf, cacti),
-            ));
+    for (terrain_chunk_entity, terrain_chunk) in query_tiles.iter() {
+        let foliage_root_entity = cmd
+            .spawn((
+                Name::from_str("foliage"),
+                Transform3::identity(),
+                (ChildOf, terrain_chunk_entity),
+            ))
+            .id();
+
+        cmd.entity(terrain_chunk_entity)
+            .set(TerrainTileFoliageSpawned);
+
+        let chunk_id = **terrain_chunk;
+        // if chunk_id != unsafe { ChunkId::from_coordinates(0, 0) } {
+        //     continue;
+        // }
+
+        let chunk_pos = terrain.chunk_position(chunk_id);
+
+        let area_count = (terrain.chunk_size() / spacing).floor().as_uvec2();
+        let roi_size = terrain.chunk_size() / area_count.as_vec2();
+
+        for i in 0..area_count[0] {
+            for j in 0..area_count[1] {
+                let roi_center =
+                    chunk_pos + (UVec2::new(i, j).as_vec2() + 0.5 * Vec2::ONE) * roi_size;
+                let roi = Range2F32::from_center_size(roi_center, 0.8 * roi_size);
+                let pos_world = rng.uniform_roi2_f32(&roi);
+
+                let Some(loc) = terrain.locate(pos_world) else {
+                    continue;
+                };
+
+                let height = terrain.height(loc);
+
+                let pos_local = pos_world - chunk_pos;
+
+                cmd.spawn((
+                    Transform3::from_translation_xyz(pos_local.x, pos_local.y, height),
+                    AssetInstance(cactus_aid.clone()),
+                    (ChildOf, foliage_root_entity),
+                ));
+
+                count += 1;
+            }
         }
     }
 
-    Ok(())
+    log::info!("spawned {} cacti", count);
 }
 
 fn spawn_charn(mut cmd: Commands) {

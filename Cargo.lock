@@ -668,6 +668,7 @@ dependencies = [
  "image",
  "log",
  "log-once",
+ "magi_gems",
  "ndarray",
  "serde",
  "serde_json",
