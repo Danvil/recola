@@ -651,6 +651,7 @@ dependencies = [
  "log",
  "log-once",
  "magi_color",
+ "magi_gems",
  "magi_sky",
  "ndarray",
  "simplecs",
@@ -2145,6 +2146,7 @@ name = "magi_sky"
 version = "0.1.0"
 dependencies = [
  "glam 0.30.5",
+ "log",
  "magi_color",
  "magi_gems",
  "ndarray",

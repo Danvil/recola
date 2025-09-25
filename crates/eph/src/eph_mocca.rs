@@ -7,7 +7,7 @@ use candy_camera::{
 use candy_input::{CandyInputMocca, InputEventMessage};
 use candy_mesh::{CandyMeshMocca, Cuboid};
 use candy_scene_tree::{CandySceneTreeMocca, ChildOf, Transform3};
-use candy_sky::CandySkyMocca;
+use candy_sky::{CandySkyMocca, DayNightCycle, SkyModel};
 use candy_terra::{
     CandyTerraMocca, Ground, LoadTerrainCommand, TerraChunkStreamingStatusLoaded, Terrain,
     TerrainChunk,
@@ -49,6 +49,7 @@ impl Mocca for EphMocca {
     fn start(world: &mut World) -> Self {
         world.run(load_assets);
         world.run(setup_window_and_camera);
+        world.run(setup_sky);
         world.run(spawn_terrain);
         world.run(spawn_charn);
         // world.run(enable_flow_sim_logging);
@@ -94,8 +95,8 @@ fn setup_window_and_camera(time: Singleton<Time>, mut cmd: Commands) {
         zoom_power: 1.30,
         azimuth_sensitivity: 2.4,
         tilt_sensitivity: 1.3,
-        tilt_range: 10.0_f32.to_radians()..70.0_f32.to_radians(),
-        eye_distance_range: 1.0..75.0,
+        tilt_range: 5.0_f32.to_radians()..70.0_f32.to_radians(),
+        eye_distance_range: 2.0..75.0,
         height_smoothing_halflife: 0.10,
         eye_height_clearance: 0.5,
     };
@@ -124,6 +125,11 @@ fn setup_window_and_camera(time: Singleton<Time>, mut cmd: Commands) {
     add_route::<Tick, _>(&mut cmd, time.tick_agent, cam_ctrl_agent);
 }
 
+fn setup_sky(mut sky: SingletonMut<SkyModel>) {
+    sky.set_sun_raw_radiance(12.0);
+    sky.set_moon_raw_radiance(0.18);
+}
+
 fn spawn_terrain(mut cmd: Commands) {
     cmd.spawn(LoadTerrainCommand {
         path: PathBuf::from("I:/Ikabur/eph/assets/terrain/eph_world.json"),
@@ -142,7 +148,7 @@ fn spawn_terrain(mut cmd: Commands) {
             .with_scale(Vec3::new(WATER_PLANE_SIZE, WATER_PLANE_SIZE, 1.)),
         Cuboid,
         Material::Pbr(PbrMaterial {
-            base_color: LinearColor::from_rgb(0.5, 0.5, 0.55),
+            base_color: LinearColor::from_rgb(0.02, 0.13, 0.35),
             metallic: 0.,
             roughness: 0.05,
             reflectance: 0.35,
