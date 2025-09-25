@@ -4,9 +4,10 @@ use crate::{
     ValveBuilder, ValveDef, ValveKind, create_blood_vessels, ecs::prelude::*, stat_component,
     utils::EntityBuilder,
 };
-use candy_time::{CandyTimeMocca, Time};
+use candy_time::{CandyTimeMocca, SimClock};
 use flowsim::{PortTag, models::ElasticTube};
-use gems::{BeatEma, Cylinder, volume_from_liters};
+use gems::{Cylinder, volume_from_liters};
+use magi_gems::BeatEma;
 
 /// The heart is an organ which pumps blood through the body.
 #[derive(Component)]
@@ -320,19 +321,15 @@ impl Mocca for HeartMocca {
 }
 
 // Check if the heart beats
-fn heart_beat(mut query: Query<(&HeartRateBpm, &mut HeartBeatState)>, time: Singleton<Time>) {
+fn heart_beat(mut query: Query<(&HeartRateBpm, &mut HeartBeatState)>, clock: Singleton<SimClock>) {
     query.each_mut(|(rate, state)| {
         state.cycle.set_target_bpm(**rate);
-        state.cycle.step(time.sim_dt_f64());
+        state.cycle.step(clock.sim_dt_f64());
     });
 }
 
 // Apply pressure to chambers
-fn heart_pressure(
-    query: Query<(&HeartChambers, &HeartBeatState)>,
-    _time: Singleton<Time>,
-    mut cmd: Commands,
-) {
+fn heart_pressure(query: Query<(&HeartChambers, &HeartBeatState)>, mut cmd: Commands) {
     query.each(|(chambers, state)| {
         let [
             red_atrium_pressure,
@@ -381,11 +378,16 @@ fn attack(q: f64) -> f64 {
 }
 
 // Update heart statistics
-fn heart_stats_update(mut query: Query<(&HeartBeatState, &mut HeartStats)>, time: Singleton<Time>) {
+fn heart_stats_update(
+    mut query: Query<(&HeartBeatState, &mut HeartStats)>,
+    clock: Singleton<SimClock>,
+) {
     query.each_mut(|(state, stats)| {
         let beat = state.cycle.beat();
         stats.beat = beat;
-        stats.heart_rate.step(time.sim_dt_f64(), beat);
+        stats
+            .heart_rate
+            .step(clock.sim_dt_f64(), if beat { 1 } else { 0 });
         stats.monitor.step(beat);
         stats.stage = state.cycle.stage().0;
         stats.stage_progress = state.cycle.stage().1;

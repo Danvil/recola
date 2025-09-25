@@ -12,7 +12,7 @@ use candy_terra::{
     CandyTerraMocca, Ground, LoadTerrainCommand, TerraChunkStreamingStatusLoaded, Terrain,
     TerrainChunk,
 };
-use candy_time::{CandyTimeMocca, Tick, Time};
+use candy_time::{CandyTimeMocca, SimClock, Tick};
 use candy_utils::{
     CameraLink, ImageLocation, ImageShape, Material, PbrMaterial, WindowDef, WindowLayout,
 };
@@ -72,7 +72,7 @@ fn enable_flow_sim_logging(mut cfg: SingletonMut<FlowSimConfig>) {
     cfg.debug_print_ode_solution = true;
 }
 
-fn setup_window_and_camera(time: Singleton<Time>, mut cmd: Commands) {
+fn setup_window_and_camera(clock: Singleton<SimClock>, mut cmd: Commands) {
     let cam = spawn_agent(
         &mut cmd,
         CameraState::from_eye_target_up(
@@ -122,7 +122,7 @@ fn setup_window_and_camera(time: Singleton<Time>, mut cmd: Commands) {
 
     add_route::<WindowResizedEvent, _>(&mut cmd, win, cam);
     add_route::<InputEventMessage, _>(&mut cmd, win, cam_ctrl_agent);
-    add_route::<Tick, _>(&mut cmd, time.tick_agent, cam_ctrl_agent);
+    add_route::<Tick, _>(&mut cmd, clock.tick_agent(), cam_ctrl_agent);
 }
 
 fn setup_sky(mut sky: SingletonMut<SkyModel>) {

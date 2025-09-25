@@ -1,5 +1,4 @@
 mod cycle;
-mod ema;
 mod fair_alloc;
 mod geometry;
 mod int_map;
@@ -11,7 +10,6 @@ mod runge_kutta;
 mod units;
 
 pub use cycle::*;
-pub use ema::*;
 pub use fair_alloc::*;
 pub use geometry::*;
 pub use int_map::*;

@@ -1,12 +1,13 @@
 use crate::{EntityBuilder, ecs::prelude::*};
-use candy_time::{CandyTimeMocca, Time};
+use candy_time::{CandyTimeMocca, SimClock};
 use flowsim::{
     FlowNetSolver, FluidChunk, FluidComposition, FluidDensityViscosity, PipeDef, PipeJunctionPort,
     PipeScratch, PipeState, PipeStateDerivative, PipeVessel, PortMap, PortTag, ReservoirVessel,
     SolutionDeltaVolume,
     models::{Bundle, ElasticTube, HoopTubePressureModel, PressureModel},
 };
-use gems::{Ema, RateEma, VolumeModel, volume_from_milli_liters};
+use gems::{VolumeModel, volume_from_milli_liters};
+use magi_gems::{Ema, RateEma};
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -559,7 +560,7 @@ impl Mocca for FlowSimMocca {
             });
 
         // solve flow net
-        let dt = world.singleton::<Time>().sim_dt_f64();
+        let dt = world.singleton::<SimClock>().sim_dt_f64();
         FlowNetSolver::new().step(world, dt);
 
         if world.singleton::<FlowSimConfig>().debug_print_ode_solution {
@@ -669,16 +670,16 @@ impl Mocca for FlowSimMocca {
 
         // Write pipe data to CSV
         if let Some(path) = &world.singleton::<FlowSimConfig>().pipe_stats_csv_path {
-            let step = world.singleton::<Time>().frame_number();
-            let file_path = path.join(format!("flow_net_pipes_{:05}.csv", step.as_u64()));
+            let step = world.singleton::<SimClock>().step_count();
+            let file_path = path.join(format!("flow_net_pipes_{:05}.csv", step));
 
             write_flow_net_pipes_csv(world, &file_path).ok();
         }
 
         // Write graph topology to CSV
         if let Some(path) = &world.singleton::<FlowSimConfig>().graph_topology_path {
-            let step = world.singleton::<Time>().frame_number();
-            let file_path = path.join(format!("topology_{:05}.csv", step.as_u64()));
+            let step = world.singleton::<SimClock>().step_count();
+            let file_path = path.join(format!("topology_{:05}.csv", step));
 
             write_flow_net_topology_dot(world, &file_path).ok();
         }
