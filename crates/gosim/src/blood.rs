@@ -2,7 +2,7 @@ use crate::{
     BloodOxygenContent, FlowSimMocca, HemoglobinOxygenSaturationHill, Tissue, ecs::prelude::*,
 };
 use candy_time::CandyTimeMocca;
-use gems::Lerp;
+use magi_gems::Lerp;
 use std::sync::Arc;
 
 /// Blood carries oxygen, nutrients and pollutants between body parts.
@@ -87,21 +87,22 @@ impl BloodProperties {
 }
 
 impl Lerp<f64> for BloodProperties {
-    fn lerp_impl(&self, q: f64, other: &Self) -> Self {
+    fn lerp_impl(self, other: Self, q: f64) -> Self {
         Self {
             hill_model: self.hill_model.clone(),
             o2_content_model: self.o2_content_model.clone(),
-            hematocrit: self.hematocrit.lerp(q, &other.hematocrit),
-            o2_content: self.o2_content.lerp(q, &other.o2_content),
+            hematocrit: self.hematocrit.lerp(q, other.hematocrit),
+            o2_content: self.o2_content.lerp(q, other.o2_content),
             po2: 0., // computed during normalization
             so2: 0., // computed during normalization
-            glucose_level: self.glucose_level.lerp(q, &other.glucose_level),
+            glucose_level: self.glucose_level.lerp(q, other.glucose_level),
         }
     }
 
-    fn normalize(&mut self) {
+    fn normalize(mut self) -> Self {
         // PO2 and SO2 are not linear (I think ..)
         self.set_o2_content(self.o2_content);
+        self
     }
 }
 

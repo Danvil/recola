@@ -12,6 +12,7 @@ excess = { workspace = true }
 eyre = { workspace = true }
 flowsim = { workspace = true }
 gems = { workspace = true }
+magi_gems = { workspace = true }
 log = { workspace = true }
 num-traits = { workspace = true }
 paste = { workspace = true }

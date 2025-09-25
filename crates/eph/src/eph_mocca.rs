@@ -1,15 +1,15 @@
 use bigtalk::{BigtalkMocca, Outbox, Router, add_route, spawn_agent};
 use candy::{AssetInstance, AssetLibrary, AssetUid, CandyMocca, GltfAssetDescriptor};
 use candy_camera::{
-    CameraCommand, CameraMatrices, CameraState, CandyCameraMocca, Projection, WindowResizedEvent,
-    fly_camera_controller::FlyCameraController,
+    CameraCommand, CameraMatrices, CameraState, CandyCameraMocca, GroundFocusPointCameraController,
+    GroundFocusPointCameraControllerSettings, Projection, WindowResizedEvent,
 };
 use candy_input::{CandyInputMocca, InputEventMessage};
 use candy_mesh::{CandyMeshMocca, Cuboid};
 use candy_scene_tree::{CandySceneTreeMocca, ChildOf, Transform3};
 use candy_sky::CandySkyMocca;
 use candy_terra::{
-    CandyTerraMocca, ChunkId, Ground, LoadTerrainCommand, TerraChunkStreamingStatusLoaded, Terrain,
+    CandyTerraMocca, Ground, LoadTerrainCommand, TerraChunkStreamingStatusLoaded, Terrain,
     TerrainChunk,
 };
 use candy_time::{CandyTimeMocca, Tick, Time};
@@ -87,8 +87,22 @@ fn setup_window_and_camera(time: Singleton<Time>, mut cmd: Commands) {
     );
     cmd.entity(cam).set(CameraMatrices::new());
 
-    let cam_ctrl = spawn_agent(&mut cmd, FlyCameraController::new());
-    add_route::<CameraCommand, _>(&mut cmd, cam_ctrl, cam);
+    let cam_ctrl_settings = GroundFocusPointCameraControllerSettings {
+        translation_max_speed: 1.2,
+        translation_acceleration: 5.0,
+        translation_deacceleration: 20.0,
+        zoom_power: 1.30,
+        azimuth_sensitivity: 2.4,
+        tilt_sensitivity: 1.3,
+        tilt_range: 10.0_f32.to_radians()..70.0_f32.to_radians(),
+        eye_distance_range: 1.0..75.0,
+        height_smoothing_halflife: 0.10,
+        eye_height_clearance: 0.5,
+    };
+    let mut cam_ctrl = GroundFocusPointCameraController::new(cam_ctrl_settings);
+    cam_ctrl.set_focus_point(Vec2::new(30., 30.));
+    let cam_ctrl_agent = spawn_agent(&mut cmd, cam_ctrl);
+    add_route::<CameraCommand, _>(&mut cmd, cam_ctrl_agent, cam);
 
     let win = cmd
         .spawn((
@@ -106,8 +120,8 @@ fn setup_window_and_camera(time: Singleton<Time>, mut cmd: Commands) {
         .id();
 
     add_route::<WindowResizedEvent, _>(&mut cmd, win, cam);
-    add_route::<InputEventMessage, _>(&mut cmd, win, cam_ctrl);
-    add_route::<Tick, _>(&mut cmd, time.tick_agent, cam_ctrl);
+    add_route::<InputEventMessage, _>(&mut cmd, win, cam_ctrl_agent);
+    add_route::<Tick, _>(&mut cmd, time.tick_agent, cam_ctrl_agent);
 }
 
 fn spawn_terrain(mut cmd: Commands) {
@@ -177,7 +191,7 @@ fn spawn_terrain_tile_foliage(
 
     let spacing = 30.0;
 
-    let terrain = terrain.read();
+    let terrain = terrain.inner();
 
     let mut count = 0;
 
@@ -194,10 +208,6 @@ fn spawn_terrain_tile_foliage(
             .set(TerrainTileFoliageSpawned);
 
         let chunk_id = **terrain_chunk;
-        // if chunk_id != unsafe { ChunkId::from_coordinates(0, 0) } {
-        //     continue;
-        // }
-
         let chunk_pos = terrain.chunk_position(chunk_id);
 
         let area_count = (terrain.chunk_size() / spacing).floor().as_uvec2();
@@ -213,7 +223,6 @@ fn spawn_terrain_tile_foliage(
                 let Some(loc) = terrain.locate(pos_world) else {
                     continue;
                 };
-
                 let height = terrain.height(loc);
 
                 let pos_local = pos_world - chunk_pos;
@@ -229,7 +238,7 @@ fn spawn_terrain_tile_foliage(
         }
     }
 
-    log::info!("spawned {} cacti", count);
+    log::debug!("spawned {} cacti", count);
 }
 
 fn spawn_charn(mut cmd: Commands) {

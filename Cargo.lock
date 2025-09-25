@@ -544,11 +544,13 @@ version = "0.1.0"
 dependencies = [
  "bigtalk",
  "candy_input",
+ "candy_terra",
  "candy_time",
  "candy_utils",
  "excess",
  "eyre",
  "glam 0.30.5",
+ "magi_gems",
  "magi_geo",
  "simplecs",
 ]
@@ -1560,6 +1562,7 @@ dependencies = [
  "flowsim",
  "gems",
  "log",
+ "magi_gems",
  "num-traits",
  "paste",
  "rust_decimal",
