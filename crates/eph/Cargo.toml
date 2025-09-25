@@ -8,6 +8,7 @@ approx = { workspace = true }
 bigtalk = { workspace = true }
 candy = { workspace = true }
 candy_camera = { workspace = true }
+candy_forge = { workspace = true }
 candy_input = { workspace = true }
 candy_log = { workspace = true }
 candy_mesh = { workspace = true }

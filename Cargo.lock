@@ -571,6 +571,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "candy_forge"
+version = "0.1.0"
+dependencies = [
+ "bigtalk",
+ "candy_camera",
+ "candy_input",
+ "candy_log",
+ "candy_scene_tree",
+ "candy_time",
+ "candy_utils",
+ "egui",
+ "egui_ltreeview",
+ "excess",
+ "excess_cask",
+ "eyre",
+ "glam 0.30.5",
+ "log",
+ "magi_se",
+ "serde",
+ "simplecs",
+]
+
+[[package]]
 name = "candy_gizmos"
 version = "0.1.0"
 dependencies = [
@@ -703,6 +726,7 @@ dependencies = [
  "magi_se",
  "ndarray",
  "serde",
+ "simplecs",
  "winit",
 ]
 
@@ -1034,6 +1058,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui_ltreeview"
+version = "0.5.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "49b0d47a25b8c98bf01f4281f7d516c6e6631817c2b367319d5b239fd3db1ec7"
+dependencies = [
+ "egui",
+]
+
+[[package]]
 name = "either"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1103,6 +1136,7 @@ dependencies = [
  "bigtalk",
  "candy",
  "candy_camera",
+ "candy_forge",
  "candy_input",
  "candy_log",
  "candy_mesh",

@@ -4,6 +4,7 @@ use candy_camera::{
     CameraCommand, CameraMatrices, CameraState, CandyCameraMocca, GroundFocusPointCameraController,
     GroundFocusPointCameraControllerSettings, Projection, WindowResizedEvent,
 };
+use candy_forge::CandyForgeMocca;
 use candy_input::{CandyInputMocca, InputEventMessage};
 use candy_mesh::{CandyMeshMocca, Cuboid};
 use candy_scene_tree::{CandySceneTreeMocca, ChildOf, Transform3};
@@ -32,6 +33,7 @@ impl Mocca for EphMocca {
     fn load(mut deps: MoccaDeps) {
         deps.depends_on_raw::<BigtalkMocca>();
         deps.depends_on::<CandyCameraMocca>();
+        deps.depends_on::<CandyForgeMocca>();
         deps.depends_on::<CandyInputMocca>();
         deps.depends_on::<CandyMeshMocca>();
         deps.depends_on::<CandyMocca>();

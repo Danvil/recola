@@ -19,6 +19,7 @@ candy_camera = { path = "I:/Ikabur/candy/crates/candy_camera" }
 candy_fim = { path = "I:/Ikabur/candy/crates/candy_fim" }
 candy_input = { path = "I:/Ikabur/candy/crates/candy_input" }
 candy_log = { path = "I:/Ikabur/candy/crates/candy_log" }
+candy_forge = { path = "I:/Ikabur/candy/crates/candy_forge" }
 candy_mesh = { path = "I:/Ikabur/candy/crates/candy_mesh" }
 candy_scene_tree = { path = "I:/Ikabur/candy/crates/candy_scene_tree" }
 candy_sky = { path = "I:/Ikabur/candy/crates/candy_sky" }
