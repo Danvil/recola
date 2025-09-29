@@ -504,6 +504,8 @@ dependencies = [
  "candy_input",
  "candy_log",
  "candy_mesh",
+ "candy_render_elements",
+ "candy_render_nodes",
  "candy_scene_tree",
  "candy_sky",
  "candy_terra",
@@ -522,6 +524,8 @@ dependencies = [
  "half",
  "log",
  "log-once",
+ "magi_ball",
+ "magi_bsdf",
  "magi_color",
  "magi_gems",
  "magi_geo",
@@ -579,6 +583,7 @@ dependencies = [
  "candy_input",
  "candy_log",
  "candy_scene_tree",
+ "candy_sky",
  "candy_time",
  "candy_utils",
  "egui",
@@ -589,6 +594,7 @@ dependencies = [
  "glam 0.30.5",
  "log",
  "magi_se",
+ "magi_sky",
  "serde",
  "simplecs",
 ]
@@ -647,6 +653,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "candy_render_elements"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "eyre",
+ "wgpu",
+]
+
+[[package]]
+name = "candy_render_nodes"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "candy_camera",
+ "candy_render_elements",
+ "candy_utils",
+ "glam 0.30.5",
+ "half",
+ "log",
+ "magi_ball",
+ "magi_bsdf",
+ "magi_se",
+ "ndarray",
+ "wgpu",
+]
+
+[[package]]
 name = "candy_scene_tree"
 version = "0.1.0"
 dependencies = [
@@ -673,6 +706,8 @@ dependencies = [
  "half",
  "log",
  "log-once",
+ "magi_ball",
+ "magi_bsdf",
  "magi_color",
  "magi_gems",
  "magi_sky",
@@ -720,6 +755,8 @@ dependencies = [
  "excess",
  "glam 0.30.5",
  "half",
+ "magi_ball",
+ "magi_bsdf",
  "magi_color",
  "magi_gems",
  "magi_geo",
@@ -2107,6 +2144,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "magi_ball"
+version = "0.1.0"
+dependencies = [
+ "glam 0.30.5",
+ "log",
+ "magi_gems",
+ "magi_rng",
+ "magi_se",
+ "ndarray",
+]
+
+[[package]]
+name = "magi_bsdf"
+version = "0.1.0"
+dependencies = [
+ "glam 0.30.5",
+ "magi_ball",
+ "magi_color",
+ "magi_gems",
+ "magi_se",
+ "ndarray",
+]
+
+[[package]]
 name = "magi_color"
 version = "0.1.0"
 dependencies = [
@@ -2181,6 +2242,7 @@ version = "0.1.0"
 dependencies = [
  "glam 0.30.5",
  "log",
+ "magi_ball",
  "magi_color",
  "magi_gems",
  "ndarray",

@@ -7,8 +7,8 @@ members = [
 ]
 exclude = ["crates/goscl", "crates/gosrv"]
 
-[profile.dev]
-debug = true
+# [profile.dev]
+# debug = true
 
 [workspace.dependencies]
 approx = "0.5.1"

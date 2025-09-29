@@ -54,6 +54,7 @@ impl Mocca for EphMocca {
         world.run(setup_sky);
         world.run(spawn_terrain);
         world.run(spawn_charn);
+        world.run(spawn_room);
         // world.run(enable_flow_sim_logging);
         Self
     }
@@ -152,7 +153,7 @@ fn spawn_terrain(mut cmd: Commands) {
         Material::Pbr(PbrMaterial {
             base_color: LinearColor::from_rgb(0.02, 0.13, 0.35),
             metallic: 0.,
-            roughness: 0.05,
+            perceptual_roughness: 0.05,
             reflectance: 0.35,
             coat_strength: 0.,
             coat_roughness: 0.,
@@ -175,6 +176,30 @@ fn load_assets(mut asli: SingletonMut<AssetLibrary>) {
             path: PathBuf::from("I:/Ikabur/eph/assets/models/characters/red_priest_germanicus.glb"),
             scene: None,
             node: None,
+        },
+    );
+    asli.load_gltf(
+        &AssetUid::new("build-concrete.slab_1x1"),
+        GltfAssetDescriptor {
+            path: PathBuf::from("I:/Ikabur/eph/assets/models/buildings/build-concrete.glb"),
+            scene: Some("Scene".into()),
+            node: Some("build-concrete.slab_1x1".into()),
+        },
+    );
+    asli.load_gltf(
+        &AssetUid::new("build-concrete.wall_1x2"),
+        GltfAssetDescriptor {
+            path: PathBuf::from("I:/Ikabur/eph/assets/models/buildings/build-concrete.glb"),
+            scene: Some("Scene".into()),
+            node: Some("build-concrete.wall_1x2".into()),
+        },
+    );
+    asli.load_gltf(
+        &AssetUid::new("build-concrete.corner"),
+        GltfAssetDescriptor {
+            path: PathBuf::from("I:/Ikabur/eph/assets/models/buildings/build-concrete.glb"),
+            scene: Some("Scene".into()),
+            node: Some("build-concrete.corner".into()),
         },
     );
 }
@@ -253,6 +278,82 @@ fn spawn_charn(mut cmd: Commands) {
     cmd.spawn((
         Transform3::from_translation_xyz(35., 35., 0.).with_rotation_z_deg(180.),
         AssetInstance(AssetUid::new("char-red_priest_germanicus")),
+    ));
+}
+
+fn spawn_room(mut cmd: Commands) {
+    let slab_aid = AssetUid::new("build-concrete.slab_1x1");
+    let wall_aid = AssetUid::new("build-concrete.wall_1x2");
+    let corner_aid = AssetUid::new("build-concrete.corner");
+
+    let room_entity = cmd
+        .spawn((
+            Name::from_str("room"),
+            Transform3::from_translation_xyz(20., 20., 1.),
+        ))
+        .id();
+
+    let nx = 8;
+    let ny = 10;
+
+    for i in 0..nx {
+        for j in 0..ny {
+            cmd.spawn((
+                Transform3::from_translation_xyz(i as f32, j as f32, 0.),
+                AssetInstance(slab_aid.clone()),
+                (ChildOf, room_entity),
+            ));
+        }
+    }
+
+    for x in 1..nx - 1 {
+        cmd.spawn((
+            Transform3::from_translation_xyz(x as f32, 0., 0.).with_rotation_z_deg(90.),
+            AssetInstance(wall_aid.clone()),
+            (ChildOf, room_entity),
+        ));
+        cmd.spawn((
+            Transform3::from_translation_xyz(x as f32, (ny - 1) as f32, 0.)
+                .with_rotation_z_deg(270.),
+            AssetInstance(wall_aid.clone()),
+            (ChildOf, room_entity),
+        ));
+    }
+
+    for y in 1..ny - 1 {
+        cmd.spawn((
+            Transform3::from_translation_xyz(0., y as f32, 0.),
+            AssetInstance(wall_aid.clone()),
+            (ChildOf, room_entity),
+        ));
+        cmd.spawn((
+            Transform3::from_translation_xyz((nx - 1) as f32, y as f32, 0.)
+                .with_rotation_z_deg(180.),
+            AssetInstance(wall_aid.clone()),
+            (ChildOf, room_entity),
+        ));
+    }
+
+    cmd.spawn((
+        Transform3::from_translation_xyz(0., 0., 0.),
+        AssetInstance(corner_aid.clone()),
+        (ChildOf, room_entity),
+    ));
+    cmd.spawn((
+        Transform3::from_translation_xyz((nx - 1) as f32, 0., 0.).with_rotation_z_deg(90.),
+        AssetInstance(corner_aid.clone()),
+        (ChildOf, room_entity),
+    ));
+    cmd.spawn((
+        Transform3::from_translation_xyz((nx - 1) as f32, (ny - 1) as f32, 0.)
+            .with_rotation_z_deg(180.),
+        AssetInstance(corner_aid.clone()),
+        (ChildOf, room_entity),
+    ));
+    cmd.spawn((
+        Transform3::from_translation_xyz(0., (ny - 1) as f32, 0.).with_rotation_z_deg(270.),
+        AssetInstance(corner_aid.clone()),
+        (ChildOf, room_entity),
     ));
 }
 
