@@ -1,3 +1,5 @@
+mod eph_architect;
+mod eph_main_window;
 mod eph_mocca;
 
 use crate::eph_mocca::EphMocca;

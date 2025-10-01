@@ -499,6 +499,7 @@ dependencies = [
  "bigtalk",
  "bytemuck",
  "candy_camera",
+ "candy_dev_gui",
  "candy_fim",
  "candy_gizmos",
  "candy_input",
@@ -560,6 +561,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "candy_dev_gui"
+version = "0.1.0"
+dependencies = [
+ "egui",
+ "excess",
+ "simplecs",
+]
+
+[[package]]
 name = "candy_fim"
 version = "0.1.0"
 dependencies = [
@@ -580,6 +590,7 @@ version = "0.1.0"
 dependencies = [
  "bigtalk",
  "candy_camera",
+ "candy_dev_gui",
  "candy_input",
  "candy_log",
  "candy_scene_tree",
@@ -751,7 +762,6 @@ name = "candy_utils"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
- "egui",
  "excess",
  "glam 0.30.5",
  "half",
@@ -764,7 +774,6 @@ dependencies = [
  "ndarray",
  "serde",
  "simplecs",
- "winit",
 ]
 
 [[package]]

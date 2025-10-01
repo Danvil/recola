@@ -1,22 +1,18 @@
-use bigtalk::{BigtalkMocca, Outbox, Router, add_route, spawn_agent};
+use crate::{eph_architect::EphArchitectMocca, eph_main_window::EphMainWindowMocca};
+use bigtalk::BigtalkMocca;
 use candy::{AssetInstance, AssetLibrary, AssetUid, CandyMocca, GltfAssetDescriptor};
-use candy_camera::{
-    CameraCommand, CameraMatrices, CameraState, CandyCameraMocca, GroundFocusPointCameraController,
-    GroundFocusPointCameraControllerSettings, Projection, WindowResizedEvent,
-};
+use candy_camera::CandyCameraMocca;
 use candy_forge::CandyForgeMocca;
-use candy_input::{CandyInputMocca, InputEventMessage};
+use candy_input::CandyInputMocca;
 use candy_mesh::{CandyMeshMocca, Cuboid};
 use candy_scene_tree::{CandySceneTreeMocca, ChildOf, Transform3};
-use candy_sky::{CandySkyMocca, DayNightCycle, SkyModel};
+use candy_sky::{CandySkyMocca, SkyModel};
 use candy_terra::{
     CandyTerraMocca, Ground, LoadTerrainCommand, TerraChunkStreamingStatusLoaded, Terrain,
     TerrainChunk,
 };
-use candy_time::{CandyTimeMocca, SimClock, Tick};
-use candy_utils::{
-    CameraLink, ImageLocation, ImageShape, Material, PbrMaterial, WindowDef, WindowLayout,
-};
+use candy_time::CandyTimeMocca;
+use candy_utils::{Material, PbrMaterial};
 use excess::prelude::*;
 use flowsim::{PipeDef, PipeVessel, PortTag};
 use gems::{VolumeModel, pressure_to_mm_hg, volume_to_milli_liters};
@@ -41,6 +37,8 @@ impl Mocca for EphMocca {
         deps.depends_on::<CandySkyMocca>();
         deps.depends_on::<CandyTerraMocca>();
         deps.depends_on::<CandyTimeMocca>();
+        deps.depends_on::<EphMainWindowMocca>();
+        deps.depends_on::<EphArchitectMocca>();
         // deps.depends_on::<GosSimMocca>();
     }
 
@@ -50,7 +48,6 @@ impl Mocca for EphMocca {
 
     fn start(world: &mut World) -> Self {
         world.run(load_assets);
-        world.run(setup_window_and_camera);
         world.run(setup_sky);
         world.run(spawn_terrain);
         world.run(spawn_charn);
@@ -73,59 +70,6 @@ fn enable_flow_sim_logging(mut cfg: SingletonMut<FlowSimConfig>) {
     cfg.pipe_stats_csv_path = Some("I:/Ikabur/gos/tmp/heart/".into());
     cfg.graph_topology_path = Some("I:/Ikabur/gos/tmp/heart/".into());
     cfg.debug_print_ode_solution = true;
-}
-
-fn setup_window_and_camera(clock: Singleton<SimClock>, mut cmd: Commands) {
-    let cam = spawn_agent(
-        &mut cmd,
-        CameraState::from_eye_target_up(
-            Vec3::new(30., 30., 1.70),
-            Vec3::new(35., 35., 2.00),
-            Vec3::Z,
-            Projection::Perspective {
-                fov: 45.0_f32.to_radians(),
-                near: 0.25,
-                far: 1500.,
-            },
-        ),
-    );
-    cmd.entity(cam).set(CameraMatrices::new());
-
-    let cam_ctrl_settings = GroundFocusPointCameraControllerSettings {
-        translation_max_speed: 1.2,
-        translation_acceleration: 5.0,
-        translation_deacceleration: 20.0,
-        zoom_power: 1.30,
-        azimuth_sensitivity: 2.4,
-        tilt_sensitivity: 1.3,
-        tilt_range: 5.0_f32.to_radians()..70.0_f32.to_radians(),
-        eye_distance_range: 2.0..75.0,
-        height_smoothing_halflife: 0.10,
-        eye_height_clearance: 0.5,
-    };
-    let mut cam_ctrl = GroundFocusPointCameraController::new(cam_ctrl_settings);
-    cam_ctrl.set_focus_point(Vec2::new(30., 30.));
-    let cam_ctrl_agent = spawn_agent(&mut cmd, cam_ctrl);
-    add_route::<CameraCommand, _>(&mut cmd, cam_ctrl_agent, cam);
-
-    let win = cmd
-        .spawn((
-            WindowDef {
-                title: "EARTH POWER HOUSE".to_string(),
-                layout: WindowLayout {
-                    shape: ImageShape::from_width_height(1920, 1080),
-                    position: ImageLocation::from_horizontal_vertical(200., 200.),
-                },
-            },
-            Outbox::new(),
-            Router::new(),
-            (CameraLink, cam),
-        ))
-        .id();
-
-    add_route::<WindowResizedEvent, _>(&mut cmd, win, cam);
-    add_route::<InputEventMessage, _>(&mut cmd, win, cam_ctrl_agent);
-    add_route::<Tick, _>(&mut cmd, clock.tick_agent(), cam_ctrl_agent);
 }
 
 fn setup_sky(mut sky: SingletonMut<SkyModel>) {
