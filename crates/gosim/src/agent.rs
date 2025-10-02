@@ -1,7 +1,7 @@
 use crate::{
-    create_blood_vessels, create_heart, create_lungs, ecs::prelude::*, utils::EntityBuilder,
     BloodMocca, BodyPart, BodyPartMocca, HeartJunctions, HeartMocca, LungsJunctions, LungsMocca,
-    PipeConnectionHelper, TissueBuilder,
+    PipeConnectionHelper, TissueBuilder, create_blood_vessels, create_heart, create_lungs,
+    ecs::prelude::*, utils::EntityBuilder,
 };
 use flowsim::PortTag;
 use gems::volume_from_liters;
@@ -35,7 +35,8 @@ pub fn create_human(mut human: EntityWorldMut) -> EntityWorldMut {
 
     fn part_f<'a>(world: &'a mut World, name: &'static str) -> EntityWorldMut<'a> {
         // TODO make .child_of(human);
-        world.spawn_empty().with_name(name)
+        let entity = world.spawn((Name::from_str(name),));
+        world.entity(entity).unwrap()
     }
 
     let heart = part_f(human.world_mut(), "heart").and_set(BodyPart::Heart);

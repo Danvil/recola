@@ -5,7 +5,7 @@ use candy_camera::CandyCameraMocca;
 use candy_forge::CandyForgeMocca;
 use candy_input::CandyInputMocca;
 use candy_mesh::{CandyMeshMocca, Cuboid};
-use candy_scene_tree::{CandySceneTreeMocca, ChildOf, Transform3};
+use candy_scene_tree::{CandySceneTreeMocca, Transform3};
 use candy_sky::{CandySkyMocca, SkyModel};
 use candy_terra::{
     CandyTerraMocca, Ground, LoadTerrainCommand, TerraChunkStreamingStatusLoaded, Terrain,
@@ -51,7 +51,7 @@ impl Mocca for EphMocca {
         world.run(setup_sky);
         world.run(spawn_terrain);
         world.run(spawn_charn);
-        world.run(spawn_room);
+        world.run(spawn_church);
         // world.run(enable_flow_sim_logging);
         Self
     }
@@ -146,6 +146,22 @@ fn load_assets(mut asli: SingletonMut<AssetLibrary>) {
             node: Some("build-concrete.corner".into()),
         },
     );
+    asli.load_gltf(
+        &AssetUid::new("prop-crimson_altar"),
+        GltfAssetDescriptor {
+            path: PathBuf::from("I:/Ikabur/eph/assets/models/prop/prop-crimson_altar.glb"),
+            scene: Some("Scene".into()),
+            node: Some("prop-crimson_altar".into()),
+        },
+    );
+    asli.load_gltf(
+        &AssetUid::new("prop-crimson_beacon"),
+        GltfAssetDescriptor {
+            path: PathBuf::from("I:/Ikabur/eph/assets/models/prop/prop-crimson_beacon.glb"),
+            scene: Some("Scene".into()),
+            node: Some("prop-crimson_beacon".into()),
+        },
+    );
 }
 
 #[derive(Component)]
@@ -173,13 +189,11 @@ fn spawn_terrain_tile_foliage(
     let mut count = 0;
 
     for (terrain_chunk_entity, terrain_chunk) in query_tiles.iter() {
-        let foliage_root_entity = cmd
-            .spawn((
-                Name::from_str("foliage"),
-                Transform3::identity(),
-                (ChildOf, terrain_chunk_entity),
-            ))
-            .id();
+        let foliage_root_entity = cmd.spawn((
+            Name::from_str("foliage"),
+            Transform3::identity(),
+            (ChildOf, terrain_chunk_entity),
+        ));
 
         cmd.entity(terrain_chunk_entity)
             .set(TerrainTileFoliageSpawned);
@@ -225,30 +239,66 @@ fn spawn_charn(mut cmd: Commands) {
     ));
 }
 
-fn spawn_room(mut cmd: Commands) {
+fn spawn_church(mut cmd: Commands) {
+    let prop_crimson_altar_aid = AssetUid::new("prop-crimson_altar");
+    let prop_crimson_beacon_aid = AssetUid::new("prop-crimson_beacon");
+
+    let church_entity = cmd.spawn((
+        Name::from_str("church"),
+        Transform3::from_translation_xyz(20., 20., 0.),
+    ));
+
+    spawn_foundation(&mut cmd, church_entity);
+    spawn_room(&mut cmd, church_entity);
+
+    cmd.spawn((
+        Transform3::from_translation_xyz(5., 5., 0.),
+        AssetInstance(prop_crimson_altar_aid.clone()),
+        (ChildOf, church_entity),
+    ));
+
+    cmd.spawn((
+        Transform3::from_translation_xyz(7., 5., 0.),
+        AssetInstance(prop_crimson_beacon_aid.clone()),
+        (ChildOf, church_entity),
+    ));
+}
+
+fn spawn_foundation(cmd: &mut Commands, parent: Entity) {
     let slab_aid = AssetUid::new("build-concrete.slab_1x1");
-    let wall_aid = AssetUid::new("build-concrete.wall_1x2");
-    let corner_aid = AssetUid::new("build-concrete.corner");
 
-    let room_entity = cmd
-        .spawn((
-            Name::from_str("room"),
-            Transform3::from_translation_xyz(20., 20., 1.),
-        ))
-        .id();
+    let foundation_entity = cmd.spawn((
+        Name::from_str("foundation"),
+        Transform3::identity(),
+        (ChildOf, parent),
+    ));
 
-    let nx = 8;
-    let ny = 10;
+    let nx = 8 + 4;
+    let ny = 10 + 4;
 
     for i in 0..nx {
         for j in 0..ny {
             cmd.spawn((
                 Transform3::from_translation_xyz(i as f32, j as f32, 0.),
                 AssetInstance(slab_aid.clone()),
-                (ChildOf, room_entity),
+                (ChildOf, foundation_entity),
             ));
         }
     }
+}
+
+fn spawn_room(cmd: &mut Commands, parent: Entity) {
+    let wall_aid = AssetUid::new("build-concrete.wall_1x2");
+    let corner_aid = AssetUid::new("build-concrete.corner");
+
+    let room_entity = cmd.spawn((
+        Name::from_str("room"),
+        Transform3::from_translation_xyz(2., 2., 0.),
+        (ChildOf, parent),
+    ));
+
+    let nx = 8;
+    let ny = 10;
 
     for x in 1..nx - 1 {
         cmd.spawn((

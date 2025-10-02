@@ -51,13 +51,11 @@ fn spawn_architect_controller(
     let win = query.single().unwrap();
 
     let slab_aid = AssetUid::new("build-concrete.slab_1x1");
-    let placement_ghost = cmd
-        .spawn((
-            Transform3::identity(),
-            AssetInstance(slab_aid.clone()),
-            PlacementGhost,
-        ))
-        .id();
+    let placement_ghost = cmd.spawn((
+        Transform3::identity(),
+        AssetInstance(slab_aid.clone()),
+        PlacementGhost,
+    ));
 
     let controller_entity = spawn_agent(&mut cmd, ArchitectController::new(placement_ghost));
     cmd.entity(controller_entity)

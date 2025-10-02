@@ -74,21 +74,19 @@ fn setup_window_and_camera(clock: Singleton<SimClock>, mut cmd: Commands) {
     let cam_ctrl_agent = spawn_agent(&mut cmd, cam_ctrl);
     add_route::<CameraCommand, _>(&mut cmd, cam_ctrl_agent, cam);
 
-    let win = cmd
-        .spawn((
-            MainWindow,
-            WindowDef {
-                title: "EARTH POWER HOUSE".to_string(),
-                layout: WindowLayout {
-                    shape: ImageShape::from_width_height(1920, 1080),
-                    position: ImageLocation::from_horizontal_vertical(200., 200.),
-                },
+    let win = cmd.spawn((
+        MainWindow,
+        WindowDef {
+            title: "EARTH POWER HOUSE".to_string(),
+            layout: WindowLayout {
+                shape: ImageShape::from_width_height(1920, 1080),
+                position: ImageLocation::from_horizontal_vertical(200., 200.),
             },
-            Outbox::new(),
-            Router::new(),
-            (CameraLink, cam),
-        ))
-        .id();
+        },
+        Outbox::new(),
+        Router::new(),
+        (CameraLink, cam),
+    ));
 
     add_route::<WindowResizedEvent, _>(&mut cmd, win, cam);
     add_route::<InputEventMessage, _>(&mut cmd, win, cam_ctrl_agent);

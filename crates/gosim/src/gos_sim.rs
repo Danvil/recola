@@ -1,4 +1,4 @@
-use crate::{create_human, ecs::prelude::*, AgentMocca};
+use crate::{AgentMocca, create_human, ecs::prelude::*};
 
 pub struct GosSimMocca;
 
@@ -8,7 +8,9 @@ impl Mocca for GosSimMocca {
     }
 
     fn start(world: &mut World) -> Self {
-        create_human(world.spawn_empty().with_name("Bob"));
+        let entity = world.spawn((Name::from_str("Bob"),));
+        let entity = world.entity(entity).unwrap();
+        create_human(entity);
 
         Self
     }

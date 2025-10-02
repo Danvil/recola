@@ -4,12 +4,14 @@ mod stats;
 
 // pub use flecs_query_relation_helpers::*;
 
-use simplecs::prelude::{EntityWorldMut, World};
+use simplecs::prelude::*;
 use std::borrow::Cow;
 
 pub trait EntityBuilder {
     fn build_unamed<'a>(&self, world: &'a mut World) -> EntityWorldMut<'a> {
-        self.build(world.spawn_empty())
+        let entity = world.spawn_empty();
+        let entity = world.entity(entity).unwrap();
+        self.build(entity)
     }
 
     fn new_named<'a>(

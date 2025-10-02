@@ -79,7 +79,8 @@ pub fn create_lungs<'a>(
 
     fn part_f<'a>(world: &'a mut World, name: &'static str) -> EntityWorldMut<'a> {
         // TODO make .child_of(lungs);
-        world.spawn_empty().with_name(name)
+        let entity = world.spawn(Name::from_str(name));
+        world.entity(entity).unwrap()
     }
 
     // The pulmonary part enriches blood with oxygen
