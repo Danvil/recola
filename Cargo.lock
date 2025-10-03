@@ -3207,6 +3207,7 @@ dependencies = [
  "excess_core",
  "eyre",
  "magi_gems",
+ "profiling",
 ]
 
 [[package]]
