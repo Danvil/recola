@@ -30,9 +30,14 @@ magi_rng = { workspace = true }
 mocca = { workspace = true }
 num-traits = { workspace = true }
 paste = { workspace = true }
+profiling = { workspace = true }
 rust_decimal = { workspace = true }
 serde = { workspace = true }
 simplecs = { workspace = true }
+tracy-client = { workspace = true, optional = true }
 
 [dev-dependencies]
 approx = { workspace = true }
+
+[features]
+profile-with-tracy = ["dep:tracy-client", "profiling/profile-with-tracy"]

@@ -17,6 +17,11 @@ check:
 eph:
 	cargo run --release -p eph
 
+eph_tracy:
+    # Note there seems to be an issue with tracing but this works:
+    $env:TRACY_CLIENT_SYS_CXXFLAGS = "/DRelationProcessorDie=((LOGICAL_PROCESSOR_RELATIONSHIP)5) /DRelationProcessorModule=((LOGICAL_PROCESSOR_RELATIONSHIP)7)"
+    cargo run --release --features profile-with-tracy -p eph
+
 [windows]
 deploy_goscl:
 	cargo build --release -p goscl
