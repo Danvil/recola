@@ -234,7 +234,7 @@ fn spawn_terrain_tile_foliage(
 
 fn spawn_charn(mut cmd: Commands) {
     cmd.spawn((
-        Transform3::from_translation_xyz(35., 35., 0.).with_rotation_z_deg(180.),
+        Transform3::from_translation_xyz(25., 27., 0.).with_rotation_z_deg(-90.),
         AssetInstance(AssetUid::new("char-red_priest_germanicus")),
     ));
 }
