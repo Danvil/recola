@@ -5,7 +5,7 @@ use candy_camera::CandyCameraMocca;
 use candy_forge::CandyForgeMocca;
 use candy_input::CandyInputMocca;
 use candy_mesh::{CandyMeshMocca, Cuboid};
-use candy_scene_tree::{CandySceneTreeMocca, Transform3};
+use candy_scene_tree::{CandySceneTreeMocca, Transform3, Visibility};
 use candy_sky::{CandySkyMocca, SkyModel};
 use candy_terra::{
     CandyTerraMocca, Ground, LoadTerrainCommand, TerraChunkStreamingStatusLoaded, Terrain,
@@ -93,6 +93,7 @@ fn spawn_terrain(mut cmd: Commands) {
                 -0.5,
             ))
             .with_scale(Vec3::new(WATER_PLANE_SIZE, WATER_PLANE_SIZE, 1.)),
+        Visibility::Visible,
         Cuboid,
         Material::Pbr(PbrMaterial {
             base_color: LinearColor::from_rgb(0.02, 0.13, 0.35),

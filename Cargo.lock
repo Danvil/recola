@@ -3384,6 +3384,44 @@ dependencies = [
 ]
 
 [[package]]
+name = "recola"
+version = "0.1.0"
+dependencies = [
+ "approx",
+ "bigtalk",
+ "candy",
+ "candy_camera",
+ "candy_forge",
+ "candy_input",
+ "candy_log",
+ "candy_mesh",
+ "candy_scene_tree",
+ "candy_sky",
+ "candy_terra",
+ "candy_time",
+ "candy_utils",
+ "env_logger",
+ "excess",
+ "eyre",
+ "gems",
+ "glam 0.30.5",
+ "gosim",
+ "log",
+ "magi_color",
+ "magi_rng",
+ "magi_se",
+ "mocca",
+ "num-traits",
+ "paste",
+ "profiling",
+ "rust_decimal",
+ "serde",
+ "serde_json",
+ "simplecs",
+ "tracy-client",
+]
+
+[[package]]
 name = "redox_syscall"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

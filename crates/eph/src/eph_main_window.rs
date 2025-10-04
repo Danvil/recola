@@ -8,7 +8,7 @@ use candy_mesh::CandyMeshMocca;
 use candy_scene_tree::CandySceneTreeMocca;
 use candy_terra::CandyTerraMocca;
 use candy_time::{CandyTimeMocca, SimClock, Tick};
-use candy_utils::{CameraLink, ImageLocation, ImageShape, WindowDef, WindowLayout};
+use candy_utils::{CameraLink, WindowDef};
 use excess::prelude::*;
 use glam::{Vec2, Vec3};
 use simplecs::prelude::*;
@@ -78,10 +78,7 @@ fn setup_window_and_camera(clock: Singleton<SimClock>, mut cmd: Commands) {
         MainWindow,
         WindowDef {
             title: "EARTH POWER HOUSE".to_string(),
-            layout: WindowLayout {
-                shape: ImageShape::from_width_height(1920, 1080),
-                position: ImageLocation::from_horizontal_vertical(200., 200.),
-            },
+            ..Default::default()
         },
         Outbox::new(),
         Router::new(),
