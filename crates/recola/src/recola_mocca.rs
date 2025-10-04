@@ -1,6 +1,6 @@
 use crate::{GlobalAssetPath, load_assets, spawn_levels};
 use bigtalk::{BigtalkMocca, Outbox, Router, add_route, spawn_agent};
-use candy::{AssetInstance, AssetUid, CandyMocca, GltfAssetDescriptor};
+use candy::{AssetInstance, AssetUid, CandyMocca};
 use candy_camera::{
     CameraCommand, CameraMatrices, CameraState, CandyCameraMocca, FirstPersonCameraController,
     FirstPersonCameraControllerSettings, Projection, WindowResizedEvent,
@@ -50,9 +50,7 @@ impl Mocca for RecolaMocca {
     }
 
     fn start(world: &mut World) -> Self {
-        world.set_singleton(GlobalAssetPath(PathBuf::from(
-            "I:/Ikabur/eph/assets/recola",
-        )));
+        world.set_singleton(GlobalAssetPath(PathBuf::from("assets/recola")));
 
         world.set_singleton(Rng(magi_rng::Rng::from_seed(16667)));
 
