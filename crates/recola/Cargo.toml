@@ -41,4 +41,5 @@ tracy-client = { workspace = true, optional = true }
 approx = { workspace = true }
 
 [features]
+disco = []
 profile-with-tracy = ["dep:tracy-client", "profiling/profile-with-tracy"]

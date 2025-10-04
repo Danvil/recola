@@ -23,7 +23,7 @@ eph_tracy:
     cargo run --release --features profile-with-tracy -p eph
 
 recola:
-	cargo run --release -p recola
+	cargo run --release -p recola --features disco
 
 [windows]
 deploy_goscl:
