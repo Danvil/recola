@@ -21,8 +21,10 @@ use candy_utils::{
 };
 use excess::prelude::*;
 use glam::{Vec2, Vec3};
-use magi_color::LinearColor;
+use magi_color::{LinearColor, SRgbU8Color};
 use simplecs::prelude::*;
+
+pub const CRIMSON: SRgbU8Color = SRgbU8Color::from_rgb(220, 20, 60);
 
 #[derive(Component)]
 pub struct MainCamera;
@@ -61,7 +63,6 @@ impl Mocca for RecolaMocca {
         world.run(setup_window_and_camera);
         world.run(setup_sky);
         world.run(spawn_terrain);
-        world.run(spawn_charn);
         world.run(spawn_levels).unwrap();
         world.run(spawn_test_rift);
         Self
@@ -160,10 +161,6 @@ fn spawn_terrain(mut cmd: Commands) {
             coat_roughness: 0.,
         }),
     ));
-}
-
-fn spawn_charn(mut cmd: Commands) {
-    cmd.spawn((Transform3::from_translation_xyz(25., 27., 0.), Cuboid));
 }
 
 fn spawn_test_rift(cmd: Commands, mut rng: SingletonMut<Rng>) {

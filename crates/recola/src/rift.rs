@@ -1,10 +1,12 @@
 use crate::{
     CollidersMocca, CollisionRouting, DirtyCollider, FoundationMocca, Player, PlayerMocca, Rng,
-    recola_mocca::InputRaycastController,
+    recola_mocca::{CRIMSON, InputRaycastController},
 };
 use candy::{AssetInstance, AssetUid, CandyMocca};
-use candy_scene_tree::{CandySceneTreeMocca, Transform3, Visibility};
+use candy_mesh::Cuboid;
+use candy_scene_tree::{CandySceneTreeMocca, GlobalTransform3, Transform3, Visibility};
 use candy_time::{CandyTimeMocca, SimClock};
+use candy_utils::{Material, PbrMaterial};
 use excess::prelude::*;
 use glam::Vec3;
 use simplecs::prelude::*;
@@ -18,6 +20,7 @@ pub fn spawn_rift(mut spawn: impl Spawn, rng: &mut Rng, transform: Transform3) -
         RiftConsume {
             is_consumed: false,
             charge: 0.,
+            particle_charge: 0.,
         },
         Visibility::Visible,
     ));
@@ -72,12 +75,15 @@ impl Mocca for RiftMocca {
     fn register_components(world: &mut World) {
         world.register_component::<RiftConsume>();
         world.register_component::<RiftJitter>();
+        world.register_component::<RiftConsumeParticle>();
     }
 
     fn step(&mut self, world: &mut World) {
         world.run(rift_jitter);
         world.run(charge_rift_interaction);
         world.run(consume_rift);
+        world.run(spawn_rift_consume_particles);
+        world.run(animate_rift_consume_particles);
     }
 }
 
@@ -95,6 +101,7 @@ struct RiftJitter {
 struct RiftConsume {
     is_consumed: bool,
     charge: f32,
+    particle_charge: f32,
 }
 
 fn rift_jitter(
@@ -146,13 +153,16 @@ fn charge_rift_interaction(
         return;
     };
 
-    // Turn laser pointer
-    rift_consume.charge += RIFT_CHARGE_RATE * dt;
+    // Consume rift
+    if !rift_consume.is_consumed {
+        rift_consume.charge += (RIFT_CHARGE_RATE + RIFT_DECHARGE_RATE) * dt;
+        rift_consume.particle_charge += dt;
+    }
 }
 
 const RIFT_CHARGE_TO_CONSUME: f32 = 3.33;
-const RIFT_CHARGE_RATE: f32 = 1.3;
-const RIFT_DECHARGE_RATE: f32 = 0.3;
+const RIFT_CHARGE_RATE: f32 = 1.33;
+const RIFT_DECHARGE_RATE: f32 = 0.333;
 
 fn consume_rift(
     time: Singleton<SimClock>,
@@ -181,5 +191,77 @@ fn consume_rift(
         let q = (1.0 - rift_consume.charge / RIFT_CHARGE_TO_CONSUME).max(0.);
         let scale = q;
         tf.scale = scale * Vec3::ONE;
+    }
+}
+
+#[derive(Component)]
+struct RiftConsumeParticle {
+    age: f32,
+    size: f32,
+    target_offset: Vec3,
+}
+
+const RIFT_CONSUME_PARTICLE_SPAWN_RATE: f32 = 0.0333;
+const RIFT_CONSUME_PARTICLE_SPAWN_POSITION_VAR: f32 = 0.333;
+const RIFT_CONSUME_PARTICLE_TARGET_VAR: f32 = 0.333;
+const RIFT_CONSUME_PARTICLE_SIZE: f32 = 0.0667;
+const RIFT_CONSUME_PARTICLE_SPEED: f32 = 5.0;
+const RIFT_CONSUME_PARTICLE_TIME_TO_MAX_SIZE: f32 = 0.133;
+
+fn spawn_rift_consume_particles(
+    mut cmd: Commands,
+    mut rng: SingletonMut<Rng>,
+    mut query: Query<(&GlobalTransform3, &mut RiftConsume)>,
+) {
+    for (tf, rift_consume) in query.iter_mut() {
+        if rift_consume.is_consumed {
+            continue;
+        }
+
+        if rift_consume.particle_charge >= RIFT_CONSUME_PARTICLE_SPAWN_RATE {
+            rift_consume.particle_charge -= RIFT_CONSUME_PARTICLE_SPAWN_RATE;
+
+            cmd.spawn((
+                RiftConsumeParticle {
+                    age: 0.,
+                    size: 0.,
+                    target_offset: RIFT_CONSUME_PARTICLE_TARGET_VAR * rng.sphere_point(),
+                },
+                Cuboid,
+                Material::Pbr(PbrMaterial::default().with_base_color(CRIMSON)),
+                Visibility::Visible,
+                Transform3::identity()
+                    .with_translation(
+                        tf.translation()
+                            + RIFT_CONSUME_PARTICLE_SPAWN_POSITION_VAR * rng.nunit_vec3(),
+                    )
+                    .with_rotation(rng.uniform_so3())
+                    .with_scale_uniform(0.),
+            ));
+        }
+    }
+}
+
+fn animate_rift_consume_particles(
+    mut cmd: Commands,
+    time: Singleton<SimClock>,
+    player: Singleton<Player>,
+    mut query: Query<(Entity, &mut RiftConsumeParticle, &mut Transform3)>,
+) {
+    let dt = time.sim_dt_f32();
+    let step = dt * RIFT_CONSUME_PARTICLE_SPEED;
+
+    for (entity, particle, tf) in query.iter_mut() {
+        particle.age += dt;
+        particle.size = RIFT_CONSUME_PARTICLE_SIZE
+            * (particle.age / RIFT_CONSUME_PARTICLE_TIME_TO_MAX_SIZE).min(1.);
+        tf.scale = Vec3::splat(particle.size);
+
+        let delta = player.eye_position + particle.target_offset - tf.translation;
+        if delta.length() < 5.0 * step {
+            cmd.despawn(entity);
+        } else {
+            tf.translation += delta.normalize() * step;
+        }
     }
 }

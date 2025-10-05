@@ -1,6 +1,6 @@
 use crate::{
     ColliderWorld, CollidersMocca, CollisionRouting, FoundationMocca, Ray3, Rng,
-    recola_mocca::{InputRaycastController, MainCamera},
+    recola_mocca::{CRIMSON, InputRaycastController, MainCamera},
 };
 use candy::{CandyMocca, MaterialDirty};
 use candy_camera::CameraMatrices;
@@ -137,7 +137,6 @@ impl Mocca for LaserPointerMocca {
     }
 }
 
-const CRIMSON: SRgbU8Color = SRgbU8Color::from_rgb(220, 20, 60);
 const MAX_BEAM_LEN: f32 = 100.;
 const BEAM_WIDTH: f32 = 0.0167;
 const COLLISION_HEIGHT: f32 = 4.333;
@@ -165,6 +164,7 @@ fn turn_laser_pointers(
     query_input_raycast: Query<&InputRaycastController>,
     mut query_lpa: Query<&mut LaserPointerAzimuth>,
 ) {
+    let dt = time.sim_dt_f32();
     let input_raycast = &query_input_raycast.single().unwrap();
 
     // Get hit entity
@@ -173,7 +173,6 @@ fn turn_laser_pointers(
     };
 
     // Check for turn event
-    let dt = time.sim_dt_f32();
     let turn_dt = if input_raycast.state().is_left_mouse_pressed {
         dt
     } else if input_raycast.state().is_right_mouse_pressed {
