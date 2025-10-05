@@ -1,16 +1,14 @@
 use crate::{
-    CollidersMocca, DirtyCollider, GlobalAssetPath, STATIC_SETTINGS, build_laser_pointer,
-    build_laser_target, load_assets,
+    CollidersMocca, DirtyCollider, STATIC_SETTINGS, build_laser_pointer, build_laser_target,
+    load_assets,
 };
 use candy::{AssetInstance, AssetLoaded, CandyMocca};
+use candy_asset::{CandyAssetMocca, SharedAssetResolver};
 use candy_mesh::CandyMeshMocca;
 use candy_scene_tree::{CandySceneTreeMocca, Visibility};
 use excess::prelude::*;
 use simplecs::prelude::*;
-use std::{
-    ops::{Deref, DerefMut},
-    path::PathBuf,
-};
+use std::ops::{Deref, DerefMut};
 
 #[derive(Singleton)]
 pub struct Rng(magi_rng::Rng);
@@ -36,6 +34,7 @@ pub struct FoundationMocca;
 
 impl Mocca for FoundationMocca {
     fn load(mut deps: MoccaDeps) {
+        deps.depends_on::<CandyAssetMocca>();
         deps.depends_on::<CandyMeshMocca>();
         deps.depends_on::<CandyMocca>();
         deps.depends_on::<CandySceneTreeMocca>();
@@ -47,7 +46,14 @@ impl Mocca for FoundationMocca {
     }
 
     fn start(world: &mut World) -> Self {
-        world.set_singleton(GlobalAssetPath(PathBuf::from("assets/recola")));
+        let asset_resolver = world.singleton::<SharedAssetResolver>();
+
+        asset_resolver
+            .add_pack("I:/Ikabur/eph/tmp/recola/release/recola.candy")
+            .unwrap();
+        asset_resolver.add_prefix("assets/recola").unwrap();
+        asset_resolver.add_prefix("assets/shaders").unwrap();
+
         world.set_singleton(Rng(magi_rng::Rng::from_seed(16667)));
         world.run(load_assets).unwrap();
         Self

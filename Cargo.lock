@@ -498,6 +498,7 @@ version = "0.1.0"
 dependencies = [
  "bigtalk",
  "bytemuck",
+ "candy_asset",
  "candy_camera",
  "candy_dev_gui",
  "candy_fim",
@@ -542,6 +543,24 @@ dependencies = [
  "thiserror 1.0.69",
  "wgpu",
  "winit",
+]
+
+[[package]]
+name = "candy_asset"
+version = "0.1.0"
+dependencies = [
+ "candy_utils",
+ "excess",
+ "excess_macros",
+ "eyre",
+ "log",
+ "magi_gems",
+ "profiling",
+ "redb",
+ "serde",
+ "serde_json",
+ "simplecs",
+ "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -669,6 +688,7 @@ name = "candy_render_elements"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
+ "candy_asset",
  "eyre",
  "wgpu",
 ]
@@ -3390,6 +3410,7 @@ dependencies = [
  "approx",
  "bigtalk",
  "candy",
+ "candy_asset",
  "candy_camera",
  "candy_forge",
  "candy_input",
@@ -3420,6 +3441,15 @@ dependencies = [
  "simplecs",
  "slab",
  "tracy-client",
+]
+
+[[package]]
+name = "redb"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae323eb086579a3769daa2c753bb96deb95993c534711e0dbe881b5192906a06"
+dependencies = [
+ "libc",
 ]
 
 [[package]]

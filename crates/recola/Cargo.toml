@@ -7,6 +7,7 @@ edition = "2024"
 approx = { workspace = true }
 bigtalk = { workspace = true }
 candy = { workspace = true }
+candy_asset = { workspace = true }
 candy_camera = { workspace = true }
 candy_forge = { workspace = true }
 candy_input = { workspace = true }

@@ -1,27 +1,16 @@
 use candy::{AssetInstance, AssetUid};
+use candy_asset::SharedAssetResolver;
 use candy_scene_tree::Transform3;
 use excess::prelude::*;
-use eyre::{Context, Result, eyre};
+use eyre::Result;
 use glam::Vec3;
 use magi_se::SO3;
 use serde::Deserialize;
 use simplecs::prelude::*;
-use std::{fs, path::Path};
-
-use crate::GlobalAssetPath;
 
 #[derive(Debug, Deserialize)]
 pub struct Level {
     pub instances: Vec<Instance>,
-}
-
-impl Level {
-    pub fn load_from_json<P: AsRef<Path>>(path: P) -> Result<Self> {
-        let data =
-            fs::read_to_string(&path).with_context(|| eyre!("{}", path.as_ref().display()))?;
-        let out = serde_json::from_str(&data)?;
-        Ok(out)
-    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -69,10 +58,13 @@ pub fn spawn_level(cmd: &mut Commands, level_entity: Entity, level: &Level) {
     }
 }
 
-pub fn spawn_levels(asset_path: Singleton<GlobalAssetPath>, mut cmd: Commands) -> Result<()> {
-    let world = Level::load_from_json(asset_path.join("recola.json"))?;
+pub fn spawn_levels(assets: Singleton<SharedAssetResolver>, mut cmd: Commands) -> Result<()> {
+    let path = assets.resolve("recola.json")?;
+    let world: Level = assets.parse(&path)?;
+
     for inst in world.instances {
-        let level = Level::load_from_json(asset_path.join(&inst.name).with_extension("json"))?;
+        let path = assets.resolve(format!("{}.json", &inst.name))?;
+        let level: Level = assets.parse(&path)?;
         let level_entity = cmd.spawn((Name::new(inst.name.to_owned()), inst.transform()));
         spawn_level(&mut cmd, level_entity, &level);
     }

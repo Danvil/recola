@@ -3,6 +3,7 @@ use crate::{
 };
 use bigtalk::{BigtalkMocca, Outbox, Router, add_route, spawn_agent};
 use candy::{AssetInstance, AssetUid, CandyMocca};
+use candy_asset::CandyAssetMocca;
 use candy_camera::{
     CameraCommand, CameraMatrices, CameraState, CandyCameraMocca, FirstPersonCameraController,
     FirstPersonCameraControllerSettings, Projection, WindowResizedEvent,
@@ -26,6 +27,7 @@ pub struct RecolaMocca;
 
 impl Mocca for RecolaMocca {
     fn load(mut deps: MoccaDeps) {
+        deps.depends_on::<CandyAssetMocca>();
         deps.depends_on::<CandyCameraMocca>();
         deps.depends_on::<CandyInputMocca>();
         deps.depends_on::<CandyMeshMocca>();

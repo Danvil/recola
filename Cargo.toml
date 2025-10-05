@@ -15,6 +15,7 @@ approx = "0.5.1"
 bigtalk = { path = "I:/Ikabur/atom/crates/bigtalk" }
 bincode = { version = "2.0", features = ["serde"] }
 candy = { path = "I:/Ikabur/candy/crates/candy" }
+candy_asset = { path = "I:/Ikabur/candy/crates/candy_asset" }
 candy_camera = { path = "I:/Ikabur/candy/crates/candy_camera" }
 candy_fim = { path = "I:/Ikabur/candy/crates/candy_fim" }
 candy_input = { path = "I:/Ikabur/candy/crates/candy_input" }
