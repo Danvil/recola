@@ -1,6 +1,6 @@
 use crate::{
-    models::PressureModel, JunctionScratch, PipeDef, PipeJunctionPort, PipeScratch, PipeSolution,
-    PipeState, PipeStateDerivative, PortTag, SolutionDeltaVolume,
+    JunctionScratch, PipeDef, PipeJunctionPort, PipeScratch, PipeSolution, PipeState,
+    PipeStateDerivative, PortTag, SolutionDeltaVolume, models::PressureModel,
 };
 use excess::prelude::*;
 use gems::{GRAVITY_CONSTANT, ODE};
@@ -216,7 +216,7 @@ fn ode_pipe_preprocess(mut q: Query<(&PipeDef, &PipeState, &mut PipeScratch)>) {
 
 fn ode_junction_equalize_pressure(
     mut q_junc: Query<(This, &mut JunctionScratch)>,
-    mut q_junc_pipes: Query<(&mut PipeScratch, (This, &PipeJunctionPort, E1))>,
+    q_junc_pipes: Query<(&mut PipeScratch, (This, &PipeJunctionPort, E1))>,
 ) {
     for (ejunc, junc_scr) in q_junc.iter_mut() {
         // Narrow the query to only pipes which connect to this specific junction
@@ -294,7 +294,7 @@ fn ode_derivatives(mut q: Query<(&PipeState, &mut PipeScratch, &mut PipeStateDer
 fn ode_solution_fullfillment(
     dt: In<f64>,
     mut q_junc: Query<(This, &mut JunctionScratch)>,
-    mut q_junc_pipes: Query<(
+    q_junc_pipes: Query<(
         &PipeState,
         &PipeScratch,
         &mut PipeSolution,
