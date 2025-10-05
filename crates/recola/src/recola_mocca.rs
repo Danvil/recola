@@ -1,8 +1,9 @@
 use crate::{
-    CollidersMocca, FoundationMocca, LaserPointerMocca, Rng, STATIC_SETTINGS, spawn_levels,
+    ColliderWorld, CollidersMocca, CollisionRouting, FoundationMocca, LaserPointerMocca, RiftMocca,
+    Rng, STATIC_SETTINGS, spawn_levels, spawn_rift,
 };
 use bigtalk::{BigtalkMocca, Outbox, Router, add_route, spawn_agent};
-use candy::{AssetInstance, AssetUid, CandyMocca};
+use candy::CandyMocca;
 use candy_asset::CandyAssetMocca;
 use candy_camera::{
     CameraCommand, CameraMatrices, CameraState, CandyCameraMocca, FirstPersonCameraController,
@@ -42,6 +43,7 @@ impl Mocca for RecolaMocca {
         deps.depends_on::<CollidersMocca>();
         deps.depends_on::<FoundationMocca>();
         deps.depends_on::<LaserPointerMocca>();
+        deps.depends_on::<RiftMocca>();
         deps.depends_on_raw::<BigtalkMocca>();
 
         if STATIC_SETTINGS.enable_forge {
@@ -51,9 +53,8 @@ impl Mocca for RecolaMocca {
 
     fn register_components(world: &mut World) {
         world.register_component::<MainCamera>();
-        world.register_component::<RiftJitter>();
-        world.register_component::<InputStateController>();
-        bigtalk::register_agent_components::<InputStateController, _>(world);
+        world.register_component::<InputRaycastController>();
+        bigtalk::register_agent_components::<InputRaycastController, _>(world);
     }
 
     fn start(world: &mut World) -> Self {
@@ -67,8 +68,8 @@ impl Mocca for RecolaMocca {
     }
 
     fn step(&mut self, world: &mut World) {
-        world.run(bigtalk::tick_agents::<InputStateController, _>);
-        world.run(rift_jitter);
+        world.run(bigtalk::tick_agents::<InputRaycastController, _>);
+        world.run(input_raycast);
     }
 
     fn fini(&mut self, _world: &mut World) {
@@ -128,7 +129,7 @@ fn setup_window_and_camera(clock: Singleton<SimClock>, mut cmd: Commands) {
     add_route::<InputEventMessage, _>(&mut cmd, win, cam_ctrl_agent);
     add_route::<Tick, _>(&mut cmd, clock.tick_agent(), cam_ctrl_agent);
 
-    let activator = InputStateController::new();
+    let activator = InputRaycastController::new();
     let activator_agent = spawn_agent(&mut cmd, activator);
     add_route::<InputEventMessage, _>(&mut cmd, win, activator_agent);
 }
@@ -169,69 +170,17 @@ fn spawn_test_rift(cmd: Commands, mut rng: SingletonMut<Rng>) {
     spawn_rift(cmd, &mut rng, Transform3::from_translation_xyz(9., 0., 2.));
 }
 
-fn spawn_rift(mut spawn: impl Spawn, rng: &mut Rng, transform: Transform3) -> Entity {
-    let jitter = 0.1;
-
-    let rift_entity = spawn.spawn((Name::from_str("rift"), transform));
-
-    for _ in 0..20 {
-        let anchor = 2.0 * (rng.unit_vec3() - 0.5) * jitter;
-
-        spawn.spawn((
-            Name::from_str("rift"),
-            RiftJitter {
-                anchor,
-                target: anchor,
-                speed: 0.16667,
-                cooldown: 0.2 * rng.unit_f32(),
-            },
-            Transform3::from_translation(anchor),
-            AssetInstance(AssetUid::new("prop-rift")),
-            (ChildOf, rift_entity),
-        ));
-    }
-
-    rift_entity
-}
-
 #[derive(Component)]
-pub struct RiftJitter {
-    anchor: Vec3,
-    target: Vec3,
-    speed: f32,
-    cooldown: f32,
-}
-
-fn rift_jitter(
-    time: Singleton<SimClock>,
-    mut rng: SingletonMut<Rng>,
-    mut query: Query<(&mut RiftJitter, &mut Transform3)>,
-) {
-    let dt = time.sim_dt_f32();
-
-    let jitter = Vec3::new(0.133, 0.133, 0.333);
-
-    for (jit, tf) in query.iter_mut() {
-        jit.cooldown -= dt;
-        if jit.cooldown <= 0. {
-            jit.cooldown += rng.uniform(1. ..3.);
-            let delta = 2.0 * (rng.unit_vec3() - 0.5);
-            jit.target = jit.anchor + delta * jitter;
-        }
-        let dir = jit.target - tf.translation;
-        tf.translation += dir * jit.speed * dt;
-    }
-}
-
-#[derive(Component)]
-pub struct InputStateController {
+pub struct InputRaycastController {
     state: InputState,
+    raycast_entity_and_distance: Option<(Entity, f32)>,
 }
 
-impl InputStateController {
+impl InputRaycastController {
     pub fn new() -> Self {
         Self {
             state: InputState::default(),
+            raycast_entity_and_distance: None,
         }
     }
 
@@ -239,13 +188,48 @@ impl InputStateController {
         &self.state
     }
 
+    pub fn raycast_entity_and_distance(&self) -> Option<(Entity, f32)> {
+        self.raycast_entity_and_distance
+    }
+
     pub fn on_input_event(&mut self, msg: InputEventMessage) {
         self.state = msg.state;
     }
 }
 
-impl bigtalk::Agent for InputStateController {
+impl bigtalk::Agent for InputRaycastController {
     fn setup_message_handlers(handler: &mut bigtalk::MessageHandler<Self>) {
-        handler.add(InputStateController::on_input_event);
+        handler.add(InputRaycastController::on_input_event);
     }
+}
+
+fn input_raycast(
+    colliders: Singleton<ColliderWorld>,
+    mut query_input_raycast: Query<&mut InputRaycastController>,
+    query_cam: Query<&CameraMatrices, With<MainCamera>>,
+    query_routing: Query<&CollisionRouting>,
+) {
+    let input_raycast = query_input_raycast.single_mut().unwrap();
+    input_raycast.raycast_entity_and_distance = None;
+
+    // Ray through center pixel
+    let Some(cam) = query_cam.single() else {
+        return;
+    };
+    let ray = cam.center_pixel_ray();
+
+    // Find collider along ray
+    let Some((hit_entity, lam)) = colliders
+        .raycast(&ray, None)
+        .map(|(id, lam)| (colliders[id].user(), lam))
+    else {
+        return;
+    };
+
+    // Find attached collider
+    let Some(collisiont_routing) = query_routing.get(hit_entity) else {
+        return;
+    };
+
+    input_raycast.raycast_entity_and_distance = Some((collisiont_routing.on_raycast_entity, lam));
 }

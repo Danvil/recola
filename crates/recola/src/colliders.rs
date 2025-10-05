@@ -14,6 +14,11 @@ pub struct Collider(ColliderId);
 #[derive(Component, Default)]
 pub struct DirtyCollider(usize);
 
+#[derive(Component)]
+pub struct CollisionRouting {
+    pub on_raycast_entity: Entity,
+}
+
 #[derive(Singleton)]
 pub struct ColliderWorld {
     pub cuboids: CuboidSet,
@@ -153,6 +158,7 @@ impl Mocca for CollidersMocca {
     fn register_components(world: &mut World) {
         world.register_component::<Collider>();
         world.register_component::<DirtyCollider>();
+        world.register_component::<CollisionRouting>();
     }
 
     fn step(&mut self, world: &mut World) {

@@ -4,7 +4,9 @@ mod foundation;
 mod laser_pointer;
 mod level;
 mod nav;
+mod player;
 mod recola_mocca;
+mod rift;
 
 pub use assets::*;
 pub use colliders::*;
@@ -12,6 +14,8 @@ pub use foundation::*;
 pub use laser_pointer::*;
 pub use level::*;
 pub use nav::*;
+pub use player::*;
+pub use rift::*;
 
 use crate::recola_mocca::RecolaMocca;
 

@@ -1,6 +1,6 @@
 use crate::{
-    ColliderWorld, CollidersMocca, FoundationMocca, Ray3, Rng,
-    recola_mocca::{InputStateController, MainCamera},
+    ColliderWorld, CollidersMocca, CollisionRouting, FoundationMocca, Ray3, Rng,
+    recola_mocca::{InputRaycastController, MainCamera},
 };
 use candy::{CandyMocca, MaterialDirty};
 use candy_camera::CameraMatrices;
@@ -46,11 +46,6 @@ pub struct LaserPointerTarget {
     pub debug_disco_counter: usize,
 }
 
-#[derive(Component)]
-pub struct LaserPointerCollider {
-    pub main_entity: Entity,
-}
-
 pub fn build_laser_pointer(cmd: &mut Commands, entity: Entity, collider_entity: Option<Entity>) {
     let beam_entity = cmd.spawn((
         Transform3::identity()
@@ -73,8 +68,8 @@ pub fn build_laser_pointer(cmd: &mut Commands, entity: Entity, collider_entity: 
     ));
 
     if let Some(collider_entity) = collider_entity {
-        cmd.entity(collider_entity).set(LaserPointerCollider {
-            main_entity: entity,
+        cmd.entity(collider_entity).set(CollisionRouting {
+            on_raycast_entity: entity,
         });
     }
 
@@ -127,7 +122,6 @@ impl Mocca for LaserPointerMocca {
     fn register_components(world: &mut World) {
         world.register_component::<LaserPointer>();
         world.register_component::<LaserPointerAzimuth>();
-        world.register_component::<LaserPointerCollider>();
         world.register_component::<LaserPointerTarget>();
     }
 
@@ -168,46 +162,35 @@ fn disco_laser_pointer_azimuth(
 
 fn turn_laser_pointers(
     time: Singleton<SimClock>,
-    colliders: Singleton<ColliderWorld>,
-    query_ctrl: Query<&InputStateController>,
-    query_cam: Query<&CameraMatrices, With<MainCamera>>,
-    query_collider: Query<&LaserPointerCollider>,
+    query_input_raycast: Query<&InputRaycastController>,
     mut query_lpa: Query<&mut LaserPointerAzimuth>,
 ) {
-    // Check if get a potential turn event
-    let input_state = &query_ctrl.single().unwrap();
+    let input_raycast = &query_input_raycast.single().unwrap();
+
+    // Get hit entity
+    let Some((hit_entity, distance)) = input_raycast.raycast_entity_and_distance() else {
+        return;
+    };
+
+    // Check for turn event
     let dt = time.sim_dt_f32();
-    let turn_dt = if input_state.state().is_left_mouse_pressed {
+    let turn_dt = if input_raycast.state().is_left_mouse_pressed {
         dt
-    } else if input_state.state().is_right_mouse_pressed {
+    } else if input_raycast.state().is_right_mouse_pressed {
         -dt
     } else {
         return;
     };
 
-    // Ray cast through center pixel
-    let Some(cam) = query_cam.single() else {
+    // Check we are close enough
+    if distance > INTERACTION_MAX_DISTANCE {
         return;
-    };
-    let ray = cam.center_pixel_ray();
-
-    // Find collider under mouse
-    let Some(hit_entity) = colliders
-        .raycast(&ray, None)
-        .and_then(|(id, lam)| (lam < INTERACTION_MAX_DISTANCE).then(|| colliders[id].user()))
-    else {
-        return;
-    };
-
-    // Find attached collider
-    let Some(hit_collider) = query_collider.get(hit_entity) else {
-        return;
-    };
+    }
 
     // Get azimuth contoller
-    let lpa = query_lpa
-        .get_mut(hit_collider.main_entity)
-        .expect("LaserPointerCollider main_entity must have LaserPointerAzimuth");
+    let Some(lpa) = query_lpa.get_mut(hit_entity) else {
+        return;
+    };
 
     // Turn laser pointer
     lpa.azimuth += turn_dt * lpa.sensitivity;
