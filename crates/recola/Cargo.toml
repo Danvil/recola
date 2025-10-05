@@ -34,6 +34,7 @@ profiling = { workspace = true }
 rust_decimal = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+slab = { workspace = true }
 simplecs = { workspace = true }
 tracy-client = { workspace = true, optional = true }
 

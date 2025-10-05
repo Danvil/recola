@@ -22,7 +22,7 @@ def main():
     tmp_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. Build release
-    subprocess.run(["cargo", "build", "--release", "-p", "recola"], cwd=crate_dir, check=True)
+    subprocess.run(["cargo", "build", "--release", "-p", "recola", "--features", "disco"], cwd=crate_dir, check=True)
 
     # 2. Copy binary
     bin_src = repo_root / "target" / "release" / ("recola.exe" if os.name == "nt" else "recola")

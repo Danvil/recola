@@ -3418,6 +3418,7 @@ dependencies = [
  "serde",
  "serde_json",
  "simplecs",
+ "slab",
  "tracy-client",
 ]
 
