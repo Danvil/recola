@@ -7,6 +7,7 @@ use glam::Vec3;
 use magi_se::SO3;
 use serde::Deserialize;
 use simplecs::prelude::*;
+use std::collections::HashMap;
 
 #[derive(Debug, Deserialize)]
 pub struct Level {
@@ -16,12 +17,14 @@ pub struct Level {
 #[derive(Debug, Deserialize)]
 pub struct Instance {
     pub name: String,
-    pub asset_id: String,
-    #[serde(default)]
-    pub kind: Kind,
+    pub asset_id: Option<String>,
     pub location: [f32; 3],
     pub rotation: [f32; 4],
     pub scale: [f32; 3],
+
+    /// Custom properties on the instance object.
+    #[serde(default)]
+    pub custom: HashMap<String, serde_json::Value>,
 }
 
 impl Instance {
@@ -34,27 +37,19 @@ impl Instance {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Kind {
-    Collection,
-    Object,
-}
-
-// If "kind" is missing, default to Object for backward compatibility.
-impl Default for Kind {
-    fn default() -> Self {
-        Kind::Object
-    }
-}
-
 pub fn spawn_level(cmd: &mut Commands, level_entity: Entity, level: &Level) {
     for inst in &level.instances {
-        cmd.spawn((
-            inst.transform(),
-            AssetInstance(AssetUid::new(inst.asset_id.to_owned())),
-            (ChildOf, level_entity),
-        ));
+        let entity = cmd.spawn((inst.transform(), (ChildOf, level_entity)));
+
+        if let Some(asset_id) = inst.asset_id.as_ref() {
+            let ainst = AssetInstance(AssetUid::new(asset_id.to_owned()));
+            cmd.entity(entity).set(ainst);
+        }
+
+        if !inst.custom.is_empty() {
+            let props = CustomProperties::from_json(&inst.custom);
+            cmd.entity(entity).set(props);
+        }
     }
 }
 
@@ -69,4 +64,52 @@ pub fn spawn_levels(assets: Singleton<SharedAssetResolver>, mut cmd: Commands) -
         spawn_level(&mut cmd, level_entity, &level);
     }
     Ok(())
+}
+
+#[derive(Component)]
+pub struct CustomProperties(HashMap<String, CustomPropertiesValue>);
+
+pub enum CustomPropertiesValue {
+    Bool(bool),
+    Integer(i64),
+    Float(f64),
+    String(String),
+}
+
+impl CustomProperties {
+    pub fn from_json(map: &HashMap<String, serde_json::Value>) -> Self {
+        let mut out = HashMap::new();
+
+        for (key, value) in map {
+            let parsed = match value {
+                serde_json::Value::Number(num) if num.is_i64() => {
+                    num.as_i64().map(CustomPropertiesValue::Integer)
+                }
+                serde_json::Value::Number(num) if num.is_f64() => {
+                    num.as_f64().map(CustomPropertiesValue::Float)
+                }
+                serde_json::Value::Number(_num) => {
+                    todo!()
+                }
+                serde_json::Value::String(s) => Some(CustomPropertiesValue::String(s.clone())),
+                serde_json::Value::Bool(b) => Some(CustomPropertiesValue::Bool(*b)),
+                _ => {
+                    todo!()
+                }
+            };
+
+            if let Some(v) = parsed {
+                out.insert(key.clone(), v);
+            }
+        }
+
+        CustomProperties(out)
+    }
+
+    pub fn get_integer(&self, id: impl AsRef<str>) -> Option<i64> {
+        match self.0.get(id.as_ref())? {
+            CustomPropertiesValue::Integer(v) => Some(*v),
+            _ => None,
+        }
+    }
 }

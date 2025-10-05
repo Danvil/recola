@@ -1,5 +1,5 @@
 use crate::{
-    CollidersMocca, CollisionRouting, DirtyCollider, FoundationMocca, Player, PlayerMocca, Rng,
+    CollidersMocca, CustomProperties, FoundationMocca, KeyId, Player, PlayerMocca, Rng,
     recola_mocca::{CRIMSON, InputRaycastController},
 };
 use candy::{AssetInstance, AssetUid, CandyMocca};
@@ -8,52 +8,15 @@ use candy_scene_tree::{CandySceneTreeMocca, GlobalTransform3, Transform3, Visibi
 use candy_time::{CandyTimeMocca, SimClock};
 use candy_utils::{Material, PbrMaterial};
 use excess::prelude::*;
+use eyre::{Result, eyre};
 use glam::Vec3;
 use simplecs::prelude::*;
 
-pub fn spawn_rift(mut spawn: impl Spawn, rng: &mut Rng, transform: Transform3) -> Entity {
-    let jitter = 0.1;
+#[derive(Component)]
+pub struct SpawnRiftTask;
 
-    let rift_entity = spawn.spawn((
-        Name::from_str("rift"),
-        transform,
-        RiftConsume {
-            is_consumed: false,
-            charge: 0.,
-            particle_charge: 0.,
-        },
-        Visibility::Visible,
-    ));
-
-    let _rift_collider_entity = spawn.spawn((
-        Transform3::identity(),
-        Visibility::Hidden,
-        DirtyCollider::default(),
-        CollisionRouting {
-            on_raycast_entity: rift_entity,
-        },
-        (ChildOf, rift_entity),
-    ));
-
-    for _ in 0..20 {
-        let anchor = 2.0 * (rng.unit_vec3() - 0.5) * jitter;
-
-        spawn.spawn((
-            Name::from_str("rift"),
-            RiftJitter {
-                anchor,
-                target: anchor,
-                speed: 0.16667,
-                cooldown: 0.2 * rng.unit_f32(),
-            },
-            Transform3::from_translation(anchor),
-            AssetInstance(AssetUid::new("prop-rift")),
-            (ChildOf, rift_entity),
-        ));
-    }
-
-    rift_entity
-}
+#[derive(Component, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct RiftId(pub i64);
 
 /// Laser pointers with a beam which collides with objects
 pub struct RiftMocca;
@@ -74,11 +37,14 @@ impl Mocca for RiftMocca {
 
     fn register_components(world: &mut World) {
         world.register_component::<RiftConsume>();
-        world.register_component::<RiftJitter>();
         world.register_component::<RiftConsumeParticle>();
+        world.register_component::<RiftId>();
+        world.register_component::<RiftJitter>();
+        world.register_component::<SpawnRiftTask>();
     }
 
     fn step(&mut self, world: &mut World) {
+        world.run(spawn_rift);
         world.run(rift_jitter);
         world.run(charge_rift_interaction);
         world.run(consume_rift);
@@ -90,6 +56,13 @@ impl Mocca for RiftMocca {
 const INTERACTION_MAX_DISTANCE: f32 = 3.0;
 
 #[derive(Component)]
+struct RiftConsume {
+    is_consumed: bool,
+    charge: f32,
+    particle_charge: f32,
+}
+
+#[derive(Component)]
 struct RiftJitter {
     anchor: Vec3,
     target: Vec3,
@@ -97,11 +70,62 @@ struct RiftJitter {
     cooldown: f32,
 }
 
-#[derive(Component)]
-struct RiftConsume {
-    is_consumed: bool,
-    charge: f32,
-    particle_charge: f32,
+fn spawn_rift(
+    mut cmd: Commands,
+    mut rng: SingletonMut<Rng>,
+    query_open_rift_task: Query<Entity, With<SpawnRiftTask>>,
+    query_props: Query<&CustomProperties>,
+) {
+    let jitter = 0.1;
+
+    for rift_entity in query_open_rift_task.iter() {
+        cmd.entity(rift_entity).remove::<SpawnRiftTask>();
+
+        let rift_id = match get_rift_id(&query_props, rift_entity) {
+            Ok(rift_id) => rift_id,
+            Err(err) => {
+                log::error!("rift without rift_id: {err:?}");
+                continue;
+            }
+        };
+
+        for _ in 0..20 {
+            let anchor = 2.0 * (rng.unit_vec3() - 0.5) * jitter;
+
+            cmd.spawn((
+                Name::from_str("rift"),
+                RiftJitter {
+                    anchor,
+                    target: anchor,
+                    speed: 0.16667,
+                    cooldown: 0.2 * rng.unit_f32(),
+                },
+                Transform3::from_translation(anchor),
+                AssetInstance(AssetUid::new("prop-rift_schimmer")),
+                (ChildOf, rift_entity),
+            ));
+        }
+
+        cmd.entity(rift_entity)
+            .and_set(rift_id)
+            .and_set(RiftConsume {
+                is_consumed: false,
+                charge: 0.,
+                particle_charge: 0.,
+            });
+    }
+}
+
+fn get_rift_id(query_props: &Query<&CustomProperties>, rift_entity: Entity) -> Result<RiftId> {
+    let props = query_props
+        .get(rift_entity)
+        .ok_or_else(|| eyre!("rift does not have CustomProperties"))?;
+
+    let id = props
+        .get_integer("rift_id")
+        .ok_or_else(|| eyre!("'rift_id' entry missing"))?;
+
+    Ok(RiftId(id))
 }
 
 fn rift_jitter(
@@ -165,15 +189,16 @@ const RIFT_CHARGE_RATE: f32 = 1.33;
 const RIFT_DECHARGE_RATE: f32 = 0.333;
 
 fn consume_rift(
+    mut cmd: Commands,
     time: Singleton<SimClock>,
     mut player: SingletonMut<Player>,
-    mut query_rift_consume: Query<(Entity, &mut RiftConsume)>,
-    mut query_tf_vis: Query<(&mut Transform3, &mut Visibility)>,
+    mut query_rift_consume: Query<(Entity, &mut RiftConsume, &RiftId)>,
+    mut query_tf: Query<&mut Transform3>,
 ) {
     let dt = time.sim_dt_f32();
 
-    for (entity, rift_consume) in query_rift_consume.iter_mut() {
-        let (tf, vis) = query_tf_vis.get_mut(entity).unwrap();
+    for (entity, rift_consume, rift_id) in query_rift_consume.iter_mut() {
+        let tf = query_tf.get_mut(entity).unwrap();
 
         if rift_consume.is_consumed {
             continue;
@@ -181,9 +206,12 @@ fn consume_rift(
 
         if rift_consume.charge >= RIFT_CHARGE_TO_CONSUME {
             rift_consume.is_consumed = true;
-            player.rift_charges += 1;
+            player.rift_charges.insert(*rift_id);
+            let key = KeyId(rift_id.0);
+            println!("acquired key: {key:?}");
+            player.keys.insert(key);
 
-            *vis = Visibility::Hidden;
+            cmd.entity(entity).set(Visibility::Hidden);
         }
 
         rift_consume.charge = (rift_consume.charge - RIFT_DECHARGE_RATE * dt).max(0.);

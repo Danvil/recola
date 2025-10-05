@@ -1,14 +1,16 @@
-use candy_camera::{CameraMatrices, FirstPersonCameraController};
+use candy_camera::CameraMatrices;
 use excess::prelude::*;
 use glam::Vec3;
 use simplecs::prelude::*;
+use std::collections::HashSet;
 
-use crate::recola_mocca::MainCamera;
+use crate::{KeyId, RiftId, recola_mocca::MainCamera};
 
 #[derive(Singleton)]
 pub struct Player {
     pub eye_position: Vec3,
-    pub rift_charges: usize,
+    pub rift_charges: HashSet<RiftId>,
+    pub keys: HashSet<KeyId>,
 }
 
 /// Laser pointers with a beam which collides with objects
@@ -20,7 +22,8 @@ impl Mocca for PlayerMocca {
     fn start(world: &mut World) -> Self {
         world.set_singleton(Player {
             eye_position: Vec3::Z,
-            rift_charges: 0,
+            rift_charges: HashSet::new(),
+            keys: HashSet::new(),
         });
         Self
     }

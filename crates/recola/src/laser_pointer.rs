@@ -1,16 +1,15 @@
 use crate::{
     ColliderWorld, CollidersMocca, CollisionRouting, FoundationMocca, Ray3, Rng,
-    recola_mocca::{CRIMSON, InputRaycastController, MainCamera},
+    recola_mocca::{CRIMSON, InputRaycastController},
 };
 use candy::{CandyMocca, MaterialDirty};
-use candy_camera::CameraMatrices;
 use candy_mesh::{Ball, Cuboid};
 use candy_scene_tree::{CandySceneTreeMocca, GlobalTransform3, Transform3, Visibility};
 use candy_time::{CandyTimeMocca, SimClock};
 use candy_utils::{Material, PbrMaterial};
 use excess::prelude::*;
 use glam::{Vec3, Vec3Swizzles};
-use magi_color::{SRgbU8Color, colors};
+use magi_color::colors;
 use magi_se::SO3;
 use simplecs::prelude::*;
 
@@ -29,7 +28,7 @@ pub struct LaserPointer {
     dir: Vec3,
 
     beam_entity: Entity,
-    exclude_collider: Option<Entity>,
+    exclude_collider: Entity,
 
     collision_point: Vec3,
     beam_length: f32,
@@ -46,7 +45,7 @@ pub struct LaserPointerTarget {
     pub debug_disco_counter: usize,
 }
 
-pub fn build_laser_pointer(cmd: &mut Commands, entity: Entity, collider_entity: Option<Entity>) {
+pub fn build_laser_pointer(cmd: &mut Commands, entity: Entity, collider_entity: Entity) {
     let beam_entity = cmd.spawn((
         Transform3::identity()
             .with_scale_xyz(MAX_BEAM_LEN, BEAM_WIDTH, BEAM_WIDTH)
@@ -67,11 +66,9 @@ pub fn build_laser_pointer(cmd: &mut Commands, entity: Entity, collider_entity: 
         (ChildOf, entity),
     ));
 
-    if let Some(collider_entity) = collider_entity {
-        cmd.entity(collider_entity).set(CollisionRouting {
-            on_raycast_entity: entity,
-        });
-    }
+    cmd.entity(collider_entity).set(CollisionRouting {
+        on_raycast_entity: entity,
+    });
 
     cmd.entity(entity).and_set(LaserPointerAzimuth {
         azimuth: 0.,
@@ -223,7 +220,7 @@ fn collide_laser_beams(
     for (tf, lp) in query.iter_mut() {
         let ray = Ray3::from_origin_direction(tf.translation(), tf.x_axis.into()).unwrap();
 
-        lp.beam_length = match colliders.raycast(&ray, lp.exclude_collider) {
+        lp.beam_length = match colliders.raycast(&ray, Some(lp.exclude_collider)) {
             Some((_, len)) => len,
             None => MAX_BEAM_LEN,
         };

@@ -26,7 +26,6 @@ def main():
     # 1. Build release
     subprocess.run([
         "cargo", "build", "--release", "-p", "recola",
-        "--features", "disco"
     ], cwd=".", check=True)
 
     # 2. Copy binary

@@ -1,6 +1,6 @@
 use crate::{
-    CollidersMocca, DirtyCollider, STATIC_SETTINGS, build_laser_pointer, build_laser_target,
-    load_assets,
+    CollidersMocca, CollisionRouting, DirtyCollider, STATIC_SETTINGS, SpawnDoorTask, SpawnRiftTask,
+    build_laser_pointer, build_laser_target, load_assets,
 };
 use candy::{AssetInstance, AssetLoaded, CandyMocca};
 use candy_asset::{CandyAssetMocca, SharedAssetResolver};
@@ -48,9 +48,12 @@ impl Mocca for FoundationMocca {
     fn start(world: &mut World) -> Self {
         let asset_resolver = world.singleton::<SharedAssetResolver>();
 
-        asset_resolver
-            .add_pack("I:/Ikabur/eph/tmp/recola/release/recola.candy")
-            .unwrap();
+        if asset_resolver.add_pack("recola.candy").is_err() {
+            asset_resolver
+                .add_pack("I:/Ikabur/eph/tmp/recola/release/recola.candy")
+                .unwrap();
+        }
+
         asset_resolver.add_prefix("assets/recola").unwrap();
         asset_resolver.add_prefix("assets/shaders").unwrap();
 
@@ -75,10 +78,13 @@ fn load_asset_blueprints(
     query_name: Query<&Name>,
 ) {
     for (entity, ainst) in query.iter() {
-        let collider_entity = find_collider(&children, &query_name, entity);
-
-        if let Some(collider_entity) = collider_entity {
-            cmd.entity(collider_entity).set(DirtyCollider::default());
+        let colliders = find_colliders(&children, &query_name, entity);
+        for &collider_entity in &colliders {
+            cmd.entity(collider_entity)
+                .and_set(CollisionRouting {
+                    on_raycast_entity: entity,
+                })
+                .and_set(DirtyCollider::default());
 
             if !STATIC_SETTINGS.show_colliders {
                 cmd.entity(collider_entity).set(Visibility::Hidden)
@@ -90,13 +96,19 @@ fn load_asset_blueprints(
                 let pointer =
                     find_child_by_name(&children, &query_name, entity, "prop-laser.pointer")
                         .unwrap();
-                build_laser_pointer(&mut cmd, pointer, collider_entity);
+                build_laser_pointer(&mut cmd, pointer, colliders[0]);
             }
             "prop-beam_target" => {
                 let target =
                     find_child_by_name(&children, &query_name, entity, "prop-beam_target.target")
                         .unwrap();
                 build_laser_target(&mut cmd, target);
+            }
+            "prop-archway_3x6_door" => {
+                cmd.entity(entity).set(SpawnDoorTask);
+            }
+            "prop-rift" => {
+                cmd.entity(entity).set(SpawnRiftTask);
             }
             _ => {}
         }
@@ -105,14 +117,19 @@ fn load_asset_blueprints(
     }
 }
 
-fn find_collider(
+fn find_colliders(
     children: &Relation<ChildOf>,
     query_name: &Query<&Name>,
     entity: Entity,
-) -> Option<Entity> {
-    find_child_by_name_impl(children, query_name, entity, &|name| {
-        name.ends_with("COLLIDER")
-    })
+) -> Vec<Entity> {
+    let mut out = Vec::new();
+    iter_children_by_name(children, query_name, entity, |entity, name| {
+        if name.ends_with("COLLIDER") {
+            out.push(entity);
+        }
+        false
+    });
+    out
 }
 
 fn find_child_by_name(
@@ -144,4 +161,38 @@ where
         }
     }
     None
+}
+
+fn iter_children_by_name<F>(
+    children: &Relation<ChildOf>,
+    query_name: &Query<&Name>,
+    entity: Entity,
+    mut callback_f: F,
+) -> bool
+where
+    F: FnMut(Entity, &str) -> bool,
+{
+    iter_children_by_name_impl(children, query_name, entity, &mut callback_f)
+}
+
+fn iter_children_by_name_impl<F>(
+    children: &Relation<ChildOf>,
+    query_name: &Query<&Name>,
+    entity: Entity,
+    callback_f: &mut F,
+) -> bool
+where
+    F: FnMut(Entity, &str) -> bool,
+{
+    for child_entity in children.iter(entity) {
+        if let Some(child_name) = query_name.get(child_entity) {
+            if callback_f(child_entity, child_name.as_str()) {
+                return true;
+            }
+        }
+        if iter_children_by_name_impl(children, query_name, child_entity, callback_f) {
+            return true;
+        }
+    }
+    false
 }

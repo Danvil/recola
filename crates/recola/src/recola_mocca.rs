@@ -1,6 +1,6 @@
 use crate::{
-    ColliderWorld, CollidersMocca, CollisionRouting, FoundationMocca, LaserPointerMocca, RiftMocca,
-    Rng, STATIC_SETTINGS, spawn_levels, spawn_rift,
+    ColliderWorld, CollidersMocca, CollisionRouting, CustomProperties, DoorMocca, FoundationMocca,
+    LaserPointerMocca, RiftMocca, Rng, STATIC_SETTINGS, spawn_levels,
 };
 use bigtalk::{BigtalkMocca, Outbox, Router, add_route, spawn_agent};
 use candy::CandyMocca;
@@ -46,6 +46,7 @@ impl Mocca for RecolaMocca {
         deps.depends_on::<FoundationMocca>();
         deps.depends_on::<LaserPointerMocca>();
         deps.depends_on::<RiftMocca>();
+        deps.depends_on::<DoorMocca>();
         deps.depends_on_raw::<BigtalkMocca>();
 
         if STATIC_SETTINGS.enable_forge {
@@ -55,6 +56,7 @@ impl Mocca for RecolaMocca {
 
     fn register_components(world: &mut World) {
         world.register_component::<MainCamera>();
+        world.register_component::<CustomProperties>();
         world.register_component::<InputRaycastController>();
         bigtalk::register_agent_components::<InputRaycastController, _>(world);
     }
@@ -64,7 +66,6 @@ impl Mocca for RecolaMocca {
         world.run(setup_sky);
         world.run(spawn_terrain);
         world.run(spawn_levels).unwrap();
-        world.run(spawn_test_rift);
         Self
     }
 
@@ -161,10 +162,6 @@ fn spawn_terrain(mut cmd: Commands) {
             coat_roughness: 0.,
         }),
     ));
-}
-
-fn spawn_test_rift(cmd: Commands, mut rng: SingletonMut<Rng>) {
-    spawn_rift(cmd, &mut rng, Transform3::from_translation_xyz(9., 0., 2.));
 }
 
 #[derive(Component)]

@@ -1,5 +1,6 @@
 mod assets;
 mod colliders;
+mod door;
 mod foundation;
 mod laser_pointer;
 mod level;
@@ -10,6 +11,7 @@ mod rift;
 
 pub use assets::*;
 pub use colliders::*;
+pub use door::*;
 pub use foundation::*;
 pub use laser_pointer::*;
 pub use level::*;
