@@ -42,6 +42,7 @@ gosim = { path = "crates/gosim" }
 log = "0.4"
 magi_color = { path = "I:/Ikabur/magi/crates/magi_color" }
 magi_gems = { path = "I:/Ikabur/magi/crates/magi_gems" }
+magi_geo = { path = "I:/Ikabur/magi/crates/magi_geo" }
 magi_rng = { path = "I:/Ikabur/magi/crates/magi_rng" }
 magi_se = { path = "I:/Ikabur/magi/crates/magi_se" }
 mocca = { path = "I:/Ikabur/atom/crates/mocca" }

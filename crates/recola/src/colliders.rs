@@ -1,9 +1,12 @@
 use candy_scene_tree::{CandySceneTreeMocca, GlobalTransform3};
 use excess::prelude::*;
 use glam::{Affine3A, Vec3};
+use magi_geo::Ray;
 use simplecs::prelude::*;
 use slab::Slab;
 use std::ops::Index;
+
+pub type Ray3 = Ray<Vec3>;
 
 #[derive(Component)]
 pub struct Collider(ColliderId);
@@ -17,8 +20,16 @@ pub struct ColliderWorld {
 }
 
 impl ColliderWorld {
-    pub fn raycast(&self, ray: &Ray, exclude: Option<Entity>) -> Option<(ColliderId, f32)> {
+    pub fn raycast(&self, ray: &Ray3, exclude: Option<Entity>) -> Option<(ColliderId, f32)> {
         self.cuboids.raycast(ray, exclude)
+    }
+}
+
+impl Index<ColliderId> for ColliderWorld {
+    type Output = PosedCuboid;
+
+    fn index(&self, id: ColliderId) -> &Self::Output {
+        &self.cuboids[id]
     }
 }
 
@@ -53,7 +64,7 @@ impl CuboidSet {
         self.cuboids.remove(id.0);
     }
 
-    pub fn raycast(&self, ray: &Ray, exclude: Option<Entity>) -> Option<(ColliderId, f32)> {
+    pub fn raycast(&self, ray: &Ray3, exclude: Option<Entity>) -> Option<(ColliderId, f32)> {
         let out = self
             .cuboids
             .iter()
@@ -88,35 +99,20 @@ pub struct PosedCuboid {
 }
 
 impl PosedCuboid {
-    pub fn raycast(&self, ray: &Ray) -> Option<f32> {
+    pub fn raycast(&self, ray: &Ray3) -> Option<f32> {
         aabb_raycast(self.half_size, ray.transform(&self.cuboid_t_ref))
     }
-}
 
-#[derive(Debug, Clone)]
-pub struct Ray {
-    pub origin: Vec3,
-    pub dir: Vec3,
-}
-
-impl Ray {
-    pub fn point(&self, t: f32) -> Vec3 {
-        self.origin + self.dir * t
-    }
-
-    pub fn transform(&self, tf: &Affine3A) -> Self {
-        Self {
-            origin: tf.transform_point3(self.origin),
-            dir: tf.transform_vector3(self.dir),
-        }
+    pub fn user(&self) -> Entity {
+        self.user
     }
 }
 
 /// Intersects a ray with an axis-aligned box centered at the origin with half-extents `half_size`.
 /// Returns the nearest non-negative hit distance if it exists.
-pub fn aabb_raycast(half_size: Vec3, ray: Ray) -> Option<f32> {
+pub fn aabb_raycast(half_size: Vec3, ray: Ray3) -> Option<f32> {
     // Reciprocal; inf handles zero components correctly for slab tests.
-    let inv_dir = Vec3::ONE / ray.dir;
+    let inv_dir = Vec3::ONE / ray.direction();
 
     // Parametric distances to the slabs on each axis.
     let t1 = (-half_size - ray.origin) * inv_dir;

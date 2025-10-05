@@ -26,8 +26,9 @@ glam = { workspace = true }
 gosim = { workspace = true }
 log = { workspace = true }
 magi_color = { workspace = true }
-magi_se = { workspace = true }
+magi_geo = { workspace = true }
 magi_rng = { workspace = true }
+magi_se = { workspace = true }
 mocca = { workspace = true }
 num-traits = { workspace = true }
 paste = { workspace = true }

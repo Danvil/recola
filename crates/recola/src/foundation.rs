@@ -88,11 +88,14 @@ fn load_asset_blueprints(
         match ainst.as_str() {
             "prop-laser" => {
                 let pointer =
-                    find_child_by_name(&children, &query_name, entity, "pointer").unwrap();
+                    find_child_by_name(&children, &query_name, entity, "prop-laser.pointer")
+                        .unwrap();
                 build_laser_pointer(&mut cmd, pointer, collider_entity);
             }
             "prop-beam_target" => {
-                let target = find_child_by_name(&children, &query_name, entity, "target").unwrap();
+                let target =
+                    find_child_by_name(&children, &query_name, entity, "prop-beam_target.target")
+                        .unwrap();
                 build_laser_target(&mut cmd, target);
             }
             _ => {}

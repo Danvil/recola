@@ -9,7 +9,7 @@ use candy_camera::{
     FirstPersonCameraControllerSettings, Projection, WindowResizedEvent,
 };
 use candy_forge::CandyForgeMocca;
-use candy_input::{CandyInputMocca, InputEventMessage};
+use candy_input::{CandyInputMocca, InputEventMessage, InputState};
 use candy_mesh::{CandyMeshMocca, Cuboid};
 use candy_scene_tree::{CandySceneTreeMocca, Transform3, Visibility};
 use candy_sky::{CandySkyMocca, DayNightCycle, SkyModel, SolisticDays};
@@ -22,6 +22,9 @@ use excess::prelude::*;
 use glam::{Vec2, Vec3};
 use magi_color::LinearColor;
 use simplecs::prelude::*;
+
+#[derive(Component)]
+pub struct MainCamera;
 
 pub struct RecolaMocca;
 
@@ -47,7 +50,10 @@ impl Mocca for RecolaMocca {
     }
 
     fn register_components(world: &mut World) {
+        world.register_component::<MainCamera>();
         world.register_component::<RiftJitter>();
+        world.register_component::<InputStateController>();
+        bigtalk::register_agent_components::<InputStateController, _>(world);
     }
 
     fn start(world: &mut World) -> Self {
@@ -61,6 +67,7 @@ impl Mocca for RecolaMocca {
     }
 
     fn step(&mut self, world: &mut World) {
+        world.run(bigtalk::tick_agents::<InputStateController, _>);
         world.run(rift_jitter);
     }
 
@@ -83,7 +90,25 @@ fn setup_window_and_camera(clock: Singleton<SimClock>, mut cmd: Commands) {
             },
         ),
     );
-    cmd.entity(cam).set(CameraMatrices::new());
+    cmd.entity(cam)
+        .and_set(MainCamera)
+        .and_set(CameraMatrices::new());
+
+    let win = cmd.spawn((
+        WindowDef {
+            title: "LUDUM DARE 57: RECOLA".to_string(),
+            layout: WindowLayout {
+                shape: ImageShape::from_width_height(1920, 1080),
+                position: ImageLocation::from_horizontal_vertical(200., 200.),
+            },
+            cursor_visible: false,
+            confine_cursor: true,
+        },
+        Outbox::new(),
+        Router::new(),
+        (CameraLink, cam),
+    ));
+    add_route::<WindowResizedEvent, _>(&mut cmd, win, cam);
 
     let cam_ctrl_settings = FirstPersonCameraControllerSettings {
         move_max_speed: 6.0,
@@ -100,25 +125,12 @@ fn setup_window_and_camera(clock: Singleton<SimClock>, mut cmd: Commands) {
     cam_ctrl.set_yaw(90.0_f32.to_radians());
     let cam_ctrl_agent = spawn_agent(&mut cmd, cam_ctrl);
     add_route::<CameraCommand, _>(&mut cmd, cam_ctrl_agent, cam);
-
-    let win = cmd.spawn((
-        WindowDef {
-            title: "LUDUM DARE 57: RECOLA".to_string(),
-            layout: WindowLayout {
-                shape: ImageShape::from_width_height(1920, 1080),
-                position: ImageLocation::from_horizontal_vertical(200., 200.),
-            },
-            cursor_visible: false,
-            confine_cursor: true,
-        },
-        Outbox::new(),
-        Router::new(),
-        (CameraLink, cam),
-    ));
-
-    add_route::<WindowResizedEvent, _>(&mut cmd, win, cam);
     add_route::<InputEventMessage, _>(&mut cmd, win, cam_ctrl_agent);
     add_route::<Tick, _>(&mut cmd, clock.tick_agent(), cam_ctrl_agent);
+
+    let activator = InputStateController::new();
+    let activator_agent = spawn_agent(&mut cmd, activator);
+    add_route::<InputEventMessage, _>(&mut cmd, win, activator_agent);
 }
 
 fn setup_sky(mut sky: SingletonMut<SkyModel>, mut day_night: SingletonMut<DayNightCycle>) {
@@ -154,7 +166,7 @@ fn spawn_charn(mut cmd: Commands) {
 }
 
 fn spawn_test_rift(cmd: Commands, mut rng: SingletonMut<Rng>) {
-    spawn_rift(cmd, &mut rng, Transform3::from_translation_xyz(9., 0., 3.));
+    spawn_rift(cmd, &mut rng, Transform3::from_translation_xyz(9., 0., 2.));
 }
 
 fn spawn_rift(mut spawn: impl Spawn, rng: &mut Rng, transform: Transform3) -> Entity {
@@ -208,5 +220,32 @@ fn rift_jitter(
         }
         let dir = jit.target - tf.translation;
         tf.translation += dir * jit.speed * dt;
+    }
+}
+
+#[derive(Component)]
+pub struct InputStateController {
+    state: InputState,
+}
+
+impl InputStateController {
+    pub fn new() -> Self {
+        Self {
+            state: InputState::default(),
+        }
+    }
+
+    pub fn state(&self) -> &InputState {
+        &self.state
+    }
+
+    pub fn on_input_event(&mut self, msg: InputEventMessage) {
+        self.state = msg.state;
+    }
+}
+
+impl bigtalk::Agent for InputStateController {
+    fn setup_message_handlers(handler: &mut bigtalk::MessageHandler<Self>) {
+        handler.add(InputStateController::on_input_event);
     }
 }

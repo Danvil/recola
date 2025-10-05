@@ -3429,6 +3429,7 @@ dependencies = [
  "gosim",
  "log",
  "magi_color",
+ "magi_geo",
  "magi_rng",
  "magi_se",
  "mocca",

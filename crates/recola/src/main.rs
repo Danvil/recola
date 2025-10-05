@@ -3,6 +3,7 @@ mod colliders;
 mod foundation;
 mod laser_pointer;
 mod level;
+mod nav;
 mod recola_mocca;
 
 pub use assets::*;
@@ -10,6 +11,7 @@ pub use colliders::*;
 pub use foundation::*;
 pub use laser_pointer::*;
 pub use level::*;
+pub use nav::*;
 
 use crate::recola_mocca::RecolaMocca;
 
@@ -19,7 +21,7 @@ pub struct StaticSettings {
 }
 
 pub const STATIC_SETTINGS: StaticSettings = StaticSettings {
-    enable_forge: true,
+    enable_forge: false,
     show_colliders: false,
 };
 

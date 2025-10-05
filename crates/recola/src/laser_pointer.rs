@@ -1,11 +1,15 @@
-use crate::{ColliderWorld, CollidersMocca, FoundationMocca, Ray, Rng};
+use crate::{
+    ColliderWorld, CollidersMocca, FoundationMocca, Ray3, Rng,
+    recola_mocca::{InputStateController, MainCamera},
+};
 use candy::{CandyMocca, MaterialDirty};
+use candy_camera::CameraMatrices;
 use candy_mesh::{Ball, Cuboid};
 use candy_scene_tree::{CandySceneTreeMocca, GlobalTransform3, Transform3, Visibility};
 use candy_time::{CandyTimeMocca, SimClock};
 use candy_utils::{Material, PbrMaterial};
 use excess::prelude::*;
-use glam::{Vec2, Vec3, Vec3Swizzles};
+use glam::{Vec3, Vec3Swizzles};
 use magi_color::{SRgbU8Color, colors};
 use magi_se::SO3;
 use simplecs::prelude::*;
@@ -13,6 +17,8 @@ use simplecs::prelude::*;
 #[derive(Component)]
 pub struct LaserPointerAzimuth {
     pub azimuth: f32,
+
+    pub sensitivity: f32,
 
     #[cfg(feature = "disco")]
     pub disco_rng_dir_cooldown: f32,
@@ -40,7 +46,12 @@ pub struct LaserPointerTarget {
     pub debug_disco_counter: usize,
 }
 
-pub fn build_laser_pointer(cmd: &mut Commands, entity: Entity, exclude_collider: Option<Entity>) {
+#[derive(Component)]
+pub struct LaserPointerCollider {
+    pub main_entity: Entity,
+}
+
+pub fn build_laser_pointer(cmd: &mut Commands, entity: Entity, collider_entity: Option<Entity>) {
     let beam_entity = cmd.spawn((
         Transform3::identity()
             .with_scale_xyz(MAX_BEAM_LEN, BEAM_WIDTH, BEAM_WIDTH)
@@ -61,8 +72,15 @@ pub fn build_laser_pointer(cmd: &mut Commands, entity: Entity, exclude_collider:
         (ChildOf, entity),
     ));
 
+    if let Some(collider_entity) = collider_entity {
+        cmd.entity(collider_entity).set(LaserPointerCollider {
+            main_entity: entity,
+        });
+    }
+
     cmd.entity(entity).and_set(LaserPointerAzimuth {
         azimuth: 0.,
+        sensitivity: 1.,
 
         #[cfg(feature = "disco")]
         disco_rng_dir_cooldown: 0.,
@@ -71,7 +89,7 @@ pub fn build_laser_pointer(cmd: &mut Commands, entity: Entity, exclude_collider:
     cmd.entity(entity).and_set(LaserPointer {
         dir: Vec3::Z,
         beam_entity,
-        exclude_collider,
+        exclude_collider: collider_entity,
         collision_point: Vec3::ONE,
         beam_length: MAX_BEAM_LEN,
         beam_end_entity,
@@ -109,6 +127,7 @@ impl Mocca for LaserPointerMocca {
     fn register_components(world: &mut World) {
         world.register_component::<LaserPointer>();
         world.register_component::<LaserPointerAzimuth>();
+        world.register_component::<LaserPointerCollider>();
         world.register_component::<LaserPointerTarget>();
     }
 
@@ -116,6 +135,7 @@ impl Mocca for LaserPointerMocca {
         #[cfg(feature = "disco")]
         world.run(disco_laser_pointer_azimuth);
 
+        world.run(turn_laser_pointers);
         world.run(point_laser_pointers);
         world.run(collide_laser_beams);
         world.run(update_laser_beam_length);
@@ -126,6 +146,8 @@ impl Mocca for LaserPointerMocca {
 const CRIMSON: SRgbU8Color = SRgbU8Color::from_rgb(220, 20, 60);
 const MAX_BEAM_LEN: f32 = 100.;
 const BEAM_WIDTH: f32 = 0.0167;
+const COLLISION_HEIGHT: f32 = 4.333;
+const INTERACTION_MAX_DISTANCE: f32 = 3.0;
 
 #[cfg(feature = "disco")]
 fn disco_laser_pointer_azimuth(
@@ -144,23 +166,71 @@ fn disco_laser_pointer_azimuth(
     }
 }
 
-const COLLISION_HEIGHT: f32 = 5.0;
+fn turn_laser_pointers(
+    time: Singleton<SimClock>,
+    colliders: Singleton<ColliderWorld>,
+    query_ctrl: Query<&InputStateController>,
+    query_cam: Query<&CameraMatrices, With<MainCamera>>,
+    query_collider: Query<&LaserPointerCollider>,
+    mut query_lpa: Query<&mut LaserPointerAzimuth>,
+) {
+    // Check if get a potential turn event
+    let input_state = &query_ctrl.single().unwrap();
+    let dt = time.sim_dt_f32();
+    let turn_dt = if input_state.state().is_left_mouse_pressed {
+        dt
+    } else if input_state.state().is_right_mouse_pressed {
+        -dt
+    } else {
+        return;
+    };
+
+    // Ray cast through center pixel
+    let Some(cam) = query_cam.single() else {
+        return;
+    };
+    let ray = cam.center_pixel_ray();
+
+    // Find collider under mouse
+    let Some(hit_entity) = colliders
+        .raycast(&ray, None)
+        .and_then(|(id, lam)| (lam < INTERACTION_MAX_DISTANCE).then(|| colliders[id].user()))
+    else {
+        return;
+    };
+
+    // Find attached collider
+    let Some(hit_collider) = query_collider.get(hit_entity) else {
+        return;
+    };
+
+    // Get azimuth contoller
+    let lpa = query_lpa
+        .get_mut(hit_collider.main_entity)
+        .expect("LaserPointerCollider main_entity must have LaserPointerAzimuth");
+
+    // Turn laser pointer
+    lpa.azimuth += turn_dt * lpa.sensitivity;
+}
 
 fn point_laser_pointers(
     time: Singleton<SimClock>,
-    mut query: Query<(&mut Transform3, &LaserPointerAzimuth, &mut LaserPointer)>,
+    mut query: Query<(&mut Transform3, &mut LaserPointerAzimuth, &mut LaserPointer)>,
 ) {
     let dt = time.sim_dt_f32();
-    let speed = 1.0;
+    let point_speed = 2.0;
+    let sensitivity_speed = 1.5;
 
     for (tf, lpa, lp) in query.iter_mut() {
         let radius = lp.collision_point.xy().length().max(0.25);
         let (asin, acos) = lpa.azimuth.sin_cos();
         let target_dir = Vec3::new(radius * acos, radius * asin, COLLISION_HEIGHT).normalize();
 
-        lp.dir = lp.dir.lerp(target_dir, speed * dt).normalize();
+        lp.dir = lp.dir.lerp(target_dir, point_speed * dt).normalize();
 
         tf.rotation = SO3::from_to(Vec3::X, lp.dir);
+
+        lpa.sensitivity = sensitivity_speed / radius;
     }
 }
 
@@ -169,10 +239,7 @@ fn collide_laser_beams(
     mut query: Query<(&GlobalTransform3, &mut LaserPointer)>,
 ) {
     for (tf, lp) in query.iter_mut() {
-        let ray = Ray {
-            origin: tf.translation(),
-            dir: tf.x_axis.into(),
-        };
+        let ray = Ray3::from_origin_direction(tf.translation(), tf.x_axis.into()).unwrap();
 
         lp.beam_length = match colliders.raycast(&ray, lp.exclude_collider) {
             Some((_, len)) => len,
