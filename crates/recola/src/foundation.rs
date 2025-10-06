@@ -130,7 +130,9 @@ fn load_asset_blueprints(
                 build_laser_target(&mut cmd, name, entity, target);
             }
             "prop-archway_3x6_door" => {
-                cmd.entity(entity).set(SpawnDoorTask);
+                cmd.entity(entity).set(SpawnDoorTask {
+                    collider_entity: colliders[0].0,
+                });
             }
             "prop-barrier_3x6" => {
                 let force_field_entity = find_child_by_name(

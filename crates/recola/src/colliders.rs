@@ -82,7 +82,9 @@ impl CuboidSet {
     }
 
     pub fn remove(&mut self, id: ColliderId) {
-        self.cuboids.remove(id.0);
+        if self.cuboids.contains(id.0) {
+            self.cuboids.remove(id.0);
+        }
     }
 
     pub fn raycast(
@@ -271,7 +273,7 @@ fn update_colliders(
         rx.try_iter().collect()
     };
     for id in ids {
-        println!("Collider removed: {id:?}");
+        log::debug!("Collider removed: {id:?}");
         collider_world.cuboids.remove(id);
     }
 }

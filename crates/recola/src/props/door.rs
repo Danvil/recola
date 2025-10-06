@@ -1,6 +1,6 @@
 use crate::{
-    CollidersMocca, CustomProperties, FoundationMocca, Player, PlayerMocca,
-    recola_mocca::InputRaycastController,
+    CollidersMocca, CollisionLayerMask, CustomProperties, DirtyCollider, FoundationMocca, Player,
+    PlayerMocca, recola_mocca::InputRaycastController,
 };
 use candy::CandyMocca;
 use candy_scene_tree::{CandySceneTreeMocca, Transform3};
@@ -10,10 +10,13 @@ use eyre::{Result, eyre};
 use simplecs::prelude::*;
 
 #[derive(Component)]
-pub struct SpawnDoorTask;
+pub struct SpawnDoorTask {
+    pub collider_entity: Entity,
+}
 
 #[derive(Component, Debug, Clone)]
 pub struct Door {
+    collider_entity: Entity,
     lower_progress: f32,
     progress_changed: bool,
     is_lowered: bool,
@@ -58,10 +61,10 @@ const DOOR_LOWER_MAX: f32 = 3.933;
 
 fn spawn_door(
     mut cmd: Commands,
-    query_open_door_task: Query<Entity, With<SpawnDoorTask>>,
+    query_open_door_task: Query<(Entity, &SpawnDoorTask)>,
     query_props: Query<&CustomProperties>,
 ) {
-    for door_entity in query_open_door_task.iter() {
+    for (door_entity, task) in query_open_door_task.iter() {
         cmd.entity(door_entity).remove::<SpawnDoorTask>();
 
         let key_id = match get_key_id(&query_props, door_entity) {
@@ -74,6 +77,7 @@ fn spawn_door(
 
         cmd.entity(door_entity)
             .and_set(Door {
+                collider_entity: task.collider_entity,
                 lower_progress: 0.,
                 progress_changed: false,
                 is_lowered: false,
@@ -133,15 +137,26 @@ fn lower_door_interaction(
             }
             door.progress_changed = true;
         } else {
-            println!("missing key: {key:?}");
+            log::debug!("missing key: {key:?}");
         }
     }
 }
 
-fn lower_door(mut query: Query<(&mut Transform3, &mut Door)>) {
-    for (tf, door) in query.iter_mut() {
+fn lower_door(
+    mut cmd: Commands,
+    mut query_door: Query<(Entity, &mut Transform3, &mut Door)>,
+    mut query_collider: Query<&mut CollisionLayerMask>,
+) {
+    for (door_entity, tf, door) in query_door.iter_mut() {
         if door.progress_changed {
             tf.translation.z = -door.lower_progress;
+
+            if door.is_lowered {
+                log::debug!("door {door_entity} lowered");
+                query_collider.get_mut(door.collider_entity).unwrap().nav = false;
+                cmd.entity(door.collider_entity)
+                    .set(DirtyCollider::default());
+            }
         }
         door.progress_changed = false;
     }
