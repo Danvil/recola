@@ -54,6 +54,9 @@ def main():
         "cargo", "run", "--manifest-path", "../candy/Cargo.toml",
         "--release", "--bin", "candy_asset_packer", "--",
         "--input-dir", tmp_dir_assets,
+        "--exclude", "overgrowth",
+        "--exclude", "*.blend",
+        "--exclude", "*.blend1",
         "--db-file", tmp_dir / "recola.candy"
     ], cwd=".", check=True)
 
