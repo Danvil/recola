@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use crate::{
     ColliderWorld, CollidersMocca, CollisionRouting, FoundationMocca, Ray3, Rng,
     recola_mocca::{CRIMSON, InputRaycastController},
@@ -36,13 +38,33 @@ pub struct LaserPointer {
     beam_end_entity: Entity,
 }
 
+/// Marks an entity as a target for laser beams
+#[derive(Component)]
+pub struct BeamDetector {
+    pub latch: bool,
+}
+
+/// Set on entities with BeamHitDetector when hit by a laser beam
+#[derive(Component)]
+pub enum BeamHit {
+    On,
+    Off,
+}
+
+impl BeamHit {
+    pub fn as_bool(&self) -> bool {
+        match self {
+            BeamHit::On => true,
+            BeamHit::Off => false,
+        }
+    }
+}
+
 #[derive(Component)]
 pub struct LaserPointerTarget {
     pub is_activated: bool,
     pub target_is_activated: bool,
-
-    #[cfg(feature = "disco")]
-    pub debug_disco_counter: usize,
+    pub light_entity: Entity,
 }
 
 pub fn build_laser_pointer(cmd: &mut Commands, entity: Entity, collider_entity: Entity) {
@@ -88,16 +110,15 @@ pub fn build_laser_pointer(cmd: &mut Commands, entity: Entity, collider_entity: 
     });
 }
 
-pub fn build_laser_target(cmd: &mut Commands, entity: Entity) {
-    cmd.entity(entity)
+pub fn build_laser_target(cmd: &mut Commands, base_entity: Entity, light_entity: Entity) {
+    cmd.entity(base_entity)
+        .and_set(BeamDetector { latch: false })
+        .and_set(BeamHit::Off)
         .and_set(LaserPointerTarget {
             is_activated: false,
             target_is_activated: false,
-
-            #[cfg(feature = "disco")]
-            debug_disco_counter: 0,
-        })
-        .and_set(Material::Pbr(PbrMaterial::default()));
+            light_entity,
+        });
 }
 
 /// Laser pointers with a beam which collides with objects
@@ -117,6 +138,8 @@ impl Mocca for LaserPointerMocca {
     }
 
     fn register_components(world: &mut World) {
+        world.register_component::<BeamDetector>();
+        world.register_component::<BeamHit>();
         world.register_component::<LaserPointer>();
         world.register_component::<LaserPointerAzimuth>();
         world.register_component::<LaserPointerTarget>();
@@ -128,8 +151,11 @@ impl Mocca for LaserPointerMocca {
 
         world.run(turn_laser_pointers);
         world.run(point_laser_pointers);
-        world.run(collide_laser_beams);
+        world.run(reset_beam_hit);
+        world.run(raycast_laser_beams);
         world.run(update_laser_beam_length);
+
+        world.run(activate_laser_target);
         world.run(set_laser_target_material);
     }
 }
@@ -213,14 +239,27 @@ fn point_laser_pointers(
     }
 }
 
-fn collide_laser_beams(
+fn reset_beam_hit(mut cmd: Commands, query_detector: Query<(Entity, &BeamDetector)>) {
+    for (entity, detector) in query_detector.iter() {
+        if !detector.latch {
+            cmd.entity(entity).set(BeamHit::Off);
+        }
+    }
+}
+
+fn raycast_laser_beams(
+    mut cmd: Commands,
     colliders: Singleton<ColliderWorld>,
-    mut query: Query<(&GlobalTransform3, &mut LaserPointer)>,
+    mut query_laser_pointer: Query<(&GlobalTransform3, &mut LaserPointer)>,
+    query_collision_routing: Query<&CollisionRouting>,
+    query_beam_detector: Query<&BeamDetector>,
 ) {
-    for (tf, lp) in query.iter_mut() {
+    for (tf, lp) in query_laser_pointer.iter_mut() {
         let ray = Ray3::from_origin_direction(tf.translation(), tf.x_axis.into()).unwrap();
 
-        lp.beam_length = match colliders.raycast(&ray, Some(lp.exclude_collider)) {
+        let hit = colliders.raycast(&ray, Some(lp.exclude_collider));
+
+        lp.beam_length = match hit {
             Some((_, len)) => len,
             None => MAX_BEAM_LEN,
         };
@@ -229,6 +268,15 @@ fn collide_laser_beams(
             .affine()
             .inverse()
             .transform_point3(ray.point(lp.beam_length));
+
+        if let Some((hit_id, _)) = hit {
+            let hit_entity = colliders[hit_id].user();
+            if let Some(recv_entity) = query_collision_routing.get(hit_entity) {
+                if let Some(_) = query_beam_detector.get(recv_entity.on_raycast_entity) {
+                    cmd.entity(recv_entity.on_raycast_entity).set(BeamHit::On);
+                }
+            }
+        }
     }
 }
 
@@ -245,33 +293,28 @@ fn update_laser_beam_length(query_lp: Query<&LaserPointer>, mut query_tf: Query<
     }
 }
 
-fn set_laser_target_material(
-    mut cmd: Commands,
-    mut query: Query<(Entity, &mut Material, &mut LaserPointerTarget)>,
-) {
+fn activate_laser_target(mut query: Query<(&mut LaserPointerTarget, &BeamHit)>) {
+    for (laser_target, hit) in query.iter_mut() {
+        laser_target.target_is_activated = hit.as_bool();
+    }
+}
+
+fn set_laser_target_material(mut cmd: Commands, mut query: Query<&mut LaserPointerTarget>) {
     let mat_active = PbrMaterial::diffuse_white().with_base_color(CRIMSON);
     let mat_inactive = PbrMaterial::diffuse_white().with_base_color(colors::BLACK);
 
-    for (entity, mat, laser_target) in query.iter_mut() {
+    for laser_target in query.iter_mut() {
         if laser_target.target_is_activated != laser_target.is_activated {
             laser_target.is_activated = laser_target.target_is_activated;
 
-            if laser_target.is_activated {
-                *mat = Material::Pbr(mat_active.clone());
+            let mat = if laser_target.is_activated {
+                Material::Pbr(mat_active.clone())
             } else {
-                *mat = Material::Pbr(mat_inactive.clone());
-            }
-
-            cmd.entity(entity).set(MaterialDirty);
-        }
-
-        #[cfg(feature = "disco")]
-        {
-            laser_target.debug_disco_counter += 1;
-            if laser_target.debug_disco_counter > 100 {
-                laser_target.target_is_activated = !laser_target.is_activated;
-                laser_target.debug_disco_counter = 0;
-            }
+                Material::Pbr(mat_inactive.clone())
+            };
+            cmd.entity(laser_target.light_entity)
+                .and_set(mat)
+                .and_set(MaterialDirty);
         }
     }
 }
