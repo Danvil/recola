@@ -1,6 +1,14 @@
 use crate::{
-    CollidersMocca, CollisionRouting, DirtyCollider, STATIC_SETTINGS, load_assets, props::door::*,
-    props::laser_pointer::*, props::overgrowth::InitOvergrowthTask, props::rift::*,
+    CollidersMocca, CollisionRouting, CustomProperties, DirtyCollider, STATIC_SETTINGS,
+    load_assets,
+    props::{
+        barrier::{BarrierMocca, SpawnBarrierTask},
+        door::*,
+        laser_pointer::*,
+        overgrowth::InitOvergrowthTask,
+        rift::*,
+    },
+    switch::{SwitchObserver, SwitchObserverState},
 };
 use candy::{AssetInstance, AssetLoaded, CandyMocca};
 use candy_asset::{CandyAssetMocca, SharedAssetResolver};
@@ -39,6 +47,7 @@ impl Mocca for FoundationMocca {
         deps.depends_on::<CandyMocca>();
         deps.depends_on::<CandySceneTreeMocca>();
         deps.depends_on::<CollidersMocca>();
+        deps.depends_on::<BarrierMocca>();
     }
 
     fn register_components(world: &mut World) {
@@ -73,11 +82,14 @@ impl Mocca for FoundationMocca {
 
 fn load_asset_blueprints(
     mut cmd: Commands,
-    query: Query<(Entity, &AssetInstance), (With<AssetLoaded>, Without<BlueprintApplied>)>,
+    query: Query<
+        (Entity, &AssetInstance, Option<&CustomProperties>),
+        (With<AssetLoaded>, Without<BlueprintApplied>),
+    >,
     children: Relation<ChildOf>,
     query_name: Query<&Name>,
 ) {
-    for (entity, ainst) in query.iter() {
+    for (entity, ainst, props) in query.iter() {
         let colliders = find_colliders(&children, &query_name, entity);
         for &collider_entity in &colliders {
             cmd.entity(collider_entity)
@@ -88,6 +100,17 @@ fn load_asset_blueprints(
 
             if !STATIC_SETTINGS.show_colliders {
                 cmd.entity(collider_entity).set(Visibility::Hidden)
+            }
+        }
+
+        if let Some(props) = props {
+            if let Some(switches) = props.get_string_list("switches") {
+                cmd.entity(entity)
+                    .and_set(SwitchObserver {
+                        switches,
+                        latch: false,
+                    })
+                    .and_set(SwitchObserverState::Inactive);
             }
         }
 
@@ -107,6 +130,17 @@ fn load_asset_blueprints(
             }
             "prop-archway_3x6_door" => {
                 cmd.entity(entity).set(SpawnDoorTask);
+            }
+            "prop-barrier_3x6" => {
+                let force_field_entity = find_child_by_name(
+                    &children,
+                    &query_name,
+                    entity,
+                    "prop-barrier_3x6.force_field",
+                )
+                .unwrap();
+                cmd.entity(entity)
+                    .set(SpawnBarrierTask { force_field_entity });
             }
             "prop-rift" => {
                 cmd.entity(entity).set(SpawnRiftTask);

@@ -39,6 +39,7 @@ impl Mocca for RiftMocca {
 
     fn register_components(world: &mut World) {
         world.register_component::<OpenRiftTask>();
+        world.register_component::<Rift>();
         world.register_component::<RiftConsume>();
         world.register_component::<RiftConsumeParticle>();
         world.register_component::<RiftId>();
@@ -63,6 +64,9 @@ impl Mocca for RiftMocca {
 const INTERACTION_MAX_DISTANCE: f32 = 3.0;
 
 #[derive(Component)]
+struct Rift;
+
+#[derive(Component)]
 struct RiftConsume {
     is_consumed: bool,
     charge: f32,
@@ -85,11 +89,16 @@ struct RiftShardInflate {
 fn spawn_rift(
     mut cmd: Commands,
     mut query_open_rift_task: Query<
-        (Entity, &mut Transform3, &CustomProperties),
+        (
+            Entity,
+            &mut Transform3,
+            &CustomProperties,
+            Option<&mut SwitchObserver>,
+        ),
         With<SpawnRiftTask>,
     >,
 ) {
-    for (rift_entity, tf, props) in query_open_rift_task.iter_mut() {
+    for (rift_entity, tf, props, switch_observer) in query_open_rift_task.iter_mut() {
         cmd.entity(rift_entity).remove::<SpawnRiftTask>();
 
         let Some(rift_id) = props.get_integer("rift_id") else {
@@ -99,15 +108,12 @@ fn spawn_rift(
 
         tf.scale = Vec3::splat(0.333);
 
-        cmd.entity(rift_entity).and_set(RiftId(rift_id));
+        cmd.entity(rift_entity)
+            .and_set(Rift)
+            .and_set(RiftId(rift_id));
 
-        if let Some(switches) = props.get_string_list("switches") {
-            cmd.entity(rift_entity)
-                .and_set(SwitchObserver {
-                    switches,
-                    latch: true,
-                })
-                .and_set(SwitchObserverState::Inactive);
+        if let Some(switch_observer) = switch_observer {
+            switch_observer.latch = true;
         } else {
             cmd.entity(rift_entity).and_set(OpenRiftTask);
         }
@@ -116,7 +122,7 @@ fn spawn_rift(
 
 fn activate_rift(
     mut cmd: Commands,
-    query: Query<(Entity, &SwitchObserverState), Without<RiftConsume>>,
+    query: Query<(Entity, &SwitchObserverState), (With<Rift>, Without<RiftConsume>)>,
 ) {
     for (rift_entity, activation_state) in query.iter() {
         if activation_state.as_bool() {
