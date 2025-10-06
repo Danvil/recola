@@ -139,7 +139,7 @@ fn setup_window_and_camera(clock: Singleton<SimClock>, mut cmd: Commands) {
 }
 
 fn setup_sky(mut sky: SingletonMut<SkyModel>, mut day_night: SingletonMut<DayNightCycle>) {
-    sky.set_sun_raw_radiance(18.0);
+    sky.set_sun_raw_radiance(15.0);
     sky.set_moon_raw_radiance(0.35);
     day_night.speed_factor = 0.;
     day_night.local_time = SolisticDays::from_day_hour(0, 12.0);
