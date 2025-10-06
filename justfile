@@ -22,12 +22,15 @@ eph_tracy:
     $env:TRACY_CLIENT_SYS_CXXFLAGS = "/DRelationProcessorDie=((LOGICAL_PROCESSOR_RELATIONSHIP)5) /DRelationProcessorModule=((LOGICAL_PROCESSOR_RELATIONSHIP)7)"
     cargo run --release --features profile-with-tracy -p eph
 
-recola: recola_package
-	cargo run --release -p recola
+recola: recola_package_assets
+	cargo run --release -p recola  --features profile-with-tracy
 	# cargo run --release -p recola --features disco
 
-recola_package:
-    python .\crates\recola\scripts\package_release.py
+recola_package_assets:
+    python .\crates\recola\scripts\package_release.py --package-assets
+
+recola_release:
+    python .\crates\recola\scripts\package_release.py --package-assets --create-release
 
 [windows]
 deploy_goscl:

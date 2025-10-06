@@ -3,8 +3,10 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
+import argparse
 
-def main():
+
+def package_assets():
     repo_root = Path(".")
 
     tmp_dir = repo_root / "tmp" / "recola" / "release"
@@ -12,16 +14,6 @@ def main():
 
     tmp_dir_assets = repo_root / "tmp" / "recola" / "release-assets"
     tmp_dir_assets.mkdir(parents=True, exist_ok=True)
-
-    # 1. Build release
-    subprocess.run([
-        "cargo", "build", "--release", "-p", "recola",
-    ], cwd=".", check=True)
-
-    # 2. Copy binary
-    bin_src = repo_root / "target" / "release" / ("recola.exe" if os.name == "nt" else "recola")
-    bin_dst = tmp_dir / bin_src.name
-    shutil.copy2(bin_src, bin_dst)
 
     # 3.a Copy recola assets
     assets_dir = repo_root / "assets" / "recola"
@@ -51,15 +43,55 @@ def main():
         "--db-file", tmp_dir / "recola.candy"
     ], cwd=".", check=True)
 
-    # 4. Package zip
+
+def create_release():
+    repo_root = Path(".")
+
+    tmp_dir = repo_root / "tmp" / "recola" / "release"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+
+    # build binary
+    subprocess.run([
+        "cargo", "build", "--release", "-p", "recola",
+    ], cwd=".", check=True)
+
+    # Copy binary
+    bin_src = repo_root / "target" / "release" / ("recola.exe" if os.name == "nt" else "recola")
+    bin_dst = tmp_dir / bin_src.name
+    shutil.copy2(bin_src, bin_dst)
+
     zip_path = "../recola-release.7z"
     subprocess.run(
         ["C:/Program Files/7-Zip/7z.exe", "a", str(zip_path), "."],
         cwd=tmp_dir,
         check=True
     )
-
     print(f"Created package: {zip_path}")
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Release packaging tool.")
+    parser.add_argument(
+        "--package-assets",
+        action="store_true",
+        help="Run the asset packaging step."
+    )
+    parser.add_argument(
+        "--create-release",
+        action="store_true",
+        help="Run the release creation step."
+    )
+
+    args = parser.parse_args()
+
+    if not args.package_assets and not args.create_release:
+        parser.error("No action specified. Use --package-assets, --create-release, or both.")
+
+    if args.package_assets:
+        package_assets()
+    if args.create_release:
+        create_release()
+
 
 if __name__ == "__main__":
     main()
