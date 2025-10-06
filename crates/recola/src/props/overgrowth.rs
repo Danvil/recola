@@ -1,4 +1,4 @@
-use crate::{BeamDetector, BeamHit, LaserPointerMocca};
+use crate::props::laser_pointer::*;
 use candy::MaterialDirty;
 use candy_time::{CandyTimeMocca, SimClock};
 use candy_utils::{Material, PbrMaterial};

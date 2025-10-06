@@ -1,5 +1,6 @@
 use crate::{
-    CollidersMocca, CustomProperties, FoundationMocca, KeyId, Player, PlayerMocca, Rng,
+    CollidersMocca, CustomProperties, FoundationMocca, Player, PlayerMocca, Rng,
+    props::door::KeyId,
     recola_mocca::{CRIMSON, InputRaycastController},
     switch::*,
 };
@@ -9,7 +10,6 @@ use candy_scene_tree::{CandySceneTreeMocca, GlobalTransform3, Transform3, Visibi
 use candy_time::{CandyTimeMocca, SimClock};
 use candy_utils::{Material, PbrMaterial};
 use excess::prelude::*;
-use eyre::{Result, eyre};
 use glam::Vec3;
 use simplecs::prelude::*;
 
@@ -263,7 +263,7 @@ fn consume_rift(
             rift_consume.is_consumed = true;
             player.rift_charges.insert(*rift_id);
             let key = KeyId(rift_id.0);
-            println!("acquired key: {key:?}");
+            log::debug!("acquired key: {key:?}");
             player.keys.insert(key);
 
             cmd.entity(entity).set(Visibility::Hidden);

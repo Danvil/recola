@@ -1,28 +1,21 @@
 mod assets;
 mod colliders;
 mod custom_properties;
-mod door;
 mod foundation;
-mod laser_pointer;
 mod level;
 mod mechanics;
 mod nav;
 mod player;
 pub mod props;
 mod recola_mocca;
-mod rift;
 
 pub use assets::*;
 pub use colliders::*;
 pub use custom_properties::*;
-pub use door::*;
 pub use foundation::*;
-pub use laser_pointer::*;
 pub use level::*;
 pub use mechanics::*;
-pub use nav::*;
 pub use player::*;
-pub use rift::*;
 
 use crate::recola_mocca::RecolaMocca;
 

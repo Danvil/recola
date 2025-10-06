@@ -1,6 +1,10 @@
 use crate::{
-    ColliderWorld, CollidersMocca, CollisionRouting, CustomProperties, DoorMocca, FoundationMocca,
-    LaserPointerMocca, RiftMocca, Rng, STATIC_SETTINGS, props::overgrowth::OvergrowthMocca,
+    ColliderWorld, CollidersMocca, CollisionRouting, CustomProperties, FoundationMocca, Rng,
+    STATIC_SETTINGS,
+    props::{
+        door::DoorMocca, laser_pointer::LaserPointerMocca, overgrowth::OvergrowthMocca,
+        rift::RiftMocca,
+    },
     spawn_levels,
 };
 use bigtalk::{BigtalkMocca, Outbox, Router, add_route, spawn_agent};

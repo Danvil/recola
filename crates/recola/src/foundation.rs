@@ -1,6 +1,6 @@
 use crate::{
-    CollidersMocca, CollisionRouting, DirtyCollider, STATIC_SETTINGS, SpawnDoorTask, SpawnRiftTask,
-    build_laser_pointer, build_laser_target, load_assets, props::overgrowth::InitOvergrowthTask,
+    CollidersMocca, CollisionRouting, DirtyCollider, STATIC_SETTINGS, load_assets, props::door::*,
+    props::laser_pointer::*, props::overgrowth::InitOvergrowthTask, props::rift::*,
 };
 use candy::{AssetInstance, AssetLoaded, CandyMocca};
 use candy_asset::{CandyAssetMocca, SharedAssetResolver};
