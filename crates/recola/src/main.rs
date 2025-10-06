@@ -4,7 +4,6 @@ mod custom_properties;
 mod foundation;
 mod level;
 mod mechanics;
-mod nav;
 mod player;
 pub mod props;
 mod recola_mocca;
