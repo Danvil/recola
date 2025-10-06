@@ -1,6 +1,7 @@
 use crate::{
     CollidersMocca, CustomProperties, FoundationMocca, KeyId, Player, PlayerMocca, Rng,
     recola_mocca::{CRIMSON, InputRaycastController},
+    switch::*,
 };
 use candy::{AssetInstance, AssetUid, CandyMocca};
 use candy_mesh::Cuboid;
@@ -29,6 +30,7 @@ impl Mocca for RiftMocca {
         deps.depends_on::<CollidersMocca>();
         deps.depends_on::<FoundationMocca>();
         deps.depends_on::<PlayerMocca>();
+        deps.depends_on::<SwitchMocca>();
     }
 
     fn start(_world: &mut World) -> Self {
@@ -36,15 +38,20 @@ impl Mocca for RiftMocca {
     }
 
     fn register_components(world: &mut World) {
+        world.register_component::<OpenRiftTask>();
         world.register_component::<RiftConsume>();
         world.register_component::<RiftConsumeParticle>();
         world.register_component::<RiftId>();
         world.register_component::<RiftJitter>();
+        world.register_component::<RiftShardInflate>();
         world.register_component::<SpawnRiftTask>();
     }
 
     fn step(&mut self, world: &mut World) {
         world.run(spawn_rift);
+        world.run(activate_rift);
+        world.run(open_rift);
+        world.run(inflate_rift_shards);
         world.run(rift_jitter);
         world.run(charge_rift_interaction);
         world.run(consume_rift);
@@ -70,27 +77,69 @@ struct RiftJitter {
     cooldown: f32,
 }
 
+#[derive(Component)]
+struct RiftShardInflate {
+    progress: f32,
+}
+
 fn spawn_rift(
     mut cmd: Commands,
-    mut rng: SingletonMut<Rng>,
-    query_open_rift_task: Query<Entity, With<SpawnRiftTask>>,
-    query_props: Query<&CustomProperties>,
+    mut query_open_rift_task: Query<
+        (Entity, &mut Transform3, &CustomProperties),
+        With<SpawnRiftTask>,
+    >,
 ) {
-    let jitter = 0.1;
-
-    for rift_entity in query_open_rift_task.iter() {
+    for (rift_entity, tf, props) in query_open_rift_task.iter_mut() {
         cmd.entity(rift_entity).remove::<SpawnRiftTask>();
 
-        let rift_id = match get_rift_id(&query_props, rift_entity) {
-            Ok(rift_id) => rift_id,
-            Err(err) => {
-                log::error!("rift without rift_id: {err:?}");
-                continue;
-            }
+        let Some(rift_id) = props.get_integer("rift_id") else {
+            log::error!("SpawnRiftTask CustomProperties without 'rift_id'");
+            continue;
         };
 
+        tf.scale = Vec3::splat(0.333);
+
+        cmd.entity(rift_entity).and_set(RiftId(rift_id));
+
+        if let Some(switches) = props.get_string_list("switches") {
+            cmd.entity(rift_entity)
+                .and_set(SwitchObserver {
+                    switches,
+                    latch: true,
+                })
+                .and_set(SwitchObserverState::Inactive);
+        } else {
+            cmd.entity(rift_entity).and_set(OpenRiftTask);
+        }
+    }
+}
+
+fn activate_rift(
+    mut cmd: Commands,
+    query: Query<(Entity, &SwitchObserverState), Without<RiftConsume>>,
+) {
+    for (rift_entity, activation_state) in query.iter() {
+        if activation_state.as_bool() {
+            cmd.entity(rift_entity).and_set(OpenRiftTask);
+        }
+    }
+}
+
+#[derive(Component)]
+struct OpenRiftTask;
+
+const RIFT_SHARDS_INITIAL_POS_JITTER: f32 = 0.1;
+
+fn open_rift(
+    mut cmd: Commands,
+    mut rng: SingletonMut<Rng>,
+    query: Query<Entity, With<OpenRiftTask>>,
+) {
+    for rift_entity in query.iter() {
+        cmd.entity(rift_entity).remove::<OpenRiftTask>();
+
         for _ in 0..20 {
-            let anchor = 2.0 * (rng.unit_vec3() - 0.5) * jitter;
+            let anchor = 2.0 * (rng.unit_vec3() - 0.5) * RIFT_SHARDS_INITIAL_POS_JITTER;
 
             cmd.spawn((
                 Name::from_str("rift"),
@@ -101,31 +150,37 @@ fn spawn_rift(
                     cooldown: 0.2 * rng.unit_f32(),
                 },
                 Transform3::from_translation(anchor),
+                RiftShardInflate { progress: 0. },
                 AssetInstance(AssetUid::new("prop-rift_schimmer")),
                 (ChildOf, rift_entity),
             ));
-        }
 
-        cmd.entity(rift_entity)
-            .and_set(rift_id)
-            .and_set(RiftConsume {
+            cmd.entity(rift_entity).and_set(RiftConsume {
                 is_consumed: false,
                 charge: 0.,
                 particle_charge: 0.,
             });
+        }
     }
 }
 
-fn get_rift_id(query_props: &Query<&CustomProperties>, rift_entity: Entity) -> Result<RiftId> {
-    let props = query_props
-        .get(rift_entity)
-        .ok_or_else(|| eyre!("rift does not have CustomProperties"))?;
+const RIFT_SHARD_INFLATE_MAX_PROGRESS: f32 = 0.7;
 
-    let id = props
-        .get_integer("rift_id")
-        .ok_or_else(|| eyre!("'rift_id' entry missing"))?;
+fn inflate_rift_shards(
+    mut cmd: Commands,
+    time: Singleton<SimClock>,
+    mut query: Query<(Entity, &mut RiftShardInflate, &mut Transform3)>,
+) {
+    let dt = time.sim_dt_f32();
 
-    Ok(RiftId(id))
+    for (entity, infl, tf) in query.iter_mut() {
+        infl.progress += dt;
+        let q = infl.progress / RIFT_SHARD_INFLATE_MAX_PROGRESS;
+        tf.scale = Vec3::splat(q);
+        if q >= 1. {
+            cmd.entity(entity).remove::<RiftShardInflate>();
+        }
+    }
 }
 
 fn rift_jitter(

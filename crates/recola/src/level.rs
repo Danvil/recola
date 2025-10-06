@@ -1,3 +1,4 @@
+use crate::CustomProperties;
 use candy::{AssetInstance, AssetUid};
 use candy_asset::SharedAssetResolver;
 use candy_scene_tree::Transform3;
@@ -39,7 +40,11 @@ impl Instance {
 
 pub fn spawn_level(cmd: &mut Commands, level_entity: Entity, level: &Level) {
     for inst in &level.instances {
-        let entity = cmd.spawn((inst.transform(), (ChildOf, level_entity)));
+        let entity = cmd.spawn((
+            Name::new(inst.name.to_owned()),
+            inst.transform(),
+            (ChildOf, level_entity),
+        ));
 
         if let Some(asset_id) = inst.asset_id.as_ref() {
             let ainst = AssetInstance(AssetUid::new(asset_id.to_owned()));
@@ -64,52 +69,4 @@ pub fn spawn_levels(assets: Singleton<SharedAssetResolver>, mut cmd: Commands) -
         spawn_level(&mut cmd, level_entity, &level);
     }
     Ok(())
-}
-
-#[derive(Component)]
-pub struct CustomProperties(HashMap<String, CustomPropertiesValue>);
-
-pub enum CustomPropertiesValue {
-    Bool(bool),
-    Integer(i64),
-    Float(f64),
-    String(String),
-}
-
-impl CustomProperties {
-    pub fn from_json(map: &HashMap<String, serde_json::Value>) -> Self {
-        let mut out = HashMap::new();
-
-        for (key, value) in map {
-            let parsed = match value {
-                serde_json::Value::Number(num) if num.is_i64() => {
-                    num.as_i64().map(CustomPropertiesValue::Integer)
-                }
-                serde_json::Value::Number(num) if num.is_f64() => {
-                    num.as_f64().map(CustomPropertiesValue::Float)
-                }
-                serde_json::Value::Number(_num) => {
-                    todo!()
-                }
-                serde_json::Value::String(s) => Some(CustomPropertiesValue::String(s.clone())),
-                serde_json::Value::Bool(b) => Some(CustomPropertiesValue::Bool(*b)),
-                _ => {
-                    todo!()
-                }
-            };
-
-            if let Some(v) = parsed {
-                out.insert(key.clone(), v);
-            }
-        }
-
-        CustomProperties(out)
-    }
-
-    pub fn get_integer(&self, id: impl AsRef<str>) -> Option<i64> {
-        match self.0.get(id.as_ref())? {
-            CustomPropertiesValue::Integer(v) => Some(*v),
-            _ => None,
-        }
-    }
 }

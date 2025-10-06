@@ -102,7 +102,8 @@ fn load_asset_blueprints(
                 let target =
                     find_child_by_name(&children, &query_name, entity, "prop-beam_target.target")
                         .unwrap();
-                build_laser_target(&mut cmd, entity, target);
+                let name = query_name.get(entity).unwrap().as_str();
+                build_laser_target(&mut cmd, name, entity, target);
             }
             "prop-archway_3x6_door" => {
                 cmd.entity(entity).set(SpawnDoorTask);

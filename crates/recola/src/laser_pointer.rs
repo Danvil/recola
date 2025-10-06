@@ -1,6 +1,7 @@
 use crate::{
     ColliderWorld, CollidersMocca, CollisionRouting, FoundationMocca, Ray3, Rng,
     recola_mocca::{CRIMSON, InputRaycastController},
+    switch::*,
 };
 use candy::{CandyMocca, MaterialDirty};
 use candy_mesh::{Ball, Cuboid};
@@ -108,7 +109,12 @@ pub fn build_laser_pointer(cmd: &mut Commands, entity: Entity, collider_entity: 
     });
 }
 
-pub fn build_laser_target(cmd: &mut Commands, base_entity: Entity, light_entity: Entity) {
+pub fn build_laser_target(
+    cmd: &mut Commands,
+    name: &str,
+    base_entity: Entity,
+    light_entity: Entity,
+) {
     cmd.entity(base_entity)
         .and_set(BeamDetector { latch: false })
         .and_set(BeamHit::Off)
@@ -116,7 +122,9 @@ pub fn build_laser_target(cmd: &mut Commands, base_entity: Entity, light_entity:
             is_activated: false,
             target_is_activated: false,
             light_entity,
-        });
+        })
+        .and_set(Switch { name: name.into() })
+        .and_set(SwitchState::Off);
 }
 
 /// Laser pointers with a beam which collides with objects
@@ -129,6 +137,7 @@ impl Mocca for LaserPointerMocca {
         deps.depends_on::<CandyTimeMocca>();
         deps.depends_on::<CollidersMocca>();
         deps.depends_on::<FoundationMocca>();
+        deps.depends_on::<SwitchMocca>();
     }
 
     fn start(_world: &mut World) -> Self {
@@ -154,6 +163,7 @@ impl Mocca for LaserPointerMocca {
         world.run(update_laser_beam_length);
 
         world.run(activate_laser_target);
+        world.run(activate_laser_target_switch);
         world.run(set_laser_target_material);
     }
 }
@@ -294,6 +304,14 @@ fn update_laser_beam_length(query_lp: Query<&LaserPointer>, mut query_tf: Query<
 fn activate_laser_target(mut query: Query<(&mut LaserPointerTarget, &BeamHit)>) {
     for (laser_target, hit) in query.iter_mut() {
         laser_target.target_is_activated = hit.as_bool();
+    }
+}
+
+fn activate_laser_target_switch(
+    mut query: Query<(&BeamHit, &mut SwitchState), With<LaserPointerTarget>>,
+) {
+    for (hit, switch) in query.iter_mut() {
+        switch.set_from_bool(hit.as_bool());
     }
 }
 
