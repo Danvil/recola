@@ -1,6 +1,6 @@
 use crate::{
-    ColliderWorld, CollidersMocca, CollisionRouting, CustomProperties, FoundationMocca, Rng,
-    STATIC_SETTINGS,
+    ColliderWorld, CollidersMocca, CollisionLayer, CollisionRouting, CustomProperties,
+    FoundationMocca, Rng, STATIC_SETTINGS,
     props::{
         door::DoorMocca, laser_pointer::LaserPointerMocca, overgrowth::OvergrowthMocca,
         rift::RiftMocca,
@@ -220,7 +220,7 @@ fn input_raycast(
 
     // Find collider along ray
     let Some((hit_entity, lam)) = colliders
-        .raycast(&ray, None)
+        .raycast(&ray, None, CollisionLayer::Interact)
         .map(|(id, lam)| (colliders[id].user(), lam))
     else {
         return;

@@ -29,8 +29,13 @@ pub struct ColliderWorld {
 }
 
 impl ColliderWorld {
-    pub fn raycast(&self, ray: &Ray3, exclude: Option<Entity>) -> Option<(ColliderId, f32)> {
-        self.cuboids.raycast(ray, exclude)
+    pub fn raycast(
+        &self,
+        ray: &Ray3,
+        exclude: Option<Entity>,
+        layer: CollisionLayer,
+    ) -> Option<(ColliderId, f32)> {
+        self.cuboids.raycast(ray, exclude, layer)
     }
 }
 
@@ -56,14 +61,21 @@ impl CuboidSet {
         }
     }
 
-    pub fn insert(&mut self, ref_t_cuboid: Affine3A, half_size: Vec3, user: Entity) -> ColliderId {
+    pub fn insert(
+        &mut self,
+        ref_t_cuboid: Affine3A,
+        half_size: Vec3,
+        layer: CollisionLayerMask,
+        user: Entity,
+    ) -> ColliderId {
         let cuboid_t_ref = ref_t_cuboid.inverse();
 
         let idx = self.cuboids.insert(PosedCuboid {
-            user,
             ref_t_cuboid,
             cuboid_t_ref,
             half_size,
+            layer_mask: layer,
+            user,
         });
 
         ColliderId(idx)
@@ -73,10 +85,16 @@ impl CuboidSet {
         self.cuboids.remove(id.0);
     }
 
-    pub fn raycast(&self, ray: &Ray3, exclude: Option<Entity>) -> Option<(ColliderId, f32)> {
+    pub fn raycast(
+        &self,
+        ray: &Ray3,
+        exclude: Option<Entity>,
+        layer: CollisionLayer,
+    ) -> Option<(ColliderId, f32)> {
         let out = self
             .cuboids
             .iter()
+            .filter(|(_, cub)| cub.layer_mask.matches(layer))
             .filter(|(_, cub)| Some(cub.user) != exclude)
             .filter_map(|(idx, cub)| cub.raycast(ray).map(|lam| (idx, lam)))
             .min_by_key(|(_, lam)| (lam * 10000.) as i64)
@@ -100,11 +118,60 @@ impl Index<ColliderId> for CuboidSet {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CollisionLayer {
+    Laser,
+    Interact,
+    Nav,
+}
+
+#[derive(Component, Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CollisionLayerMask {
+    pub laser: bool,
+    pub interact: bool,
+    pub nav: bool,
+}
+
+impl CollisionLayerMask {
+    pub fn all() -> Self {
+        Self {
+            laser: true,
+            interact: true,
+            nav: true,
+        }
+    }
+
+    pub fn only_nav() -> Self {
+        Self {
+            laser: false,
+            interact: false,
+            nav: true,
+        }
+    }
+
+    pub fn only_interact() -> Self {
+        Self {
+            laser: false,
+            interact: true,
+            nav: false,
+        }
+    }
+
+    pub fn matches(&self, layer: CollisionLayer) -> bool {
+        match layer {
+            CollisionLayer::Laser => self.laser,
+            CollisionLayer::Interact => self.interact,
+            CollisionLayer::Nav => self.nav,
+        }
+    }
+}
+
 pub struct PosedCuboid {
-    user: Entity,
     ref_t_cuboid: Affine3A,
     cuboid_t_ref: Affine3A,
     half_size: Vec3,
+    layer_mask: CollisionLayerMask,
+    user: Entity,
 }
 
 impl PosedCuboid {
@@ -170,8 +237,9 @@ impl Mocca for CollidersMocca {
 
     fn register_components(world: &mut World) {
         world.register_component::<Collider>();
-        world.register_component::<DirtyCollider>();
+        world.register_component::<CollisionLayerMask>();
         world.register_component::<CollisionRouting>();
+        world.register_component::<DirtyCollider>();
     }
 
     fn step(&mut self, world: &mut World) {
@@ -212,11 +280,16 @@ fn create_colliders(
     mut collider_world: SingletonMut<ColliderWorld>,
     mut cmd: Commands,
     mut query: Query<
-        (Entity, &GlobalTransform3, &mut DirtyCollider),
+        (
+            Entity,
+            &GlobalTransform3,
+            &mut DirtyCollider,
+            &CollisionLayerMask,
+        ),
         (Without<Collider>, With<DirtyCollider>),
     >,
 ) {
-    for (entity, tf, dirty) in query.iter_mut() {
+    for (entity, tf, dirty, layer) in query.iter_mut() {
         // TODO we need to wait one frame for GlobalTransform3 to update ..
         if dirty.0 < 10 {
             dirty.0 += 1;
@@ -227,7 +300,7 @@ fn create_colliders(
 
         let id = collider_world
             .cuboids
-            .insert(*tf.affine(), half_size, entity);
+            .insert(*tf.affine(), half_size, *layer, entity);
 
         cmd.entity(entity)
             .and_set(Collider(id))

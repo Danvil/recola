@@ -106,8 +106,6 @@ fn spawn_rift(
             continue;
         };
 
-        tf.scale = Vec3::splat(0.333);
-
         cmd.entity(rift_entity)
             .and_set(Rift)
             .and_set(RiftLevel(rift_id));

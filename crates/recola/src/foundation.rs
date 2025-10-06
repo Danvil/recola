@@ -1,6 +1,6 @@
 use crate::{
-    CollidersMocca, CollisionRouting, CustomProperties, DirtyCollider, STATIC_SETTINGS,
-    load_assets,
+    CollidersMocca, CollisionLayerMask, CollisionRouting, CustomProperties, DirtyCollider,
+    STATIC_SETTINGS, load_assets,
     props::{
         barrier::{BarrierMocca, SpawnBarrierTask},
         door::*,
@@ -91,11 +91,12 @@ fn load_asset_blueprints(
 ) {
     for (entity, ainst, props) in query.iter() {
         let colliders = find_colliders(&children, &query_name, entity);
-        for &collider_entity in &colliders {
+        for &(collider_entity, collision_layer_mask) in &colliders {
             cmd.entity(collider_entity)
                 .and_set(CollisionRouting {
                     on_raycast_entity: entity,
                 })
+                .and_set(collision_layer_mask)
                 .and_set(DirtyCollider::default());
 
             if !STATIC_SETTINGS.show_colliders {
@@ -119,7 +120,7 @@ fn load_asset_blueprints(
                 let pointer =
                     find_child_by_name(&children, &query_name, entity, "prop-laser.pointer")
                         .unwrap();
-                build_laser_pointer(&mut cmd, pointer, colliders[0]);
+                build_laser_pointer(&mut cmd, pointer, colliders[0].0);
             }
             "prop-beam_target" => {
                 let target =
@@ -165,11 +166,15 @@ fn find_colliders(
     children: &Relation<ChildOf>,
     query_name: &Query<&Name>,
     entity: Entity,
-) -> Vec<Entity> {
+) -> Vec<(Entity, CollisionLayerMask)> {
     let mut out = Vec::new();
     iter_children_by_name(children, query_name, entity, |entity, name| {
         if name.ends_with("COLLIDER") {
-            out.push(entity);
+            out.push((entity, CollisionLayerMask::all()));
+        } else if name.ends_with("COLLIDER_INTERACT") {
+            out.push((entity, CollisionLayerMask::only_interact()));
+        } else if name.ends_with("COLLIDER_NAV") {
+            out.push((entity, CollisionLayerMask::only_nav()));
         }
         false
     });

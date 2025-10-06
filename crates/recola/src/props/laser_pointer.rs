@@ -1,5 +1,5 @@
 use crate::{
-    ColliderWorld, CollidersMocca, CollisionRouting, FoundationMocca, Ray3, Rng,
+    ColliderWorld, CollidersMocca, CollisionLayer, CollisionRouting, FoundationMocca, Ray3, Rng,
     recola_mocca::{CRIMSON, InputRaycastController},
     switch::*,
 };
@@ -265,7 +265,7 @@ fn raycast_laser_beams(
     for (tf, lp) in query_laser_pointer.iter_mut() {
         let ray = Ray3::from_origin_direction(tf.translation(), tf.x_axis.into()).unwrap();
 
-        let hit = colliders.raycast(&ray, Some(lp.exclude_collider));
+        let hit = colliders.raycast(&ray, Some(lp.exclude_collider), CollisionLayer::Laser);
 
         lp.beam_length = match hit {
             Some((_, len)) => len,
