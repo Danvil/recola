@@ -17,7 +17,7 @@ use simplecs::prelude::*;
 pub struct SpawnRiftTask;
 
 #[derive(Component, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct RiftId(pub i64);
+pub struct RiftLevel(pub i64);
 
 /// Laser pointers with a beam which collides with objects
 pub struct RiftMocca;
@@ -42,7 +42,7 @@ impl Mocca for RiftMocca {
         world.register_component::<Rift>();
         world.register_component::<RiftConsume>();
         world.register_component::<RiftConsumeParticle>();
-        world.register_component::<RiftId>();
+        world.register_component::<RiftLevel>();
         world.register_component::<RiftJitter>();
         world.register_component::<RiftShardInflate>();
         world.register_component::<SpawnRiftTask>();
@@ -110,7 +110,7 @@ fn spawn_rift(
 
         cmd.entity(rift_entity)
             .and_set(Rift)
-            .and_set(RiftId(rift_id));
+            .and_set(RiftLevel(rift_id));
 
         if let Some(switch_observer) = switch_observer {
             switch_observer.latch = true;
@@ -253,7 +253,7 @@ fn consume_rift(
     mut cmd: Commands,
     time: Singleton<SimClock>,
     mut player: SingletonMut<Player>,
-    mut query_rift_consume: Query<(Entity, &mut RiftConsume, &RiftId)>,
+    mut query_rift_consume: Query<(Entity, &mut RiftConsume, &RiftLevel)>,
     mut query_tf: Query<&mut Transform3>,
 ) {
     let dt = time.sim_dt_f32();
