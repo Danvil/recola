@@ -2,17 +2,7 @@
 import os
 import shutil
 import subprocess
-import zipfile
 from pathlib import Path
-
-def zipfolder(zip_path, root):
-    zipobj = zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED)
-    rootlen = len(str(root)) + 1
-    for base, dirs, files in os.walk(root):
-        for file in files:
-            fn = os.path.join(base, file)
-            zipobj.write(fn, fn[rootlen:])
-
 
 def main():
     repo_root = Path(".")
@@ -61,8 +51,12 @@ def main():
     ], cwd=".", check=True)
 
     # 4. Package zip
-    zip_path = repo_root / "tmp" / "recola" / "recola-release.zip"
-    zipfolder(zip_path, tmp_dir)
+    zip_path = "../recola-release.7z"
+    subprocess.run(
+        ["C:/Program Files/7-Zip/7z.exe", "a", str(zip_path), "."],
+        cwd=tmp_dir,
+        check=True
+    )
 
     print(f"Created package: {zip_path}")
 
