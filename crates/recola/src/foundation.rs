@@ -1,6 +1,6 @@
 use crate::{
     CollidersMocca, CollisionRouting, DirtyCollider, STATIC_SETTINGS, SpawnDoorTask, SpawnRiftTask,
-    build_laser_pointer, build_laser_target, load_assets,
+    build_laser_pointer, build_laser_target, load_assets, props::overgrowth::InitOvergrowthTask,
 };
 use candy::{AssetInstance, AssetLoaded, CandyMocca};
 use candy_asset::{CandyAssetMocca, SharedAssetResolver};
@@ -110,6 +110,15 @@ fn load_asset_blueprints(
             "prop-rift" => {
                 cmd.entity(entity).set(SpawnRiftTask);
             }
+            "prop-overgrowth-1" | "prop-overgrowth-2" | "prop-overgrowth-3" => {
+                let change_mat_entity = find_child(&children, &query_name, entity, |name| {
+                    name.starts_with("overgrowth")
+                })
+                .unwrap();
+
+                cmd.entity(entity)
+                    .set(InitOvergrowthTask { change_mat_entity });
+            }
             _ => {}
         }
 
@@ -138,10 +147,22 @@ fn find_child_by_name(
     entity: Entity,
     needle: &str,
 ) -> Option<Entity> {
-    find_child_by_name_impl(children, query_name, entity, &|name| name == needle)
+    find_child(children, query_name, entity, |name| name == needle)
 }
 
-fn find_child_by_name_impl<F>(
+fn find_child<F>(
+    children: &Relation<ChildOf>,
+    query_name: &Query<&Name>,
+    entity: Entity,
+    needle_f: F,
+) -> Option<Entity>
+where
+    F: Fn(&str) -> bool,
+{
+    find_child_impl(children, query_name, entity, &needle_f)
+}
+
+fn find_child_impl<F>(
     children: &Relation<ChildOf>,
     query_name: &Query<&Name>,
     entity: Entity,
@@ -156,7 +177,7 @@ where
                 return Some(child_entity);
             }
         }
-        if let Some(out) = find_child_by_name_impl(children, query_name, child_entity, needle_f) {
+        if let Some(out) = find_child_impl(children, query_name, child_entity, needle_f) {
             return Some(out);
         }
     }

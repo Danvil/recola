@@ -1,6 +1,7 @@
 use crate::{
     ColliderWorld, CollidersMocca, CollisionRouting, CustomProperties, DoorMocca, FoundationMocca,
-    LaserPointerMocca, RiftMocca, Rng, STATIC_SETTINGS, spawn_levels,
+    LaserPointerMocca, RiftMocca, Rng, STATIC_SETTINGS, props::overgrowth::OvergrowthMocca,
+    spawn_levels,
 };
 use bigtalk::{BigtalkMocca, Outbox, Router, add_route, spawn_agent};
 use candy::CandyMocca;
@@ -47,6 +48,7 @@ impl Mocca for RecolaMocca {
         deps.depends_on::<LaserPointerMocca>();
         deps.depends_on::<RiftMocca>();
         deps.depends_on::<DoorMocca>();
+        deps.depends_on::<OvergrowthMocca>();
         deps.depends_on_raw::<BigtalkMocca>();
 
         if STATIC_SETTINGS.enable_forge {

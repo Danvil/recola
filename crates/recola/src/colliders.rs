@@ -4,7 +4,10 @@ use glam::{Affine3A, Vec3};
 use magi_geo::Ray;
 use simplecs::prelude::*;
 use slab::Slab;
-use std::ops::Index;
+use std::{
+    ops::Index,
+    sync::{Mutex, mpsc},
+};
 
 pub type Ray3 = Ray<Vec3>;
 
@@ -22,6 +25,7 @@ pub struct CollisionRouting {
 #[derive(Singleton)]
 pub struct ColliderWorld {
     pub cuboids: CuboidSet,
+    pub on_remove_rx: Mutex<mpsc::Receiver<ColliderId>>,
 }
 
 impl ColliderWorld {
@@ -140,7 +144,9 @@ pub fn aabb_raycast(half_size: Vec3, ray: Ray3) -> Option<f32> {
 }
 
 /// Manages colliders and provides raycasting
-pub struct CollidersMocca;
+pub struct CollidersMocca {
+    on_remove_hook_id: OnRemoveHookId,
+}
 
 impl Mocca for CollidersMocca {
     fn load(mut deps: MoccaDeps) {
@@ -148,11 +154,18 @@ impl Mocca for CollidersMocca {
     }
 
     fn start(world: &mut World) -> Self {
+        let (on_remove_tx, on_remove_rx) = mpsc::channel();
+
         world.set_singleton(ColliderWorld {
             cuboids: CuboidSet::new(),
+            on_remove_rx: Mutex::new(on_remove_rx),
         });
 
-        Self
+        let on_remove_hook_id = world.insert_on_remove_hook(move |_key, value: &Collider| {
+            on_remove_tx.send(value.0).unwrap();
+        });
+
+        Self { on_remove_hook_id }
     }
 
     fn register_components(world: &mut World) {
@@ -165,6 +178,12 @@ impl Mocca for CollidersMocca {
         world.run(update_colliders);
         world.run(create_colliders);
     }
+
+    fn fini(&mut self, world: &mut World) {
+        world
+            .remove_on_remove_hook(Collider::id(), self.on_remove_hook_id)
+            .unwrap();
+    }
 }
 
 fn update_colliders(
@@ -172,9 +191,20 @@ fn update_colliders(
     mut cmd: Commands,
     query: Query<(Entity, &Collider), With<DirtyCollider>>,
 ) {
+    // Add new colliders
     for (entity, collider) in query.iter() {
         collider_world.cuboids.remove(collider.0);
         cmd.entity(entity).remove::<Collider>();
+    }
+
+    // Handle removed colliders
+    let ids: Vec<_> = {
+        let rx = collider_world.on_remove_rx.lock().unwrap();
+        rx.try_iter().collect()
+    };
+    for id in ids {
+        println!("Collider removed: {id:?}");
+        collider_world.cuboids.remove(id);
     }
 }
 

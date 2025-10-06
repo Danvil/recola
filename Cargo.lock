@@ -1287,6 +1287,7 @@ dependencies = [
  "paste",
  "profiling",
  "query_solver",
+ "slab",
  "thiserror 1.0.69",
 ]
 

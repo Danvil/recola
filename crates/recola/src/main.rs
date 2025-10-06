@@ -6,6 +6,7 @@ mod laser_pointer;
 mod level;
 mod nav;
 mod player;
+pub mod props;
 mod recola_mocca;
 mod rift;
 
