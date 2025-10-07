@@ -751,6 +751,7 @@ version = "0.1.0"
 dependencies = [
  "bytemuck",
  "candy_camera",
+ "candy_can",
  "candy_render_elements",
  "candy_utils",
  "glam 0.30.5",

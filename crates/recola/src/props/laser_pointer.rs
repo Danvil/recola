@@ -10,7 +10,7 @@ use candy_scene_tree::*;
 use candy_time::*;
 use excess::prelude::*;
 use glam::{Vec3, Vec3Swizzles};
-use magi_color::colors;
+use magi_color::{LinearColor, colors};
 use magi_se::SO3;
 use simplecs::prelude::*;
 
@@ -73,7 +73,11 @@ pub fn build_laser_pointer(cmd: &mut Commands, entity: Entity, collider_entity: 
             .with_translation_xyz(MAX_BEAM_LEN * 0.5, 0., 0.),
         Visibility::Visible,
         Cuboid,
-        Material::Pbr(PbrMaterial::default().with_base_color(CRIMSON)),
+        Material::Pbr(
+            PbrMaterial::default()
+                .with_base_color(CRIMSON)
+                .with_emission(CRIMSON.to_linear() * 15.0),
+        ),
         (ChildOf, entity),
     ));
 
@@ -83,7 +87,11 @@ pub fn build_laser_pointer(cmd: &mut Commands, entity: Entity, collider_entity: 
             .with_translation_xyz(MAX_BEAM_LEN, 0., 0.),
         Visibility::Visible,
         Ball,
-        Material::Pbr(PbrMaterial::default().with_base_color(CRIMSON)),
+        Material::Pbr(
+            PbrMaterial::default()
+                .with_base_color(CRIMSON)
+                .with_emission(CRIMSON.to_linear() * 20.0),
+        ),
         (ChildOf, entity),
     ));
 
@@ -318,7 +326,9 @@ fn activate_laser_target_switch(
 }
 
 fn set_laser_target_material(mut cmd: Commands, mut query: Query<&mut LaserPointerTarget>) {
-    let mat_active = PbrMaterial::diffuse_white().with_base_color(CRIMSON);
+    let mat_active = PbrMaterial::diffuse_white()
+        .with_base_color(colors::BLACK)
+        .with_emission(CRIMSON.to_linear() * 10.0);
     let mat_inactive = PbrMaterial::diffuse_white().with_base_color(colors::BLACK);
 
     for laser_target in query.iter_mut() {

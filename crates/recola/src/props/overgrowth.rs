@@ -90,7 +90,9 @@ fn burn_overgrowth(
             }
 
             let color = color_fresh.mix(q, color_burnt);
-            let mat = PbrMaterial::diffuse_white().with_base_color(color);
+            let mat = PbrMaterial::diffuse_white()
+                .with_base_color(color)
+                .with_emission(color_burnt * q);
 
             cmd.entity(overgrowth.change_mat_entity)
                 .and_set(Material::Pbr(mat))
@@ -104,12 +106,12 @@ struct OvergrowthBurnParticle {
     age: f32,
 }
 
-const OVERGROWTH_BURN_PARTICLE_SPAWN_RATE: f32 = 0.0133;
+const OVERGROWTH_BURN_PARTICLE_SPAWN_RATE: f32 = 0.0100;
 const OVERGROWTH_BURN_SPAWN_BOX: Vec3 = Vec3::new(3.0, 0.3, 6.0);
-const OVERGROWTH_BURN_PARTICLE_MAX_AGE: f32 = 1.333;
-const OVERGROWTH_BURN_PARTICLE_SIZE: f32 = 0.2;
-const OVERGROWTH_BURN_PARTICLE_SPEED: f32 = 3.333;
-const OVERGROWTH_BURN_PARTICLE_AGE_SIZE_PEAK: f32 = 0.96;
+const OVERGROWTH_BURN_PARTICLE_MAX_AGE: f32 = 1.;
+const OVERGROWTH_BURN_PARTICLE_SIZE: f32 = 0.180;
+const OVERGROWTH_BURN_PARTICLE_SPEED: f32 = 2.50;
+const OVERGROWTH_BURN_PARTICLE_AGE_SIZE_PEAK: f32 = 0.93;
 
 fn spawn_overgrowth_burn_particles(
     mut cmd: Commands,
@@ -143,10 +145,15 @@ fn animate_overgrowth_burn_particles(
     time: Singleton<SimClock>,
     mut query: Query<(Entity, &mut OvergrowthBurnParticle, &mut Transform3)>,
 ) {
+    let age_q_2 = 0.100;
+
     let color_1: LinearColor = SRgbU8Color::from_rgb(255, 242, 156).to_linear();
-    let color_2_age_q = 0.133;
     let color_2: LinearColor = SRgbU8Color::from_rgb(240, 97, 26).to_linear();
     let color_3: LinearColor = SRgbU8Color::from_rgb(23, 23, 23).to_linear();
+
+    let em_1: LinearColor = SRgbU8Color::from_rgb(255, 242, 156).to_linear() * 10.0;
+    let em_2: LinearColor = SRgbU8Color::from_rgb(240, 97, 26).to_linear() * 2.0;
+    let em_3: LinearColor = SRgbU8Color::from_rgb(23, 23, 23).to_linear() * 0.0;
 
     let dt = time.sim_dt_f32();
     let step = dt * OVERGROWTH_BURN_PARTICLE_SPEED;
@@ -167,12 +174,19 @@ fn animate_overgrowth_burn_particles(
         };
         tf.scale = Vec3::splat(OVERGROWTH_BURN_PARTICLE_SIZE * age_size);
 
-        let age_color = if rel_age < color_2_age_q {
-            color_1.mix(rel_age / color_2_age_q, color_2)
+        let age_color = if rel_age < age_q_2 {
+            color_1.mix(rel_age / age_q_2, color_2)
         } else {
-            color_2.mix((rel_age - color_2_age_q) / (1. - color_2_age_q), color_3)
+            color_2.mix((rel_age - age_q_2) / (1. - age_q_2), color_3)
         };
-        let mat = PbrMaterial::diffuse_white().with_base_color(age_color);
+        let age_em = if rel_age < age_q_2 {
+            em_1.mix(rel_age / age_q_2, em_2)
+        } else {
+            em_2.mix((rel_age - age_q_2) / (1. - age_q_2), em_3)
+        };
+        let mat = PbrMaterial::diffuse_white()
+            .with_base_color(age_color)
+            .with_emission(age_em);
 
         cmd.entity(entity)
             .and_set(Material::Pbr(mat))

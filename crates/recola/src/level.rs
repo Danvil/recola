@@ -81,14 +81,9 @@ fn spawn_terrain(mut cmd: Commands) {
             .with_scale(Vec3::new(GROUND_PLANE_SIZE, GROUND_PLANE_SIZE, 1.)),
         Cuboid,
         Visibility::Visible,
-        Material::Pbr(PbrMaterial {
-            base_color: LinearColor::from_rgb(0.10, 0.10, 0.10),
-            metallic: 0.,
-            perceptual_roughness: 1.0,
-            reflectance: 0.50,
-            coat_strength: 0.,
-            coat_roughness: 0.,
-        }),
+        Material::Pbr(PbrMaterial::diffuse(LinearColor::from_rgb(
+            0.10, 0.10, 0.10,
+        ))),
     ));
 }
 

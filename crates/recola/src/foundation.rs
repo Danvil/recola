@@ -59,6 +59,7 @@ fn setup_asset_resolver(asset_resolver: SingletonMut<SharedAssetResolver>) {
     }
     asset_resolver.add_prefix("assets/recola").unwrap();
     asset_resolver.add_prefix("assets/shaders").unwrap();
+    asset_resolver.add_prefix("assets/bloom_pipeline").unwrap();
 }
 
 #[derive(Serialize, Deserialize)]

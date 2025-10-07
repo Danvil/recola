@@ -13,6 +13,7 @@ use candy_scene_tree::*;
 use candy_time::*;
 use excess::prelude::*;
 use glam::Vec3;
+use magi_color::LinearColor;
 use simplecs::prelude::*;
 
 #[derive(Component)]
@@ -320,7 +321,11 @@ fn spawn_rift_consume_particles(
                     target_offset: RIFT_CONSUME_PARTICLE_TARGET_VAR * rng.sphere_point(),
                 },
                 Cuboid,
-                Material::Pbr(PbrMaterial::default().with_base_color(CRIMSON)),
+                Material::Pbr(
+                    PbrMaterial::default()
+                        .with_base_color(CRIMSON)
+                        .with_emission(CRIMSON.to_linear() * 3.0),
+                ),
                 Visibility::Visible,
                 Transform3::identity()
                     .with_translation(
