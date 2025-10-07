@@ -1,5 +1,4 @@
 use crate::{STATIC_SETTINGS, level::*, player::*};
-use candy::CandyMocca;
 use candy_forge::*;
 use magi_color::SRgbU8Color;
 use simplecs::prelude::*;
@@ -10,7 +9,6 @@ pub struct RecolaMocca;
 
 impl Mocca for RecolaMocca {
     fn load(mut deps: MoccaDeps) {
-        deps.depends_on::<CandyMocca>();
         deps.depends_on::<LevelMocca>();
         deps.depends_on::<PlayerMocca>();
 

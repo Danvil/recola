@@ -15,13 +15,16 @@ approx = "0.5.1"
 bigtalk = { path = "../atom/crates/bigtalk" }
 bincode = { version = "2.0", features = ["serde"] }
 candy = { path = "../candy/crates/candy" }
-candy_asset = { path = "../candy/crates/candy_asset" }
+candy_can = { path = "../candy/crates/candy_can" }
 candy_camera = { path = "../candy/crates/candy_camera" }
 candy_fim = { path = "../candy/crates/candy_fim" }
 candy_forge = { path = "../candy/crates/candy_forge" }
+candy_glassworks = { path = "../candy/crates/candy_glassworks" }
 candy_input = { path = "../candy/crates/candy_input" }
 candy_log = { path = "../candy/crates/candy_log" }
+candy_material = { path = "../candy/crates/candy_material" }
 candy_mesh = { path = "../candy/crates/candy_mesh" }
+candy_prims = { path = "../candy/crates/candy_prims" }
 candy_rng = { path = "../candy/crates/candy_rng" }
 candy_scene_tree = { path = "../candy/crates/candy_scene_tree" }
 candy_sky = { path = "../candy/crates/candy_sky" }

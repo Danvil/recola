@@ -496,16 +496,16 @@ dependencies = [
 name = "candy"
 version = "0.1.0"
 dependencies = [
- "bigtalk",
- "bytemuck",
- "candy_asset",
  "candy_camera",
+ "candy_can",
  "candy_dev_gui",
  "candy_fim",
  "candy_gizmos",
+ "candy_glassworks",
  "candy_input",
- "candy_log",
+ "candy_material",
  "candy_mesh",
+ "candy_prims",
  "candy_render_elements",
  "candy_render_nodes",
  "candy_scene_tree",
@@ -513,54 +513,7 @@ dependencies = [
  "candy_terra",
  "candy_time",
  "candy_utils",
- "egui",
- "egui-wgpu",
- "egui-winit",
- "env_logger",
- "excess",
- "excess_cask",
- "excess_macros",
- "eyre",
- "glam 0.30.5",
- "gltf",
- "half",
- "log",
- "log-once",
- "magi_ball",
- "magi_bsdf",
- "magi_color",
- "magi_gems",
- "magi_geo",
- "magi_se",
- "magi_sky",
- "ndarray",
- "paste",
- "pollster",
- "profiling",
- "serde",
  "simplecs",
- "slab",
- "thiserror 1.0.69",
- "wgpu",
- "winit",
-]
-
-[[package]]
-name = "candy_asset"
-version = "0.1.0"
-dependencies = [
- "candy_utils",
- "excess",
- "excess_macros",
- "eyre",
- "log",
- "magi_gems",
- "profiling",
- "redb",
- "serde",
- "serde_json",
- "simplecs",
- "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -581,6 +534,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "candy_can"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "candy_utils",
+ "excess",
+ "excess_macros",
+ "eyre",
+ "log",
+ "magi_gems",
+ "profiling",
+ "redb",
+ "serde",
+ "serde_json",
+ "simplecs",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "candy_dev_gui"
 version = "0.1.0"
 dependencies = [
@@ -594,9 +566,9 @@ name = "candy_fim"
 version = "0.1.0"
 dependencies = [
  "candy_gizmos",
+ "candy_material",
  "candy_mesh",
  "candy_scene_tree",
- "candy_utils",
  "excess",
  "magi_color",
  "magi_geo",
@@ -644,6 +616,60 @@ dependencies = [
 ]
 
 [[package]]
+name = "candy_glassworks"
+version = "0.1.0"
+dependencies = [
+ "bigtalk",
+ "bytemuck",
+ "candy_camera",
+ "candy_can",
+ "candy_dev_gui",
+ "candy_fim",
+ "candy_gizmos",
+ "candy_input",
+ "candy_log",
+ "candy_material",
+ "candy_mesh",
+ "candy_render_elements",
+ "candy_render_nodes",
+ "candy_scene_tree",
+ "candy_sky",
+ "candy_terra",
+ "candy_time",
+ "candy_utils",
+ "egui",
+ "egui-wgpu",
+ "egui-winit",
+ "env_logger",
+ "excess",
+ "excess_cask",
+ "excess_macros",
+ "eyre",
+ "glam 0.30.5",
+ "gltf",
+ "half",
+ "log",
+ "log-once",
+ "magi_ball",
+ "magi_bsdf",
+ "magi_color",
+ "magi_gems",
+ "magi_geo",
+ "magi_se",
+ "magi_sky",
+ "ndarray",
+ "paste",
+ "pollster",
+ "profiling",
+ "serde",
+ "simplecs",
+ "slab",
+ "thiserror 1.0.69",
+ "wgpu",
+ "winit",
+]
+
+[[package]]
 name = "candy_input"
 version = "0.1.0"
 dependencies = [
@@ -670,10 +696,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "candy_material"
+version = "0.1.0"
+dependencies = [
+ "candy_utils",
+ "excess",
+ "magi_bsdf",
+ "magi_color",
+ "simplecs",
+]
+
+[[package]]
 name = "candy_mesh"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
+ "candy_can",
+ "candy_utils",
  "excess",
  "eyre",
  "glam 0.30.5",
@@ -684,11 +723,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "candy_prims"
+version = "0.1.0"
+dependencies = [
+ "candy_mesh",
+ "candy_scene_tree",
+ "excess",
+ "glam 0.30.5",
+ "magi_color",
+ "magi_geo",
+ "simplecs",
+]
+
+[[package]]
 name = "candy_render_elements"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
- "candy_asset",
+ "candy_can",
  "eyre",
  "wgpu",
 ]
@@ -2425,6 +2477,7 @@ version = "0.1.0"
 dependencies = [
  "ctrlc",
  "excess",
+ "log",
  "profiling",
 ]
 
@@ -3423,12 +3476,14 @@ dependencies = [
  "approx",
  "bigtalk",
  "candy",
- "candy_asset",
  "candy_camera",
+ "candy_can",
  "candy_forge",
+ "candy_glassworks",
  "candy_input",
  "candy_log",
- "candy_mesh",
+ "candy_material",
+ "candy_prims",
  "candy_rng",
  "candy_scene_tree",
  "candy_sky",

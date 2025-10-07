@@ -3,12 +3,11 @@ use crate::{
     player::*,
     recola_mocca::CRIMSON,
 };
-use candy::MaterialDirty;
-use candy_mesh::*;
+use candy_material::*;
+use candy_prims::*;
 use candy_rng::*;
 use candy_scene_tree::*;
 use candy_time::*;
-use candy_utils::{Material, PbrMaterial};
 use excess::prelude::*;
 use glam::{Vec3, Vec3Swizzles};
 use magi_color::colors;
@@ -133,7 +132,8 @@ pub struct LaserPointerMocca;
 
 impl Mocca for LaserPointerMocca {
     fn load(mut deps: MoccaDeps) {
-        deps.depends_on::<CandyMeshMocca>();
+        deps.depends_on::<CandyMaterialMocca>();
+        deps.depends_on::<CandyPrimsMocca>();
         deps.depends_on::<CandyRngMocca>();
         deps.depends_on::<CandySceneTreeMocca>();
         deps.depends_on::<CandyTimeMocca>();

@@ -4,9 +4,8 @@ use crate::{
     mechanics::{colliders::*, switch::*},
     props::{barrier::*, door::*, laser_pointer::*, overgrowth::*, rift::*},
 };
-use candy::{AssetInstance, AssetLibrary, AssetLoaded, AssetUid, GltfAssetDescriptor};
-use candy_asset::*;
-use candy_mesh::*;
+use candy_can::*;
+use candy_glassworks::*;
 use candy_scene_tree::*;
 use excess::prelude::*;
 use eyre::Result;
@@ -21,16 +20,16 @@ pub struct FoundationMocca;
 impl Mocca for FoundationMocca {
     fn load(mut deps: MoccaDeps) {
         deps.depends_on::<BarrierMocca>();
-        deps.depends_on::<CandyAssetMocca>();
-        deps.depends_on::<CandyMeshMocca>();
+        deps.depends_on::<CandyCanMocca>();
+        deps.depends_on::<CandyGlassworksMocca>();
         deps.depends_on::<CandySceneTreeMocca>();
         deps.depends_on::<CollidersMocca>();
+        deps.depends_on::<CustomPropertiesMocca>();
         deps.depends_on::<DoorMocca>();
         deps.depends_on::<LaserPointerMocca>();
         deps.depends_on::<OvergrowthMocca>();
         deps.depends_on::<RiftMocca>();
         deps.depends_on::<SwitchMocca>();
-        deps.depends_on::<CustomPropertiesMocca>();
     }
 
     fn register_components(world: &mut World) {

@@ -1,10 +1,10 @@
 use crate::{custom_properties::*, foundation::*};
-use candy::{AssetInstance, AssetUid};
-use candy_asset::*;
-use candy_mesh::*;
+use candy_can::*;
+use candy_glassworks::*;
+use candy_material::*;
+use candy_prims::*;
 use candy_scene_tree::*;
 use candy_sky::*;
-use candy_utils::{Material, PbrMaterial};
 use excess::prelude::*;
 use eyre::Result;
 use glam::Vec3;
@@ -18,8 +18,10 @@ pub struct LevelMocca;
 
 impl Mocca for LevelMocca {
     fn load(mut deps: MoccaDeps) {
-        deps.depends_on::<CandyAssetMocca>();
-        deps.depends_on::<CandyMeshMocca>();
+        deps.depends_on::<CandyCanMocca>();
+        deps.depends_on::<CandyGlassworksMocca>();
+        deps.depends_on::<CandyMaterialMocca>();
+        deps.depends_on::<CandyPrimsMocca>();
         deps.depends_on::<CandySceneTreeMocca>();
         deps.depends_on::<CandySkyMocca>();
         deps.depends_on::<CustomPropertiesMocca>();
@@ -77,8 +79,8 @@ fn spawn_terrain(mut cmd: Commands) {
         Transform3::identity()
             .with_translation(Vec3::new(0.0, 0.0, -0.55))
             .with_scale(Vec3::new(GROUND_PLANE_SIZE, GROUND_PLANE_SIZE, 1.)),
-        Visibility::Visible,
         Cuboid,
+        Visibility::Visible,
         Material::Pbr(PbrMaterial {
             base_color: LinearColor::from_rgb(0.10, 0.10, 0.10),
             metallic: 0.,

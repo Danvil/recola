@@ -31,7 +31,7 @@ fn main() -> eyre::Result<()> {
 
     profiling::scope!("main");
 
-    let mut app = candy::App::new();
+    let mut app = candy_glassworks::App::new();
     app.load_mocca::<RecolaMocca>();
     app.run()
 }
