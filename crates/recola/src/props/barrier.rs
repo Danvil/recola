@@ -1,5 +1,5 @@
-use crate::switch::{SwitchMocca, SwitchObserverState};
-use candy_scene_tree::{CandySceneTreeMocca, Visibility};
+use crate::mechanics::switch::*;
+use candy_scene_tree::*;
 use excess::prelude::*;
 use simplecs::prelude::*;
 

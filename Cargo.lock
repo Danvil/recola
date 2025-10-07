@@ -712,6 +712,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "candy_rng"
+version = "0.1.0"
+dependencies = [
+ "excess",
+ "magi_rng",
+ "simplecs",
+]
+
+[[package]]
 name = "candy_scene_tree"
 version = "0.1.0"
 dependencies = [
@@ -3420,6 +3429,7 @@ dependencies = [
  "candy_input",
  "candy_log",
  "candy_mesh",
+ "candy_rng",
  "candy_scene_tree",
  "candy_sky",
  "candy_terra",

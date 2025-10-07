@@ -1,12 +1,13 @@
 use crate::{
-    ColliderWorld, CollidersMocca, CollisionLayer, CollisionRouting, FoundationMocca, Ray3, Rng,
-    recola_mocca::{CRIMSON, InputRaycastController},
-    switch::*,
+    mechanics::{colliders::*, switch::*},
+    player::*,
+    recola_mocca::CRIMSON,
 };
-use candy::{CandyMocca, MaterialDirty};
-use candy_mesh::{Ball, Cuboid};
-use candy_scene_tree::{CandySceneTreeMocca, GlobalTransform3, Transform3, Visibility};
-use candy_time::{CandyTimeMocca, SimClock};
+use candy::MaterialDirty;
+use candy_mesh::*;
+use candy_rng::*;
+use candy_scene_tree::*;
+use candy_time::*;
 use candy_utils::{Material, PbrMaterial};
 use excess::prelude::*;
 use glam::{Vec3, Vec3Swizzles};
@@ -132,11 +133,12 @@ pub struct LaserPointerMocca;
 
 impl Mocca for LaserPointerMocca {
     fn load(mut deps: MoccaDeps) {
-        deps.depends_on::<CandyMocca>();
+        deps.depends_on::<CandyMeshMocca>();
+        deps.depends_on::<CandyRngMocca>();
         deps.depends_on::<CandySceneTreeMocca>();
         deps.depends_on::<CandyTimeMocca>();
         deps.depends_on::<CollidersMocca>();
-        deps.depends_on::<FoundationMocca>();
+        deps.depends_on::<PlayerMocca>();
         deps.depends_on::<SwitchMocca>();
     }
 

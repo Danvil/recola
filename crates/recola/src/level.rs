@@ -1,14 +1,38 @@
-use crate::CustomProperties;
+use crate::{custom_properties::*, foundation::*};
 use candy::{AssetInstance, AssetUid};
-use candy_asset::SharedAssetResolver;
-use candy_scene_tree::Transform3;
+use candy_asset::*;
+use candy_mesh::*;
+use candy_scene_tree::*;
+use candy_sky::*;
+use candy_utils::{Material, PbrMaterial};
 use excess::prelude::*;
 use eyre::Result;
 use glam::Vec3;
+use magi_color::LinearColor;
 use magi_se::SO3;
 use serde::Deserialize;
 use simplecs::prelude::*;
 use std::collections::HashMap;
+
+pub struct LevelMocca;
+
+impl Mocca for LevelMocca {
+    fn load(mut deps: MoccaDeps) {
+        deps.depends_on::<CandyAssetMocca>();
+        deps.depends_on::<CandyMeshMocca>();
+        deps.depends_on::<CandySceneTreeMocca>();
+        deps.depends_on::<CandySkyMocca>();
+        deps.depends_on::<CustomPropertiesMocca>();
+        deps.depends_on::<FoundationMocca>();
+    }
+
+    fn start(world: &mut World) -> Self {
+        world.run(setup_sky);
+        world.run(spawn_terrain);
+        world.run(spawn_levels).unwrap();
+        Self
+    }
+}
 
 #[derive(Debug, Deserialize)]
 pub struct Level {
@@ -38,7 +62,35 @@ impl Instance {
     }
 }
 
-pub fn spawn_level(cmd: &mut Commands, level_entity: Entity, level: &Level) {
+fn setup_sky(mut sky: SingletonMut<SkyModel>, mut day_night: SingletonMut<DayNightCycle>) {
+    sky.set_sun_raw_radiance(15.0);
+    sky.set_moon_raw_radiance(0.35);
+    day_night.speed_factor = 0.;
+    day_night.local_time = SolisticDays::from_day_hour(0, 12.0);
+}
+
+fn spawn_terrain(mut cmd: Commands) {
+    const GROUND_PLANE_SIZE: f32 = 1024.;
+
+    cmd.spawn((
+        Name::from_str("ground plane"),
+        Transform3::identity()
+            .with_translation(Vec3::new(0.0, 0.0, -0.55))
+            .with_scale(Vec3::new(GROUND_PLANE_SIZE, GROUND_PLANE_SIZE, 1.)),
+        Visibility::Visible,
+        Cuboid,
+        Material::Pbr(PbrMaterial {
+            base_color: LinearColor::from_rgb(0.10, 0.10, 0.10),
+            metallic: 0.,
+            perceptual_roughness: 1.0,
+            reflectance: 0.50,
+            coat_strength: 0.,
+            coat_roughness: 0.,
+        }),
+    ));
+}
+
+fn spawn_level(cmd: &mut Commands, level_entity: Entity, level: &Level) {
     for inst in &level.instances {
         let entity = cmd.spawn((
             Name::new(inst.name.to_owned()),
@@ -58,7 +110,7 @@ pub fn spawn_level(cmd: &mut Commands, level_entity: Entity, level: &Level) {
     }
 }
 
-pub fn spawn_levels(assets: Singleton<SharedAssetResolver>, mut cmd: Commands) -> Result<()> {
+fn spawn_levels(assets: Singleton<SharedAssetResolver>, mut cmd: Commands) -> Result<()> {
     let path = assets.resolve("recola.json")?;
     let world: Level = assets.parse(&path)?;
 

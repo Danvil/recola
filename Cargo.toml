@@ -18,10 +18,11 @@ candy = { path = "../candy/crates/candy" }
 candy_asset = { path = "../candy/crates/candy_asset" }
 candy_camera = { path = "../candy/crates/candy_camera" }
 candy_fim = { path = "../candy/crates/candy_fim" }
+candy_forge = { path = "../candy/crates/candy_forge" }
 candy_input = { path = "../candy/crates/candy_input" }
 candy_log = { path = "../candy/crates/candy_log" }
-candy_forge = { path = "../candy/crates/candy_forge" }
 candy_mesh = { path = "../candy/crates/candy_mesh" }
+candy_rng = { path = "../candy/crates/candy_rng" }
 candy_scene_tree = { path = "../candy/crates/candy_scene_tree" }
 candy_sky = { path = "../candy/crates/candy_sky" }
 candy_terra = { path = "../candy/crates/candy_terra" }

@@ -1,8 +1,9 @@
-use crate::{Rng, props::laser_pointer::*};
+use crate::props::laser_pointer::*;
 use candy::MaterialDirty;
-use candy_mesh::Cuboid;
-use candy_scene_tree::{GlobalTransform3, Transform3, Visibility};
-use candy_time::{CandyTimeMocca, SimClock};
+use candy_mesh::*;
+use candy_rng::*;
+use candy_scene_tree::*;
+use candy_time::*;
 use candy_utils::{Material, PbrMaterial};
 use excess::prelude::*;
 use glam::Vec3;
@@ -29,6 +30,10 @@ pub struct OvergrowthMocca;
 impl Mocca for OvergrowthMocca {
     fn load(mut deps: MoccaDeps) {
         deps.depends_on::<LaserPointerMocca>();
+        deps.depends_on::<CandyTimeMocca>();
+        deps.depends_on::<CandyMeshMocca>();
+        deps.depends_on::<CandyRngMocca>();
+        deps.depends_on::<CandySceneTreeMocca>();
         deps.depends_on::<CandyTimeMocca>();
     }
 

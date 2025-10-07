@@ -1,39 +1,17 @@
 use crate::{
-    CollidersMocca, CollisionLayerMask, CollisionRouting, CustomProperties, DirtyCollider,
-    STATIC_SETTINGS, load_assets,
-    props::{
-        barrier::{BarrierMocca, SpawnBarrierTask},
-        door::*,
-        laser_pointer::*,
-        overgrowth::InitOvergrowthTask,
-        rift::*,
-    },
-    switch::{SwitchObserver, SwitchObserverState},
+    STATIC_SETTINGS,
+    custom_properties::*,
+    mechanics::{colliders::*, switch::*},
+    props::{barrier::*, door::*, laser_pointer::*, overgrowth::*, rift::*},
 };
-use candy::{AssetInstance, AssetLoaded, CandyMocca};
-use candy_asset::{CandyAssetMocca, SharedAssetResolver};
-use candy_mesh::CandyMeshMocca;
-use candy_scene_tree::{CandySceneTreeMocca, Visibility};
+use candy::{AssetInstance, AssetLibrary, AssetLoaded, AssetUid, GltfAssetDescriptor};
+use candy_asset::*;
+use candy_mesh::*;
+use candy_scene_tree::*;
 use excess::prelude::*;
+use eyre::Result;
+use serde::{Deserialize, Serialize};
 use simplecs::prelude::*;
-use std::ops::{Deref, DerefMut};
-
-#[derive(Singleton)]
-pub struct Rng(magi_rng::Rng);
-
-impl Deref for Rng {
-    type Target = magi_rng::Rng;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for Rng {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
 
 #[derive(Component)]
 pub struct BlueprintApplied;
@@ -42,12 +20,17 @@ pub struct FoundationMocca;
 
 impl Mocca for FoundationMocca {
     fn load(mut deps: MoccaDeps) {
+        deps.depends_on::<BarrierMocca>();
         deps.depends_on::<CandyAssetMocca>();
         deps.depends_on::<CandyMeshMocca>();
-        deps.depends_on::<CandyMocca>();
         deps.depends_on::<CandySceneTreeMocca>();
         deps.depends_on::<CollidersMocca>();
-        deps.depends_on::<BarrierMocca>();
+        deps.depends_on::<DoorMocca>();
+        deps.depends_on::<LaserPointerMocca>();
+        deps.depends_on::<OvergrowthMocca>();
+        deps.depends_on::<RiftMocca>();
+        deps.depends_on::<SwitchMocca>();
+        deps.depends_on::<CustomPropertiesMocca>();
     }
 
     fn register_components(world: &mut World) {
@@ -55,18 +38,7 @@ impl Mocca for FoundationMocca {
     }
 
     fn start(world: &mut World) -> Self {
-        let asset_resolver = world.singleton::<SharedAssetResolver>();
-
-        if asset_resolver.add_pack("recola.candy").is_err() {
-            asset_resolver
-                .add_pack("I:/Ikabur/eph/tmp/recola/release/recola.candy")
-                .unwrap();
-        }
-
-        asset_resolver.add_prefix("assets/recola").unwrap();
-        asset_resolver.add_prefix("assets/shaders").unwrap();
-
-        world.set_singleton(Rng(magi_rng::Rng::from_seed(16667)));
+        world.run(setup_asset_resolver);
         world.run(load_assets).unwrap();
         Self
     }
@@ -78,6 +50,50 @@ impl Mocca for FoundationMocca {
     fn fini(&mut self, _world: &mut World) {
         log::info!("terminated.");
     }
+}
+
+fn setup_asset_resolver(asset_resolver: SingletonMut<SharedAssetResolver>) {
+    if asset_resolver.add_pack("recola.candy").is_err() {
+        asset_resolver
+            .add_pack("I:/Ikabur/eph/tmp/recola/release/recola.candy")
+            .unwrap();
+    }
+    asset_resolver.add_prefix("assets/recola").unwrap();
+    asset_resolver.add_prefix("assets/shaders").unwrap();
+}
+
+#[derive(Serialize, Deserialize)]
+struct AssetCollection {
+    assets: Vec<AssetEntry>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct AssetEntry {
+    name: String,
+    file: String,
+    scene: String,
+    node: String,
+}
+
+pub fn load_assets(
+    assets: Singleton<SharedAssetResolver>,
+    mut asli: SingletonMut<AssetLibrary>,
+) -> Result<()> {
+    let path = assets.resolve("assets.json")?;
+    let coll: AssetCollection = assets.parse(&path)?;
+
+    for entry in coll.assets {
+        let path = assets.resolve(&entry.file)?;
+        asli.load_gltf(
+            &AssetUid::new(entry.name),
+            GltfAssetDescriptor {
+                path,
+                scene: Some(entry.scene),
+                node: Some(entry.node),
+            },
+        );
+    }
+    Ok(())
 }
 
 fn load_asset_blueprints(

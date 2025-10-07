@@ -15,6 +15,7 @@ candy_log = { workspace = true }
 candy_mesh = { workspace = true }
 candy_scene_tree = { workspace = true }
 candy_sky = { workspace = true }
+candy_rng = { workspace = true }
 candy_terra = { workspace = true }
 candy_time = { workspace = true }
 candy_utils = { workspace = true }

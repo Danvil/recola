@@ -1,4 +1,5 @@
 use excess::prelude::*;
+use simplecs::prelude::*;
 use std::collections::HashMap;
 
 #[derive(Component)]
@@ -53,5 +54,17 @@ impl CustomProperties {
             CustomPropertiesValue::String(v) => Some(v.split(",").map(|s| s.to_owned()).collect()),
             _ => None,
         }
+    }
+}
+
+pub struct CustomPropertiesMocca;
+
+impl Mocca for CustomPropertiesMocca {
+    fn register_components(world: &mut World) {
+        world.register_component::<CustomProperties>();
+    }
+
+    fn start(_: &mut World) -> Self {
+        Self
     }
 }

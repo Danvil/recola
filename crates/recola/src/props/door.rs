@@ -1,10 +1,6 @@
-use crate::{
-    CollidersMocca, CollisionLayerMask, CustomProperties, DirtyCollider, FoundationMocca, Player,
-    PlayerMocca, recola_mocca::InputRaycastController,
-};
-use candy::CandyMocca;
-use candy_scene_tree::{CandySceneTreeMocca, Transform3};
-use candy_time::{CandyTimeMocca, SimClock};
+use crate::{custom_properties::*, mechanics::colliders::*, player::*};
+use candy_scene_tree::*;
+use candy_time::*;
 use excess::prelude::*;
 use eyre::{Result, eyre};
 use simplecs::prelude::*;
@@ -30,11 +26,10 @@ pub struct DoorMocca;
 
 impl Mocca for DoorMocca {
     fn load(mut deps: MoccaDeps) {
-        deps.depends_on::<CandyMocca>();
         deps.depends_on::<CandySceneTreeMocca>();
         deps.depends_on::<CandyTimeMocca>();
         deps.depends_on::<CollidersMocca>();
-        deps.depends_on::<FoundationMocca>();
+        deps.depends_on::<CustomPropertiesMocca>();
         deps.depends_on::<PlayerMocca>();
     }
 

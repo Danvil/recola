@@ -1,21 +1,11 @@
-mod assets;
-mod colliders;
-mod custom_properties;
-mod foundation;
-mod level;
-mod mechanics;
-mod player;
+pub mod custom_properties;
+pub mod foundation;
+pub mod level;
+pub mod mechanics;
+pub mod player;
 pub mod props;
+
 mod recola_mocca;
-
-pub use assets::*;
-pub use colliders::*;
-pub use custom_properties::*;
-pub use foundation::*;
-pub use level::*;
-pub use mechanics::*;
-pub use player::*;
-
 use crate::recola_mocca::RecolaMocca;
 
 pub struct StaticSettings {
