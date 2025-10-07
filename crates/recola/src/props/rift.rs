@@ -270,7 +270,7 @@ fn consume_rift(
             rift_consume.is_consumed = true;
             player.rift_charges.insert(*rift_id);
             let key = KeyId(rift_id.0);
-            log::debug!("acquired key: {key:?}");
+            log::debug!("acquired key {key:?}");
             player.keys.insert(key);
 
             cmd.entity(entity).set(Visibility::Hidden);

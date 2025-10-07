@@ -132,7 +132,7 @@ fn lower_door_interaction(
             }
             door.progress_changed = true;
         } else {
-            log::debug!("missing key: {key:?}");
+            log::debug!("missing key {key:?}");
         }
     }
 }

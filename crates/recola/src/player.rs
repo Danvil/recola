@@ -152,7 +152,7 @@ fn setup_window_and_camera(clock: Singleton<SimClock>, mut cmd: Commands) {
 
     let win = cmd.spawn((
         WindowDef {
-            title: "LUDUM DARE 57: RECOLA".to_string(),
+            title: "LUDUM DARE 58: RECOLA".to_string(),
             layout: WindowLayout {
                 shape: ImageShape::from_width_height(1920, 1080),
                 position: ImageLocation::from_horizontal_vertical(200., 200.),

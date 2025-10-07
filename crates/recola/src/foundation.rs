@@ -158,8 +158,10 @@ fn load_asset_blueprints(
                     "prop-barrier_3x6.force_field",
                 )
                 .unwrap();
-                cmd.entity(entity)
-                    .set(SpawnBarrierTask { force_field_entity });
+                cmd.entity(entity).set(SpawnBarrierTask {
+                    force_field_entity,
+                    collider_entity: colliders[0].0,
+                });
             }
             "prop-rift" => {
                 cmd.entity(entity).set(SpawnRiftTask);
