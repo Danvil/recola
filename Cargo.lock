@@ -2216,6 +2216,7 @@ dependencies = [
  "magi_rng",
  "magi_se",
  "ndarray",
+ "profiling",
 ]
 
 [[package]]
@@ -2228,6 +2229,7 @@ dependencies = [
  "magi_gems",
  "magi_se",
  "ndarray",
+ "profiling",
 ]
 
 [[package]]

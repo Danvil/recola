@@ -12,27 +12,27 @@ exclude = ["crates/goscl", "crates/gosrv"]
 
 [workspace.dependencies]
 approx = "0.5.1"
-bigtalk = { path = "I:/Ikabur/atom/crates/bigtalk" }
+bigtalk = { path = "../atom/crates/bigtalk" }
 bincode = { version = "2.0", features = ["serde"] }
-candy = { path = "I:/Ikabur/candy/crates/candy" }
-candy_asset = { path = "I:/Ikabur/candy/crates/candy_asset" }
-candy_camera = { path = "I:/Ikabur/candy/crates/candy_camera" }
-candy_fim = { path = "I:/Ikabur/candy/crates/candy_fim" }
-candy_input = { path = "I:/Ikabur/candy/crates/candy_input" }
-candy_log = { path = "I:/Ikabur/candy/crates/candy_log" }
-candy_forge = { path = "I:/Ikabur/candy/crates/candy_forge" }
-candy_mesh = { path = "I:/Ikabur/candy/crates/candy_mesh" }
-candy_scene_tree = { path = "I:/Ikabur/candy/crates/candy_scene_tree" }
-candy_sky = { path = "I:/Ikabur/candy/crates/candy_sky" }
-candy_terra = { path = "I:/Ikabur/candy/crates/candy_terra" }
-candy_time = { path = "I:/Ikabur/candy/crates/candy_time" }
-candy_utils = { path = "I:/Ikabur/candy/crates/candy_utils" }
+candy = { path = "../candy/crates/candy" }
+candy_asset = { path = "../candy/crates/candy_asset" }
+candy_camera = { path = "../candy/crates/candy_camera" }
+candy_fim = { path = "../candy/crates/candy_fim" }
+candy_input = { path = "../candy/crates/candy_input" }
+candy_log = { path = "../candy/crates/candy_log" }
+candy_forge = { path = "../candy/crates/candy_forge" }
+candy_mesh = { path = "../candy/crates/candy_mesh" }
+candy_scene_tree = { path = "../candy/crates/candy_scene_tree" }
+candy_sky = { path = "../candy/crates/candy_sky" }
+candy_terra = { path = "../candy/crates/candy_terra" }
+candy_time = { path = "../candy/crates/candy_time" }
+candy_utils = { path = "../candy/crates/candy_utils" }
 clap = { version = "4.5", features = ["derive"] }
 combat = { path = "crates/combat" }
 ctrlc = "3.4.7"
 env_logger = { version = "0.11" }
-excess = { path = "I:/Ikabur/atom/crates/excess" }
-excess_macros = { path = "I:/Ikabur/atom/crates/excess_macros" }
+excess = { path = "../atom/crates/excess" }
+excess_macros = { path = "../atom/crates/excess_macros" }
 eyre = "0.6"
 flowsim = { path = "crates/flowsim" }
 gems = { path = "crates/gems" }
@@ -40,12 +40,12 @@ glam = { version = "0.30", features = ["serde"] }
 gos_common = { path = "crates/gos_common" }
 gosim = { path = "crates/gosim" }
 log = "0.4"
-magi_color = { path = "I:/Ikabur/magi/crates/magi_color" }
-magi_gems = { path = "I:/Ikabur/magi/crates/magi_gems" }
-magi_geo = { path = "I:/Ikabur/magi/crates/magi_geo" }
-magi_rng = { path = "I:/Ikabur/magi/crates/magi_rng" }
-magi_se = { path = "I:/Ikabur/magi/crates/magi_se" }
-mocca = { path = "I:/Ikabur/atom/crates/mocca" }
+magi_color = { path = "../magi/crates/magi_color" }
+magi_gems = { path = "../magi/crates/magi_gems" }
+magi_geo = { path = "../magi/crates/magi_geo" }
+magi_rng = { path = "../magi/crates/magi_rng" }
+magi_se = { path = "../magi/crates/magi_se" }
+mocca = { path = "../atom/crates/mocca" }
 nalgebra = "0.34.0"
 nng = "1.0"
 num-traits = "0.2.19"
@@ -56,10 +56,10 @@ prost-build = "0.13"
 ratatui = "0.29.0"
 rust_decimal = { version = "1.37.2", features = ["macros", "maths"] }
 rust_decimal_macros = { version = "1.37.1", features = ["reexportable"] }
-scene_tree = { path = "I:/Ikabur/candy/crates/scene_tree" }
+scene_tree = { path = "../candy/crates/scene_tree" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-simplecs = { path = "I:/Ikabur/atom/crates/simplecs" }
+simplecs = { path = "../atom/crates/simplecs" }
 slab = "0.4"
 snap = "1.1"
 steamworks = "0.12.0"
