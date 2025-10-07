@@ -1,8 +1,8 @@
 use flowsim::{
-    models::{Bundle, ElasticTube, HoopTubePressureModel},
     FlowNet, FlowNetSolver, FluidDensityViscosity, PipeDef, PipeId, PipeState, PortMap, PortTag,
+    models::{Bundle, ElasticTube, HoopTubePressureModel},
 };
-use gems::{pressure_from_atm, IntMap};
+use gems::{IntMap, pressure_from_atm};
 
 use gems::Cylinder;
 

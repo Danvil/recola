@@ -1,6 +1,6 @@
 use crate::{
-    models::{Bundle, HoopTubePressureModel},
     FluidDensityViscosity, PortMap, PortTag,
+    models::{Bundle, HoopTubePressureModel},
 };
 use excess::prelude::*;
 use gems::Cylinder;

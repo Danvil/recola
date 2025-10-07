@@ -77,11 +77,7 @@ impl FluidComposition {
 
 fn safe_density(mass: f64, volume: f64) -> f64 {
     let volume = volume;
-    if volume == 0. {
-        1e3
-    } else {
-        mass / volume
-    }
+    if volume == 0. { 1e3 } else { mass / volume }
 }
 
 impl Mix for FluidComposition {

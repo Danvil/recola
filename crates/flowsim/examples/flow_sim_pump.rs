@@ -1,9 +1,9 @@
 use crate::TestRunner;
 use approx::{assert_abs_diff_eq, assert_relative_eq};
 use gosim::{
-    setup_flow_net, volume_from_liters, volume_to_liters, ElasticTubeBundle, EntityBuilder,
-    FlowDirection, FlowNetModule, Pipe, PipeBuilder, PipeConnectionHelper, PipeFlowState,
-    PipeGeometry, PortTag, PumpBuilder, PumpDef,
+    ElasticTubeBundle, EntityBuilder, FlowDirection, FlowNetModule, Pipe, PipeBuilder,
+    PipeConnectionHelper, PipeFlowState, PipeGeometry, PortTag, PumpBuilder, PumpDef,
+    setup_flow_net, volume_from_liters, volume_to_liters,
 };
 use simplecs::prelude::*;
 

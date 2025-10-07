@@ -1,6 +1,6 @@
 use approx::{assert_abs_diff_eq, assert_relative_eq};
-use flowsim::{models::ElasticTube, FluidComposition, PortMap};
-use gems::{volume_to_liters, Cylinder, VolumeModel};
+use flowsim::{FluidComposition, PortMap, models::ElasticTube};
+use gems::{Cylinder, VolumeModel, volume_to_liters};
 use gosim::{
     EntityBuilder, ExternalPipePressure, FlowDirection, FlowNetPipeDef, FlowNetPipeState,
     FlowNetPipeVessel, FlowSimMocca, PipeBuilder, PipeConnectionHelper, PipeFlowState, Time,

@@ -94,8 +94,8 @@ impl AreaVolumeModel for Cylinder {
 #[cfg(test)]
 mod test {
     use crate::{
-        geometry::{AreaVolumeModel, VolumeModel},
         Cylinder,
+        geometry::{AreaVolumeModel, VolumeModel},
     };
     use std::f64::consts::PI;
 

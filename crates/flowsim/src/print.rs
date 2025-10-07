@@ -39,22 +39,22 @@ pub fn print_pipe_overview(query: Query<(This, Option<&Name>, &PipeState, &PipeS
     // Print each pipe
     for (id, name, state, scr) in query.iter() {
         println!(
-                "  {:<6} {:>16} {:>9.6} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3}",
-                id,
-                name.unwrap_or_str("N/A"),
-                volume_to_liters(state.volume),
-                scr.elas_pressure,
-                scr.drag_forces[0],
-                scr.drag_forces[1],
-                scr.ext_accels[0] * scr.mass,
-                scr.ext_accels[1] * scr.mass,
-                scr.junction_pressure[0].unwrap_or(0.) * scr.area_per_mass,
-                scr.junction_pressure[1].unwrap_or(0.) * scr.area_per_mass,
-                state.velocity[PortTag::A],
-                state.velocity[PortTag::B],
-                10000. * scr.port_cross_section_area[0],
-                10000. * scr.port_cross_section_area[1],
-            );
+            "  {:<6} {:>16} {:>9.6} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3} {:>9.3}",
+            id,
+            name.unwrap_or_str("N/A"),
+            volume_to_liters(state.volume),
+            scr.elas_pressure,
+            scr.drag_forces[0],
+            scr.drag_forces[1],
+            scr.ext_accels[0] * scr.mass,
+            scr.ext_accels[1] * scr.mass,
+            scr.junction_pressure[0].unwrap_or(0.) * scr.area_per_mass,
+            scr.junction_pressure[1].unwrap_or(0.) * scr.area_per_mass,
+            state.velocity[PortTag::A],
+            state.velocity[PortTag::B],
+            10000. * scr.port_cross_section_area[0],
+            10000. * scr.port_cross_section_area[1],
+        );
     }
 
     println!(

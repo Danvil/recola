@@ -1,5 +1,5 @@
-use flowsim::{models::ElasticTube, FluidComposition, PortMap};
-use gems::{volume_to_liters, Cylinder, VolumeModel};
+use flowsim::{FluidComposition, PortMap, models::ElasticTube};
+use gems::{Cylinder, VolumeModel, volume_to_liters};
 use gosim::{
     EntityBuilder, ExternalPipePressure, FlowNetPipeDef, FlowNetPipeState, FlowNetPipeVessel,
     FlowSimMocca, PipeBuilder, PipeConnectionHelper, Time, TimeMocca,
