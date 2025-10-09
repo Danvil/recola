@@ -24,6 +24,9 @@ pub struct Player {
 
     pub hours: f32,
     pub hours_target: f32,
+
+    /// If enabled collision detection is disabled and speed is 10x
+    pub ghost_mode: bool,
 }
 
 /// Player camera and basic user input interaction
@@ -54,6 +57,7 @@ impl Mocca for PlayerMocca {
             keys: HashSet::new(),
             hours: 12.0,
             hours_target: 12.0,
+            ghost_mode: false,
         });
 
         world.run(setup_window_and_camera);
@@ -67,6 +71,7 @@ impl Mocca for PlayerMocca {
         world.run(restrict_player_movement);
         world.run(update_player_eye);
         world.run(advance_time);
+        world.run(ghost_mode);
     }
 }
 
@@ -75,6 +80,10 @@ fn restrict_player_movement(
     colliders: Singleton<ColliderWorld>,
     mut query_cam_ctrl: Query<&mut FirstPersonCameraController>,
 ) {
+    if player.ghost_mode {
+        return;
+    }
+
     let cam_ctrl = query_cam_ctrl
         .single_mut()
         .expect("must have FirstPersonCameraController");
@@ -191,6 +200,8 @@ fn setup_window_and_camera(clock: Singleton<SimClock>, mut cmd: Commands) {
 pub struct InputRaycastController {
     state: InputState,
     raycast_entity_and_distance: Option<(Entity, f32)>,
+
+    ghost_mode: bool,
 }
 
 impl InputRaycastController {
@@ -198,6 +209,7 @@ impl InputRaycastController {
         Self {
             state: InputState::default(),
             raycast_entity_and_distance: None,
+            ghost_mode: false,
         }
     }
 
@@ -211,6 +223,17 @@ impl InputRaycastController {
 
     pub fn on_input_event(&mut self, msg: InputEventMessage) {
         self.state = msg.state;
+
+        match msg.event {
+            InputEvent::KeyboardInput {
+                state: ElementState::Pressed,
+                code: KeyCode::KeyG,
+                ..
+            } => {
+                self.ghost_mode = !self.ghost_mode;
+            }
+            _ => {}
+        }
     }
 }
 
@@ -249,4 +272,27 @@ fn input_raycast(
     };
 
     input_raycast.raycast_entity_and_distance = Some((collisiont_routing.on_raycast_entity, lam));
+}
+
+fn ghost_mode(
+    mut player: SingletonMut<Player>,
+    mut query_input_raycast: Query<&mut InputRaycastController>,
+    mut query_cam_ctrl: Query<&mut FirstPersonCameraController>,
+) {
+    let input_raycast = query_input_raycast.single_mut().unwrap();
+    let cam_ctrl = query_cam_ctrl.single_mut().unwrap();
+
+    player.ghost_mode = input_raycast.ghost_mode;
+
+    let settings = cam_ctrl.settings_mut();
+
+    if input_raycast.ghost_mode {
+        settings.move_max_speed = 6.0 * 4.;
+        settings.move_acceleration = 20.0 * 4.;
+        settings.move_deacceleration = 25.0 * 4.;
+    } else {
+        settings.move_max_speed = 6.0;
+        settings.move_acceleration = 20.0;
+        settings.move_deacceleration = 25.0;
+    }
 }
