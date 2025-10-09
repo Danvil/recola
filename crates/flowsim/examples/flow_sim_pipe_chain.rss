@@ -1,7 +1,0 @@
-use gosim::LogMocca;
-use gossim_apps::apps::FlowSimPipeChainMocca;
-use simplecs::prelude::*;
-
-fn main() {
-    MoccaRunner::run::<(LogMocca, FlowSimPipeChainMocca)>(MoccaRunSettings::app());
-}

@@ -26,7 +26,6 @@ excess = { workspace = true }
 eyre = { workspace = true }
 gems = { workspace = true }
 glam = { workspace = true }
-gosim = { workspace = true }
 log = { workspace = true }
 magi_color = { workspace = true }
 magi_geo = { workspace = true }

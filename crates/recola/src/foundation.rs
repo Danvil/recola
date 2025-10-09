@@ -54,7 +54,7 @@ impl Mocca for FoundationMocca {
 fn setup_asset_resolver(asset_resolver: SingletonMut<SharedAssetResolver>) {
     if asset_resolver.add_pack("recola.candy").is_err() {
         asset_resolver
-            .add_pack("I:/Ikabur/eph/tmp/recola/release/recola.candy")
+            .add_pack("I:/Ikabur/recola/tmp/recola/release/recola.candy")
             .unwrap();
     }
     asset_resolver.add_prefix("assets/recola").unwrap();

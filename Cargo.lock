@@ -752,6 +752,7 @@ dependencies = [
  "bytemuck",
  "candy_camera",
  "candy_can",
+ "candy_fim",
  "candy_render_elements",
  "candy_utils",
  "glam 0.30.5",
@@ -759,6 +760,8 @@ dependencies = [
  "log",
  "magi_ball",
  "magi_bsdf",
+ "magi_color",
+ "magi_geo",
  "magi_se",
  "ndarray",
  "wgpu",
@@ -932,14 +935,6 @@ name = "colorchoice"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b05b61dc5112cbb17e4b6cd61790d9845d13888356391624cbe7e41efeac1e75"
-
-[[package]]
-name = "combat"
-version = "0.1.0"
-dependencies = [
- "excess",
- "simplecs",
-]
 
 [[package]]
 name = "combine"
@@ -1292,43 +1287,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1537accc50c9cab5a272c39300bdd0dd5dca210f6e5e8d70be048df9596e7ca2"
 
 [[package]]
-name = "eph"
-version = "0.1.0"
-dependencies = [
- "approx",
- "bigtalk",
- "candy",
- "candy_camera",
- "candy_forge",
- "candy_input",
- "candy_log",
- "candy_mesh",
- "candy_scene_tree",
- "candy_sky",
- "candy_terra",
- "candy_time",
- "candy_utils",
- "env_logger",
- "excess",
- "eyre",
- "flowsim",
- "gems",
- "glam 0.30.5",
- "gosim",
- "log",
- "magi_color",
- "magi_rng",
- "mocca",
- "num-traits",
- "paste",
- "profiling",
- "rust_decimal",
- "serde",
- "simplecs",
- "tracy-client",
-]
-
-[[package]]
 name = "equator"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1457,20 +1415,6 @@ checksum = "4a3d7db9596fecd151c5f638c0ee5d5bd487b6e0ea232e5dc96d5250f6f94b1d"
 dependencies = [
  "crc32fast",
  "miniz_oxide",
-]
-
-[[package]]
-name = "flowsim"
-version = "0.1.0"
-dependencies = [
- "approx",
- "excess",
- "excess_macros",
- "gems",
- "magi_gems",
- "nalgebra 0.34.0",
- "simplecs",
- "slab",
 ]
 
 [[package]]
@@ -1756,35 +1700,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2c4ee00b289aba7a9e5306d57c2d05499b2e5dc427f84ac708bd2c090212cf3e"
 dependencies = [
  "gl_generator",
-]
-
-[[package]]
-name = "gos_common"
-version = "0.1.0"
-dependencies = [
- "gosim",
- "serde",
-]
-
-[[package]]
-name = "gosim"
-version = "0.1.0"
-dependencies = [
- "approx",
- "candy_scene_tree",
- "candy_time",
- "env_logger",
- "excess",
- "eyre",
- "flowsim",
- "gems",
- "log",
- "magi_gems",
- "num-traits",
- "paste",
- "rust_decimal",
- "serde",
- "simplecs",
 ]
 
 [[package]]
@@ -3528,7 +3443,6 @@ dependencies = [
  "eyre",
  "gems",
  "glam 0.30.5",
- "gosim",
  "log",
  "magi_color",
  "magi_geo",

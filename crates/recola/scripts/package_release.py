@@ -24,14 +24,14 @@ def package_assets():
             shutil.copy2(src, tmp_asset_dir / src.name)
 
     # 3.b Copy candy assets
-    assets_dir = Path("I:/Ikabur/candy/crates/candy_glassworks/shaders")
+    assets_dir = Path("I:/Ikabur/atuin/crates/candy/candy_glassworks/shaders")
     tmp_asset_dir = tmp_dir_assets / "assets" / "shaders"
     tmp_asset_dir.mkdir(parents=True, exist_ok=True)
     for ext in ("*.wgsl",):
         for src in assets_dir.glob(ext):
             shutil.copy2(src, tmp_asset_dir / src.name)
 
-    assets_dir = Path("I:/Ikabur/candy/crates/candy_render_nodes/src/bloom_pipeline")
+    assets_dir = Path("I:/Ikabur/atuin/crates/candy/candy_render_nodes/src/bloom_pipeline")
     tmp_asset_dir = tmp_dir_assets / "assets" / "bloom_pipeline"
     tmp_asset_dir.mkdir(parents=True, exist_ok=True)
     for ext in ("*.wgsl",):
@@ -40,7 +40,7 @@ def package_assets():
 
     # Pack assets
     subprocess.run([
-        "cargo", "run", "--manifest-path", "../candy/Cargo.toml",
+        "cargo", "run", "--manifest-path", "../atuin/Cargo.toml",
         "--release", "--bin", "candy_asset_packer", "--",
         "--input-dir", tmp_dir_assets,
         "--exclude", "overgrowth",
