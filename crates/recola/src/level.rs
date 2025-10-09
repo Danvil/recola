@@ -80,6 +80,7 @@ fn spawn_terrain(mut cmd: Commands) {
             .with_translation(Vec3::new(0.0, 0.0, -0.55))
             .with_scale(Vec3::new(GROUND_PLANE_SIZE, GROUND_PLANE_SIZE, 1.)),
         Cuboid,
+        HierarchyDirty,
         Visibility::Visible,
         Material::Pbr(PbrMaterial::diffuse(LinearColor::from_rgb(
             0.10, 0.10, 0.10,

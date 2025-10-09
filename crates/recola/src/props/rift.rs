@@ -13,7 +13,6 @@ use candy_scene_tree::*;
 use candy_time::*;
 use excess::prelude::*;
 use glam::Vec3;
-use magi_color::LinearColor;
 use simplecs::prelude::*;
 
 #[derive(Component)]
@@ -95,17 +94,14 @@ struct RiftShardInflate {
 fn spawn_rift(
     mut cmd: Commands,
     mut query_open_rift_task: Query<
-        (
-            Entity,
-            &mut Transform3,
-            &CustomProperties,
-            Option<&mut SwitchObserver>,
-        ),
+        (Entity, &CustomProperties, Option<&mut SwitchObserver>),
         With<SpawnRiftTask>,
     >,
 ) {
-    for (rift_entity, tf, props, switch_observer) in query_open_rift_task.iter_mut() {
-        cmd.entity(rift_entity).remove::<SpawnRiftTask>();
+    for (rift_entity, props, switch_observer) in query_open_rift_task.iter_mut() {
+        cmd.entity(rift_entity)
+            .and_set(DynamicTransform)
+            .remove::<SpawnRiftTask>();
 
         let Some(rift_id) = props.get_integer("rift_id") else {
             log::error!("SpawnRiftTask CustomProperties without 'rift_id'");
@@ -146,30 +142,31 @@ fn open_rift(
     query: Query<Entity, With<OpenRiftTask>>,
 ) {
     for rift_entity in query.iter() {
-        cmd.entity(rift_entity).remove::<OpenRiftTask>();
+        cmd.entity(rift_entity)
+            .and_remove::<OpenRiftTask>()
+            .and_set(RiftConsume {
+                is_consumed: false,
+                charge: 0.,
+                particle_charge: 0.,
+            });
 
         for _ in 0..20 {
             let anchor = 2.0 * (rng.unit_vec3() - 0.5) * RIFT_SHARDS_INITIAL_POS_JITTER;
 
             cmd.spawn((
                 Name::from_str("rift"),
+                AssetInstance(AssetUid::new("prop-rift_schimmer")),
+                Transform3::from_translation(anchor),
+                DynamicTransform,
+                RiftShardInflate { progress: 0. },
                 RiftJitter {
                     anchor,
                     target: anchor,
                     speed: 0.16667,
                     cooldown: 0.2 * rng.unit_f32(),
                 },
-                Transform3::from_translation(anchor),
-                RiftShardInflate { progress: 0. },
-                AssetInstance(AssetUid::new("prop-rift_schimmer")),
                 (ChildOf, rift_entity),
             ));
-
-            cmd.entity(rift_entity).and_set(RiftConsume {
-                is_consumed: false,
-                charge: 0.,
-                particle_charge: 0.,
-            });
         }
     }
 }
@@ -244,6 +241,7 @@ fn charge_rift_interaction(
 
     // Consume rift
     if !rift_consume.is_consumed {
+        log::debug!("consuming rift");
         rift_consume.charge += (RIFT_CHARGE_RATE + RIFT_DECHARGE_RATE) * dt;
         rift_consume.particle_charge += dt;
     }
@@ -257,14 +255,11 @@ fn consume_rift(
     mut cmd: Commands,
     time: Singleton<SimClock>,
     mut player: SingletonMut<Player>,
-    mut query_rift_consume: Query<(Entity, &mut RiftConsume, &RiftLevel)>,
-    mut query_tf: Query<&mut Transform3>,
+    mut query_rift_consume: Query<(Entity, &mut Transform3, &mut RiftConsume, &RiftLevel)>,
 ) {
     let dt = time.sim_dt_f32();
 
-    for (entity, rift_consume, rift_id) in query_rift_consume.iter_mut() {
-        let tf = query_tf.get_mut(entity).unwrap();
-
+    for (entity, tf, rift_consume, rift_id) in query_rift_consume.iter_mut() {
         if rift_consume.is_consumed {
             continue;
         }
@@ -311,7 +306,7 @@ fn spawn_rift_consume_particles(
             continue;
         }
 
-        if rift_consume.particle_charge >= RIFT_CONSUME_PARTICLE_SPAWN_RATE {
+        while rift_consume.particle_charge >= RIFT_CONSUME_PARTICLE_SPAWN_RATE {
             rift_consume.particle_charge -= RIFT_CONSUME_PARTICLE_SPAWN_RATE;
 
             cmd.spawn((
@@ -320,13 +315,6 @@ fn spawn_rift_consume_particles(
                     size: 0.,
                     target_offset: RIFT_CONSUME_PARTICLE_TARGET_VAR * rng.sphere_point(),
                 },
-                Cuboid,
-                Material::Pbr(
-                    PbrMaterial::default()
-                        .with_base_color(CRIMSON)
-                        .with_emission(CRIMSON.to_linear() * 3.0),
-                ),
-                Visibility::Visible,
                 Transform3::identity()
                     .with_translation(
                         tf.translation()
@@ -334,6 +322,15 @@ fn spawn_rift_consume_particles(
                     )
                     .with_rotation(rng.uniform_so3())
                     .with_scale_uniform(0.),
+                DynamicTransform,
+                Cuboid,
+                Material::Pbr(
+                    PbrMaterial::default()
+                        .with_base_color(CRIMSON)
+                        .with_emission(CRIMSON.to_linear() * 3.0),
+                ),
+                Visibility::Visible,
+                HierarchyDirty,
             ));
         }
     }

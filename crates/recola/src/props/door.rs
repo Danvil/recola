@@ -71,6 +71,7 @@ fn spawn_door(
         };
 
         cmd.entity(door_entity)
+            .and_set(DynamicTransform)
             .and_set(Door {
                 collider_entity: task.collider_entity,
                 lower_progress: 0.,

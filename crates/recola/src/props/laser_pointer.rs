@@ -10,7 +10,7 @@ use candy_scene_tree::*;
 use candy_time::*;
 use excess::prelude::*;
 use glam::{Vec3, Vec3Swizzles};
-use magi_color::{LinearColor, colors};
+use magi_color::colors;
 use magi_se::SO3;
 use simplecs::prelude::*;
 
@@ -71,6 +71,7 @@ pub fn build_laser_pointer(cmd: &mut Commands, entity: Entity, collider_entity: 
         Transform3::identity()
             .with_scale_xyz(MAX_BEAM_LEN, BEAM_WIDTH, BEAM_WIDTH)
             .with_translation_xyz(MAX_BEAM_LEN * 0.5, 0., 0.),
+        DynamicTransform,
         Visibility::Visible,
         Cuboid,
         Material::Pbr(
@@ -85,6 +86,7 @@ pub fn build_laser_pointer(cmd: &mut Commands, entity: Entity, collider_entity: 
         Transform3::identity()
             .with_scale_xyz(3.0 * BEAM_WIDTH, 3.0 * BEAM_WIDTH, 3.0 * BEAM_WIDTH)
             .with_translation_xyz(MAX_BEAM_LEN, 0., 0.),
+        DynamicTransform,
         Visibility::Visible,
         Ball,
         Material::Pbr(
@@ -107,14 +109,16 @@ pub fn build_laser_pointer(cmd: &mut Commands, entity: Entity, collider_entity: 
         disco_rng_dir_cooldown: 0.,
     });
 
-    cmd.entity(entity).and_set(LaserPointer {
-        dir: Vec3::Z,
-        beam_entity,
-        exclude_collider: collider_entity,
-        collision_point: Vec3::ONE,
-        beam_length: MAX_BEAM_LEN,
-        beam_end_entity,
-    });
+    cmd.entity(entity)
+        .and_set(DynamicTransform)
+        .and_set(LaserPointer {
+            dir: Vec3::Z,
+            beam_entity,
+            exclude_collider: collider_entity,
+            collision_point: Vec3::ONE,
+            beam_length: MAX_BEAM_LEN,
+            beam_end_entity,
+        });
 }
 
 pub fn build_laser_target(

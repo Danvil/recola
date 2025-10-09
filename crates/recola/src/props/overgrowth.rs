@@ -135,6 +135,8 @@ fn spawn_overgrowth_burn_particles(
                     )
                     .with_rotation(rng.uniform_so3())
                     .with_scale_uniform(0.),
+                DynamicTransform,
+                HierarchyDirty,
             ));
         }
     }

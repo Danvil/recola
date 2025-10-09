@@ -23,8 +23,8 @@ eph_tracy:
     cargo run --release --features profile-with-tracy -p eph
 
 recola: recola_package_assets
-    cargo run --release -p recola
-    # cargo run --release -p recola --features profile-with-tracy
+    # cargo run --release -p recola
+    cargo run --release -p recola --features profile-with-tracy
     # cargo run --release -p recola --features disco
 
 recola_package_assets:
