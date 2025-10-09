@@ -1,7 +1,6 @@
 use crate::{
     mechanics::{colliders::*, switch::*},
     player::*,
-    recola_mocca::CRIMSON,
 };
 use atom::prelude::*;
 use candy::material::*;
@@ -12,27 +11,29 @@ use candy::time::*;
 use glam::{Vec3, Vec3Swizzles};
 use magi::{color::*, se::SO3};
 
+pub const NEON_BLUE: SRgbU8Color = SRgbU8Color::from_rgb(20, 160, 220);
+
+/// Spawns a laser pointer on an entity
 #[derive(Component)]
-pub struct LaserPointerAzimuth {
-    pub azimuth: f32,
-
-    pub sensitivity: f32,
-
-    #[cfg(feature = "disco")]
-    pub disco_rng_dir_cooldown: f32,
+pub struct SpawnLaserPointer {
+    /// Collider entity of the laser pointer
+    pub collider_entity: Entity,
 }
 
+/// Spawns a laser target on an entity
 #[derive(Component)]
-pub struct LaserPointer {
-    dir: Vec3,
+pub struct SpawnLaserTarget {
+    /// The switch ID
+    pub switch_id: String,
 
-    beam_entity: Entity,
-    exclude_collider: Entity,
+    /// When the target is hit by a laser beam the material of this entity will be changed
+    pub indicator_entity: Entity,
 
-    collision_point: Vec3,
-    beam_length: f32,
+    /// The emission color of the indicator when activated by a laser beam
+    pub activate_emission_color: LinearColor,
 
-    beam_end_entity: Entity,
+    /// The emission color of the indicator when not activated by a laser beam
+    pub inactivate_emission_color: LinearColor,
 }
 
 /// Marks an entity as a target for laser beams
@@ -55,86 +56,6 @@ impl BeamHit {
             BeamHit::Off => false,
         }
     }
-}
-
-#[derive(Component)]
-pub struct LaserPointerTarget {
-    pub is_activated: bool,
-    pub target_is_activated: bool,
-    pub light_entity: Entity,
-}
-
-pub fn build_laser_pointer(cmd: &mut Commands, entity: Entity, collider_entity: Entity) {
-    let beam_entity = cmd.spawn((
-        Transform3::identity()
-            .with_scale_xyz(MAX_BEAM_LEN, BEAM_WIDTH, BEAM_WIDTH)
-            .with_translation_xyz(MAX_BEAM_LEN * 0.5, 0., 0.),
-        DynamicTransform,
-        Visibility::Visible,
-        Cuboid,
-        Material::Pbr(
-            PbrMaterial::default()
-                .with_base_color(CRIMSON)
-                .with_emission(CRIMSON.to_linear() * 15.0),
-        ),
-        (ChildOf, entity),
-    ));
-
-    let beam_end_entity = cmd.spawn((
-        Transform3::identity()
-            .with_scale_xyz(3.0 * BEAM_WIDTH, 3.0 * BEAM_WIDTH, 3.0 * BEAM_WIDTH)
-            .with_translation_xyz(MAX_BEAM_LEN, 0., 0.),
-        DynamicTransform,
-        Visibility::Visible,
-        Ball,
-        Material::Pbr(
-            PbrMaterial::default()
-                .with_base_color(CRIMSON)
-                .with_emission(CRIMSON.to_linear() * 20.0),
-        ),
-        (ChildOf, entity),
-    ));
-
-    cmd.entity(collider_entity).set(CollisionRouting {
-        on_raycast_entity: entity,
-    });
-
-    cmd.entity(entity).and_set(LaserPointerAzimuth {
-        azimuth: 0.,
-        sensitivity: 1.,
-
-        #[cfg(feature = "disco")]
-        disco_rng_dir_cooldown: 0.,
-    });
-
-    cmd.entity(entity)
-        .and_set(DynamicTransform)
-        .and_set(LaserPointer {
-            dir: Vec3::Z,
-            beam_entity,
-            exclude_collider: collider_entity,
-            collision_point: Vec3::ONE,
-            beam_length: MAX_BEAM_LEN,
-            beam_end_entity,
-        });
-}
-
-pub fn build_laser_target(
-    cmd: &mut Commands,
-    name: &str,
-    base_entity: Entity,
-    light_entity: Entity,
-) {
-    cmd.entity(base_entity)
-        .and_set(BeamDetector { latch: false })
-        .and_set(BeamHit::Off)
-        .and_set(LaserPointerTarget {
-            is_activated: false,
-            target_is_activated: false,
-            light_entity,
-        })
-        .and_set(Switch { name: name.into() })
-        .and_set(SwitchState::Off);
 }
 
 /// Laser pointers with a beam which collides with objects
@@ -162,9 +83,14 @@ impl Mocca for LaserPointerMocca {
         world.register_component::<LaserPointer>();
         world.register_component::<LaserPointerAzimuth>();
         world.register_component::<LaserPointerTarget>();
+        world.register_component::<SpawnLaserPointer>();
+        world.register_component::<SpawnLaserTarget>();
     }
 
     fn step(&mut self, world: &mut World) {
+        world.run(spawn_laser_pointer);
+        world.run(spawn_laser_target);
+
         #[cfg(feature = "disco")]
         world.run(disco_laser_pointer_azimuth);
 
@@ -180,10 +106,120 @@ impl Mocca for LaserPointerMocca {
     }
 }
 
+#[derive(Component)]
+struct LaserPointerAzimuth {
+    azimuth: f32,
+
+    sensitivity: f32,
+
+    #[cfg(feature = "disco")]
+    disco_rng_dir_cooldown: f32,
+}
+
+#[derive(Component)]
+struct LaserPointer {
+    dir: Vec3,
+
+    beam_entity: Entity,
+    exclude_collider: Entity,
+
+    collision_point: Vec3,
+    beam_length: f32,
+
+    beam_end_entity: Entity,
+}
+
+#[derive(Component)]
+struct LaserPointerTarget {
+    is_activated: bool,
+    target_is_activated: bool,
+    light_entity: Entity,
+    activate_emission_color: LinearColor,
+    inactivate_emission_color: LinearColor,
+}
+
 const MAX_BEAM_LEN: f32 = 100.;
 const BEAM_WIDTH: f32 = 0.0167;
-const COLLISION_HEIGHT: f32 = 4.333;
+const COLLISION_HEIGHT: f32 = 4.80;
 const INTERACTION_MAX_DISTANCE: f32 = 3.0;
+const POINTER_EMIT_HEIGHT: f32 = 1.333;
+
+fn spawn_laser_pointer(mut cmd: Commands, query: Query<(Entity, &SpawnLaserPointer)>) {
+    for (entity, spec) in query.iter() {
+        let beam_entity = cmd.spawn((
+            Transform3::identity()
+                .with_scale_xyz(MAX_BEAM_LEN, BEAM_WIDTH, BEAM_WIDTH)
+                .with_translation_xyz(MAX_BEAM_LEN * 0.5, 0., 0.),
+            DynamicTransform,
+            Visibility::Visible,
+            Cuboid,
+            Material::Pbr(
+                PbrMaterial::default()
+                    .with_base_color(NEON_BLUE)
+                    .with_emission(NEON_BLUE.to_linear() * 15.0),
+            ),
+            (ChildOf, entity),
+        ));
+
+        let beam_end_entity = cmd.spawn((
+            Transform3::identity()
+                .with_scale_xyz(3.0 * BEAM_WIDTH, 3.0 * BEAM_WIDTH, 3.0 * BEAM_WIDTH)
+                .with_translation_xyz(MAX_BEAM_LEN, 0., 0.),
+            DynamicTransform,
+            Visibility::Visible,
+            Ball,
+            Material::Pbr(
+                PbrMaterial::default()
+                    .with_base_color(NEON_BLUE)
+                    .with_emission(NEON_BLUE.to_linear() * 20.0),
+            ),
+            (ChildOf, entity),
+        ));
+
+        cmd.entity(entity)
+            .and_remove::<SpawnLaserPointer>()
+            .and_set(LaserPointerAzimuth {
+                azimuth: 0.,
+                sensitivity: 1.,
+
+                #[cfg(feature = "disco")]
+                disco_rng_dir_cooldown: 0.,
+            })
+            .and_set(DynamicTransform)
+            .and_set(LaserPointer {
+                dir: Vec3::Z,
+                beam_entity,
+                exclude_collider: spec.collider_entity,
+                collision_point: Vec3::ONE,
+                beam_length: MAX_BEAM_LEN,
+                beam_end_entity,
+            });
+
+        cmd.entity(spec.collider_entity).set(CollisionRouting {
+            on_raycast_entity: entity,
+        });
+    }
+}
+
+fn spawn_laser_target(mut cmd: Commands, query: Query<(Entity, &SpawnLaserTarget)>) {
+    for (entity, spec) in query.iter() {
+        cmd.entity(entity)
+            .and_remove::<SpawnLaserTarget>()
+            .and_set(BeamDetector { latch: false })
+            .and_set(BeamHit::Off)
+            .and_set(LaserPointerTarget {
+                is_activated: false,
+                target_is_activated: false,
+                light_entity: spec.indicator_entity,
+                activate_emission_color: spec.activate_emission_color,
+                inactivate_emission_color: spec.inactivate_emission_color,
+            })
+            .and_set(Switch {
+                name: spec.switch_id.clone(),
+            })
+            .and_set(SwitchState::Off);
+    }
+}
 
 #[cfg(feature = "disco")]
 fn disco_laser_pointer_azimuth(
@@ -249,7 +285,12 @@ fn point_laser_pointers(
     for (tf, lpa, lp) in query.iter_mut() {
         let radius = lp.collision_point.xy().length().max(0.25);
         let (asin, acos) = lpa.azimuth.sin_cos();
-        let target_dir = Vec3::new(radius * acos, radius * asin, COLLISION_HEIGHT).normalize();
+        let target_dir = Vec3::new(
+            radius * acos,
+            radius * asin,
+            COLLISION_HEIGHT - POINTER_EMIT_HEIGHT,
+        )
+        .normalize();
 
         lp.dir = lp.dir.lerp(target_dir, point_speed * dt).normalize();
 
@@ -328,19 +369,22 @@ fn activate_laser_target_switch(
 }
 
 fn set_laser_target_material(mut cmd: Commands, mut query: Query<&mut LaserPointerTarget>) {
-    let mat_active = PbrMaterial::diffuse_white()
-        .with_base_color(colors::BLACK)
-        .with_emission(CRIMSON.to_linear() * 10.0);
-    let mat_inactive = PbrMaterial::diffuse_white().with_base_color(colors::BLACK);
-
     for laser_target in query.iter_mut() {
         if laser_target.target_is_activated != laser_target.is_activated {
             laser_target.is_activated = laser_target.target_is_activated;
 
             let mat = if laser_target.is_activated {
-                Material::Pbr(mat_active.clone())
+                Material::Pbr(
+                    PbrMaterial::diffuse_white()
+                        .with_base_color(colors::BLACK)
+                        .with_emission(laser_target.activate_emission_color),
+                )
             } else {
-                Material::Pbr(mat_inactive.clone())
+                Material::Pbr(
+                    PbrMaterial::diffuse_white()
+                        .with_base_color(colors::BLACK)
+                        .with_emission(laser_target.inactivate_emission_color),
+                )
             };
             cmd.entity(laser_target.light_entity)
                 .and_set(mat)

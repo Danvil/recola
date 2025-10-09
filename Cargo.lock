@@ -715,6 +715,7 @@ version = "0.1.0"
 dependencies = [
  "candy_utils",
  "excess",
+ "log",
  "magi_bsdf",
  "magi_color",
  "simplecs",

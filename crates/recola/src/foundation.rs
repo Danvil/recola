@@ -3,12 +3,14 @@ use crate::{
     custom_properties::*,
     mechanics::{colliders::*, switch::*},
     props::{barrier::*, door::*, laser_pointer::*, overgrowth::*, rift::*},
+    recola_mocca::CRIMSON,
 };
 use atom::prelude::*;
 use candy::can::*;
 use candy::glassworks::*;
 use candy::scene_tree::*;
 use eyre::Result;
+use magi::color::colors;
 use serde::{Deserialize, Serialize};
 
 #[derive(Component)]
@@ -135,14 +137,31 @@ fn load_asset_blueprints(
                 let pointer =
                     find_child_by_name(&children, &query_name, entity, "prop-laser.pointer")
                         .unwrap();
-                build_laser_pointer(&mut cmd, pointer, colliders[0].0);
+
+                cmd.entity(pointer).set(SpawnLaserPointer {
+                    collider_entity: colliders[0].0,
+                });
             }
-            "prop-beam_target" => {
-                let target =
-                    find_child_by_name(&children, &query_name, entity, "prop-beam_target.target")
-                        .unwrap();
-                let name = query_name.get(entity).unwrap().as_str();
-                build_laser_target(&mut cmd, name, entity, target);
+            "prop-beam_target" | "prop-barrier_switch" => {
+                let switch_id = query_name.get(entity).unwrap().as_str().to_owned();
+
+                let indicator_entity = find_child(&children, &query_name, entity, |name| {
+                    name.ends_with("indicator")
+                })
+                .unwrap();
+
+                let active_color = match ainst.as_str() {
+                    "prop-beam_target" => CRIMSON,
+                    "prop-barrier_switch" => NEON_BLUE,
+                    _ => unreachable!(),
+                };
+
+                cmd.entity(entity).set(SpawnLaserTarget {
+                    switch_id,
+                    indicator_entity,
+                    activate_emission_color: active_color.to_linear() * 5.0,
+                    inactivate_emission_color: colors::BLACK.into(),
+                });
             }
             "prop-archway_3x6_door" => {
                 cmd.entity(entity).set(SpawnDoorTask {

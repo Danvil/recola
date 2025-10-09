@@ -326,7 +326,7 @@ fn spawn_rift_consume_particles(
                 Material::Pbr(
                     PbrMaterial::default()
                         .with_base_color(CRIMSON)
-                        .with_emission(CRIMSON.to_linear() * 3.0),
+                        .with_emission(CRIMSON.to_linear() * 0.333),
                 ),
                 Visibility::Visible,
                 HierarchyDirty,
