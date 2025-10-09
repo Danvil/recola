@@ -1,7 +1,6 @@
 use crate::mechanics::{colliders::*, switch::*};
-use candy_scene_tree::*;
-use excess::prelude::*;
-use simplecs::prelude::*;
+use atom::prelude::*;
+use candy::scene_tree::*;
 
 #[derive(Component)]
 pub struct SpawnBarrierTask {

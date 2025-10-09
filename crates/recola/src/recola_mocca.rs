@@ -1,7 +1,7 @@
 use crate::{STATIC_SETTINGS, level::*, player::*};
-use candy_forge::*;
-use magi_color::SRgbU8Color;
-use simplecs::prelude::*;
+use atom::prelude::*;
+use candy::forge::*;
+use magi::prelude::SRgbU8Color;
 
 pub const CRIMSON: SRgbU8Color = SRgbU8Color::from_rgb(220, 20, 60);
 

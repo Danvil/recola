@@ -4,13 +4,12 @@ use crate::{
     mechanics::{colliders::*, switch::*},
     props::{barrier::*, door::*, laser_pointer::*, overgrowth::*, rift::*},
 };
-use candy_can::*;
-use candy_glassworks::*;
-use candy_scene_tree::*;
-use excess::prelude::*;
+use atom::prelude::*;
+use candy::can::*;
+use candy::glassworks::*;
+use candy::scene_tree::*;
 use eyre::Result;
 use serde::{Deserialize, Serialize};
-use simplecs::prelude::*;
 
 #[derive(Component)]
 pub struct BlueprintApplied;

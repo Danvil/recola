@@ -5,33 +5,10 @@ edition = "2024"
 
 [dependencies]
 approx = { workspace = true }
-bigtalk = { workspace = true }
-candy = { workspace = true }
-candy_camera = { workspace = true }
-candy_can = { workspace = true }
-candy_forge = { workspace = true }
-candy_glassworks = { workspace = true }
-candy_input = { workspace = true }
-candy_log = { workspace = true }
-candy_material = { workspace = true }
-candy_prims = { workspace = true }
-candy_rng = { workspace = true }
-candy_scene_tree = { workspace = true }
-candy_sky = { workspace = true }
-candy_terra = { workspace = true }
-candy_time = { workspace = true }
-candy_utils = { workspace = true }
 env_logger = { workspace = true }
-excess = { workspace = true }
 eyre = { workspace = true }
-gems = { workspace = true }
 glam = { workspace = true }
 log = { workspace = true }
-magi_color = { workspace = true }
-magi_geo = { workspace = true }
-magi_rng = { workspace = true }
-magi_se = { workspace = true }
-mocca = { workspace = true }
 num-traits = { workspace = true }
 paste = { workspace = true }
 profiling = { workspace = true }
@@ -39,8 +16,12 @@ rust_decimal = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 slab = { workspace = true }
-simplecs = { workspace = true }
 tracy-client = { workspace = true, optional = true }
+
+atom = { workspace = true }
+candy = { workspace = true }
+gems = { workspace = true }
+magi = { workspace = true }
 
 [dev-dependencies]
 approx = { workspace = true }

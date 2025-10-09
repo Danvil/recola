@@ -10,14 +10,18 @@ members = [
 
 [workspace.dependencies]
 approx = "0.5.1"
+atom = { path = "../atuin/crates/atom/atom" }
 bincode = { version = "2.0", features = ["serde"] }
+candy = { path = "../atuin/crates/candy/candy" }
 clap = { version = "4.5", features = ["derive"] }
 combat = { path = "crates/combat" }
 ctrlc = "3.4.7"
 env_logger = { version = "0.11" }
 eyre = "0.6"
+gems = { path = "crates/gems" }
 glam = { version = "0.30", features = ["serde"] }
 log = "0.4"
+magi = { path = "../atuin/crates/magi/magi" }
 nalgebra = "0.34.0"
 nng = "1.0"
 num-traits = "0.2.19"
@@ -37,33 +41,3 @@ thiserror = "1.0"
 tracy-client = { version = "0.18.2" }
 tui-popup = "0.6.0"
 typenum = "1.18.0"
-
-gems = { path = "crates/gems" }
-bigtalk = { path = "../atuin/crates/atom/bigtalk" }
-candy = { path = "../atuin/crates/candy/candy" }
-candy_camera = { path = "../atuin/crates/candy/candy_camera" }
-candy_can = { path = "../atuin/crates/candy/candy_can" }
-candy_fim = { path = "../atuin/crates/candy/candy_fim" }
-candy_forge = { path = "../atuin/crates/candy/candy_forge" }
-candy_glassworks = { path = "../atuin/crates/candy/candy_glassworks" }
-candy_input = { path = "../atuin/crates/candy/candy_input" }
-candy_log = { path = "../atuin/crates/candy/candy_log" }
-candy_material = { path = "../atuin/crates/candy/candy_material" }
-candy_mesh = { path = "../atuin/crates/candy/candy_mesh" }
-candy_prims = { path = "../atuin/crates/candy/candy_prims" }
-candy_rng = { path = "../atuin/crates/candy/candy_rng" }
-candy_scene_tree = { path = "../atuin/crates/candy/candy_scene_tree" }
-candy_sky = { path = "../atuin/crates/candy/candy_sky" }
-candy_terra = { path = "../atuin/crates/candy/candy_terra" }
-candy_time = { path = "../atuin/crates/candy/candy_time" }
-candy_utils = { path = "../atuin/crates/candy/candy_utils" }
-excess = { path = "../atuin/crates/atom/excess" }
-excess_macros = { path = "../atuin/crates/atom/excess_macros" }
-magi_color = { path = "../atuin/crates/magi/magi_color" }
-magi_gems = { path = "../atuin/crates/magi/magi_gems" }
-magi_geo = { path = "../atuin/crates/magi/magi_geo" }
-magi_rng = { path = "../atuin/crates/magi/magi_rng" }
-magi_se = { path = "../atuin/crates/magi/magi_se" }
-mocca = { path = "../atuin/crates/atom/mocca" }
-scene_tree = { path = "../atuin/crates/candy/scene_tree" }
-simplecs = { path = "../atuin/crates/atom/simplecs" }

@@ -1,17 +1,16 @@
 use crate::{custom_properties::*, foundation::*};
-use candy_can::*;
-use candy_glassworks::*;
-use candy_material::*;
-use candy_prims::*;
-use candy_scene_tree::*;
-use candy_sky::*;
-use excess::prelude::*;
+use atom::prelude::*;
+use candy::can::*;
+use candy::glassworks::*;
+use candy::material::*;
+use candy::prims::*;
+use candy::scene_tree::*;
+use candy::sky::*;
 use eyre::Result;
 use glam::Vec3;
-use magi_color::LinearColor;
-use magi_se::SO3;
+use magi::prelude::LinearColor;
+use magi::se::SO3;
 use serde::Deserialize;
-use simplecs::prelude::*;
 use std::collections::HashMap;
 
 pub struct LevelMocca;

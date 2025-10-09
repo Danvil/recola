@@ -232,6 +232,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "atom"
+version = "0.1.0"
+dependencies = [
+ "bigtalk",
+ "excess",
+ "excess_core",
+ "excess_macros",
+ "mocca",
+ "simplecs",
+]
+
+[[package]]
 name = "atomic-waker"
 version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -500,6 +512,7 @@ dependencies = [
  "candy_can",
  "candy_dev_gui",
  "candy_fim",
+ "candy_forge",
  "candy_gizmos",
  "candy_glassworks",
  "candy_input",
@@ -508,6 +521,7 @@ dependencies = [
  "candy_prims",
  "candy_render_elements",
  "candy_render_nodes",
+ "candy_rng",
  "candy_scene_tree",
  "candy_sky",
  "candy_terra",
@@ -2217,6 +2231,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "magi"
+version = "0.1.0"
+dependencies = [
+ "magi_ball",
+ "magi_bsdf",
+ "magi_color",
+ "magi_gems",
+ "magi_geo",
+ "magi_rng",
+ "magi_sdf",
+ "magi_se",
+ "magi_sky",
+ "magi_vec",
+]
+
+[[package]]
 name = "magi_ball"
 version = "0.1.0"
 dependencies = [
@@ -3422,40 +3452,20 @@ name = "recola"
 version = "0.1.0"
 dependencies = [
  "approx",
- "bigtalk",
+ "atom",
  "candy",
- "candy_camera",
- "candy_can",
- "candy_forge",
- "candy_glassworks",
- "candy_input",
- "candy_log",
- "candy_material",
- "candy_prims",
- "candy_rng",
- "candy_scene_tree",
- "candy_sky",
- "candy_terra",
- "candy_time",
- "candy_utils",
  "env_logger",
- "excess",
  "eyre",
  "gems",
  "glam 0.30.5",
  "log",
- "magi_color",
- "magi_geo",
- "magi_rng",
- "magi_se",
- "mocca",
+ "magi",
  "num-traits",
  "paste",
  "profiling",
  "rust_decimal",
  "serde",
  "serde_json",
- "simplecs",
  "slab",
  "tracy-client",
 ]

@@ -1,9 +1,8 @@
 use crate::{custom_properties::*, mechanics::colliders::*, player::*};
-use candy_scene_tree::*;
-use candy_time::*;
-use excess::prelude::*;
+use atom::prelude::*;
+use candy::scene_tree::*;
+use candy::time::*;
 use eyre::{Result, eyre};
-use simplecs::prelude::*;
 
 #[derive(Component)]
 pub struct SpawnDoorTask {

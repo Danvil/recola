@@ -5,15 +5,14 @@ use crate::{
     props::door::KeyId,
     recola_mocca::CRIMSON,
 };
-use candy_glassworks::*;
-use candy_material::*;
-use candy_prims::*;
-use candy_rng::*;
-use candy_scene_tree::*;
-use candy_time::*;
-use excess::prelude::*;
+use atom::prelude::*;
+use candy::glassworks::*;
+use candy::material::*;
+use candy::prims::*;
+use candy::rng::*;
+use candy::scene_tree::*;
+use candy::time::*;
 use glam::Vec3;
-use simplecs::prelude::*;
 
 #[derive(Component)]
 pub struct SpawnRiftTask;

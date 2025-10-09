@@ -2,15 +2,13 @@ use crate::{
     mechanics::colliders::*,
     props::{door::KeyId, rift::RiftLevel},
 };
-use bigtalk::*;
-use candy_camera::*;
-use candy_input::*;
-use candy_sky::*;
-use candy_time::*;
-use candy_utils::{CameraLink, ImageLocation, ImageShape, WindowDef, WindowLayout};
-use excess::prelude::*;
+use atom::prelude::*;
+use candy::camera::*;
+use candy::input::*;
+use candy::sky::*;
+use candy::time::*;
+use candy::utils::{CameraLink, ImageLocation, ImageShape, WindowDef, WindowLayout};
 use glam::{Vec2, Vec3, Vec3Swizzles};
-use simplecs::prelude::*;
 use std::collections::HashSet;
 
 #[derive(Component)]
@@ -45,7 +43,7 @@ impl Mocca for PlayerMocca {
     fn register_components(world: &mut World) {
         world.register_component::<MainCamera>();
         world.register_component::<InputRaycastController>();
-        bigtalk::register_agent_components::<InputRaycastController, _>(world);
+        atom::register_agent_components::<InputRaycastController, _>(world);
     }
 
     fn start(world: &mut World) -> Self {
@@ -64,7 +62,7 @@ impl Mocca for PlayerMocca {
     }
 
     fn step(&mut self, world: &mut World) {
-        world.run(bigtalk::tick_agents::<InputRaycastController, _>);
+        world.run(atom::tick_agents::<InputRaycastController, _>);
         world.run(input_raycast);
         world.run(restrict_player_movement);
         world.run(update_player_eye);
@@ -216,8 +214,8 @@ impl InputRaycastController {
     }
 }
 
-impl bigtalk::Agent for InputRaycastController {
-    fn setup_message_handlers(handler: &mut bigtalk::MessageHandler<Self>) {
+impl atom::Agent for InputRaycastController {
+    fn setup_message_handlers(handler: &mut atom::MessageHandler<Self>) {
         handler.add(InputRaycastController::on_input_event);
     }
 }

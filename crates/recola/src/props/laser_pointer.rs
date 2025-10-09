@@ -3,16 +3,14 @@ use crate::{
     player::*,
     recola_mocca::CRIMSON,
 };
-use candy_material::*;
-use candy_prims::*;
-use candy_rng::*;
-use candy_scene_tree::*;
-use candy_time::*;
-use excess::prelude::*;
+use atom::prelude::*;
+use candy::material::*;
+use candy::prims::*;
+use candy::rng::*;
+use candy::scene_tree::*;
+use candy::time::*;
 use glam::{Vec3, Vec3Swizzles};
-use magi_color::colors;
-use magi_se::SO3;
-use simplecs::prelude::*;
+use magi::{color::*, se::SO3};
 
 #[derive(Component)]
 pub struct LaserPointerAzimuth {

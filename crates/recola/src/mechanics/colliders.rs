@@ -1,8 +1,7 @@
-use candy_scene_tree::*;
-use excess::prelude::*;
+use atom::prelude::*;
+use candy::scene_tree::*;
 use glam::{Affine3A, Vec3};
-use magi_geo::Ray;
-use simplecs::prelude::*;
+use magi::geo::Ray;
 use slab::Slab;
 use std::{
     ops::Index,

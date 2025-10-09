@@ -1,5 +1,4 @@
-use excess::prelude::*;
-use simplecs::prelude::*;
+use atom::prelude::*;
 use std::collections::HashSet;
 
 /// Observes switches and updates accordingly
