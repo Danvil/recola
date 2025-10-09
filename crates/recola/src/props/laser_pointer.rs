@@ -9,7 +9,11 @@ use candy::rng::*;
 use candy::scene_tree::*;
 use candy::time::*;
 use glam::{Vec3, Vec3Swizzles};
-use magi::{color::*, se::SO3};
+use magi::{
+    color::*,
+    gems::{SmoothInputControl, SmoothInputF32},
+    se::SO3,
+};
 
 pub const NEON_BLUE: SRgbU8Color = SRgbU8Color::from_rgb(20, 160, 220);
 
@@ -108,8 +112,7 @@ impl Mocca for LaserPointerMocca {
 
 #[derive(Component)]
 struct LaserPointerAzimuth {
-    azimuth: f32,
-
+    azimuth: SmoothInputF32,
     sensitivity: f32,
 
     #[cfg(feature = "disco")]
@@ -140,9 +143,12 @@ struct LaserPointerTarget {
 
 const MAX_BEAM_LEN: f32 = 100.;
 const BEAM_WIDTH: f32 = 0.0167;
-const COLLISION_HEIGHT: f32 = 4.80;
 const INTERACTION_MAX_DISTANCE: f32 = 3.0;
-const POINTER_EMIT_HEIGHT: f32 = 1.333;
+const LASER_TARGET_HEIGHT: f32 = 4.80;
+const LASER_POINTER_EMIT_HEIGHT: f32 = 1.333;
+const LASER_POINTER_TURN_ACCEL: f32 = 1.0;
+const LASER_POINTER_TURN_DEACCEL: f32 = 15.0;
+const LASER_POINTER_MAX_TURN_SPEED: f32 = 1.5;
 
 fn spawn_laser_pointer(mut cmd: Commands, query: Query<(Entity, &SpawnLaserPointer)>) {
     for (entity, spec) in query.iter() {
@@ -179,7 +185,13 @@ fn spawn_laser_pointer(mut cmd: Commands, query: Query<(Entity, &SpawnLaserPoint
         cmd.entity(entity)
             .and_remove::<SpawnLaserPointer>()
             .and_set(LaserPointerAzimuth {
-                azimuth: 0.,
+                azimuth: SmoothInputF32 {
+                    value: 0.,
+                    velocity: 0.,
+                    max_speed: LASER_POINTER_MAX_TURN_SPEED,
+                    max_accel: LASER_POINTER_TURN_ACCEL,
+                    max_deaccel: LASER_POINTER_TURN_DEACCEL,
+                },
                 sensitivity: 1.,
 
                 #[cfg(feature = "disco")]
@@ -251,27 +263,26 @@ fn turn_laser_pointers(
         return;
     };
 
-    // Check for turn event
-    let turn_dt = if input_raycast.state().is_left_mouse_pressed {
-        dt
-    } else if input_raycast.state().is_right_mouse_pressed {
-        -dt
-    } else {
-        return;
-    };
-
-    // Check we are close enough
-    if distance > INTERACTION_MAX_DISTANCE {
-        return;
-    }
-
     // Get azimuth contoller
     let Some(lpa) = query_lpa.get_mut(hit_entity) else {
         return;
     };
 
+    // Check for turn event
+    let turn_control = if distance <= INTERACTION_MAX_DISTANCE {
+        if input_raycast.state().is_left_mouse_pressed {
+            SmoothInputControl::Increase
+        } else if input_raycast.state().is_right_mouse_pressed {
+            SmoothInputControl::Decrease
+        } else {
+            SmoothInputControl::Decay
+        }
+    } else {
+        SmoothInputControl::Decay
+    };
+
     // Turn laser pointer
-    lpa.azimuth += turn_dt * lpa.sensitivity;
+    lpa.azimuth.update(dt, turn_control, lpa.sensitivity);
 }
 
 fn point_laser_pointers(
@@ -284,11 +295,11 @@ fn point_laser_pointers(
 
     for (tf, lpa, lp) in query.iter_mut() {
         let radius = lp.collision_point.xy().length().max(0.25);
-        let (asin, acos) = lpa.azimuth.sin_cos();
+        let (asin, acos) = lpa.azimuth.value().sin_cos();
         let target_dir = Vec3::new(
             radius * acos,
             radius * asin,
-            COLLISION_HEIGHT - POINTER_EMIT_HEIGHT,
+            LASER_TARGET_HEIGHT - LASER_POINTER_EMIT_HEIGHT,
         )
         .normalize();
 
