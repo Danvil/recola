@@ -15,7 +15,8 @@ use magi::{
     se::SO3,
 };
 
-pub const NEON_BLUE: SRgbU8Color = SRgbU8Color::from_rgb(20, 160, 220);
+pub const PROP_BARRIER_SWITCH_INDICATOR_COLOR: SRgbU8Color = SRgbU8Color::from_rgb(20, 160, 220);
+pub const LASER_BEAM_COLOR: SRgbU8Color = SRgbU8Color::from_rgb(205, 127, 50);
 
 /// Spawns a laser pointer on an entity
 #[derive(Component)]
@@ -161,8 +162,8 @@ fn spawn_laser_pointer(mut cmd: Commands, query: Query<(Entity, &SpawnLaserPoint
             Cuboid,
             Material::Pbr(
                 PbrMaterial::default()
-                    .with_base_color(NEON_BLUE)
-                    .with_emission(NEON_BLUE.to_linear() * 15.0),
+                    .with_base_color(LASER_BEAM_COLOR)
+                    .with_emission(LASER_BEAM_COLOR.to_linear() * 15.0),
             ),
             (ChildOf, entity),
         ));
@@ -176,8 +177,8 @@ fn spawn_laser_pointer(mut cmd: Commands, query: Query<(Entity, &SpawnLaserPoint
             Ball,
             Material::Pbr(
                 PbrMaterial::default()
-                    .with_base_color(NEON_BLUE)
-                    .with_emission(NEON_BLUE.to_linear() * 20.0),
+                    .with_base_color(LASER_BEAM_COLOR)
+                    .with_emission(LASER_BEAM_COLOR.to_linear() * 20.0),
             ),
             (ChildOf, entity),
         ));

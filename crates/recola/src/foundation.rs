@@ -152,7 +152,7 @@ fn load_asset_blueprints(
 
                 let active_color = match ainst.as_str() {
                     "prop-beam_target" => CRIMSON,
-                    "prop-barrier_switch" => NEON_BLUE,
+                    "prop-barrier_switch" => PROP_BARRIER_SWITCH_INDICATOR_COLOR,
                     _ => unreachable!(),
                 };
 
