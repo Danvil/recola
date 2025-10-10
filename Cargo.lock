@@ -770,6 +770,7 @@ dependencies = [
  "candy_fim",
  "candy_render_elements",
  "candy_utils",
+ "eyre",
  "glam 0.30.5",
  "half",
  "log",
