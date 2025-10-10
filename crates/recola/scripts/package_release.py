@@ -31,19 +31,13 @@ def package_assets():
         for src in assets_dir.glob(ext):
             shutil.copy2(src, tmp_asset_dir / src.name)
 
-    assets_dir = Path("I:/Ikabur/atuin/crates/candy/candy_render_nodes/src/bloom")
-    tmp_asset_dir = tmp_dir_assets / "assets" / "candy" / "bloom"
-    tmp_asset_dir.mkdir(parents=True, exist_ok=True)
-    for ext in ("*.wgsl",):
-        for src in assets_dir.glob(ext):
-            shutil.copy2(src, tmp_asset_dir / src.name)
-
-    assets_dir = Path("I:/Ikabur/atuin/crates/candy/candy_render_nodes/src/fxaa")
-    tmp_asset_dir = tmp_dir_assets / "assets" / "candy" / "fxaa"
-    tmp_asset_dir.mkdir(parents=True, exist_ok=True)
-    for ext in ("*.wgsl",):
-        for src in assets_dir.glob(ext):
-            shutil.copy2(src, tmp_asset_dir / src.name)
+    for folder in ["bloom", "fxaa", "screen_space_quad", "sky", "tonemap"]:
+        assets_dir = Path("I:/Ikabur/atuin/crates/candy/candy_render_nodes/src") / folder
+        tmp_asset_dir = tmp_dir_assets / "assets" / "candy" / folder
+        tmp_asset_dir.mkdir(parents=True, exist_ok=True)
+        for ext in ("*.wgsl",):
+            for src in assets_dir.glob(ext):
+                shutil.copy2(src, tmp_asset_dir / src.name)
 
     # Pack assets
     subprocess.run([
