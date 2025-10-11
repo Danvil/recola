@@ -188,14 +188,17 @@ fn load_asset_blueprints(
             "prop-rift" => {
                 cmd.entity(entity).set(SpawnRiftTask);
             }
-            "prop-overgrowth-1" | "prop-overgrowth-2" | "prop-overgrowth-3" => {
+            "prop-overgrowth-1"
+            | "prop-overgrowth-2"
+            | "prop-overgrowth-3"
+            | "prop-overgrowth_3x3_1" => {
                 let change_mat_entity = find_child(&children, &query_name, entity, |name| {
-                    name.starts_with("overgrowth")
+                    name.ends_with("burn")
                 })
                 .unwrap();
 
                 cmd.entity(entity)
-                    .set(InitOvergrowthTask { change_mat_entity });
+                    .set(SpawnOvergrowthTask { change_mat_entity });
             }
             _ => {}
         }

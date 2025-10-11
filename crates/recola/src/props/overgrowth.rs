@@ -5,7 +5,7 @@ use glam::Vec3;
 use magi::color::{LinearColor, SRgbU8Color, colors};
 
 #[derive(Component)]
-pub struct InitOvergrowthTask {
+pub struct SpawnOvergrowthTask {
     pub change_mat_entity: Entity,
 }
 
@@ -38,7 +38,7 @@ impl Mocca for OvergrowthMocca {
     }
 
     fn register_components(world: &mut World) {
-        world.register_component::<InitOvergrowthTask>();
+        world.register_component::<SpawnOvergrowthTask>();
         world.register_component::<Overgrowth>();
         world.register_component::<OvergrowthBurnParticle>();
     }
@@ -51,9 +51,9 @@ impl Mocca for OvergrowthMocca {
     }
 }
 
-fn init_overgrowth(mut cmd: Commands, query_task: Query<(Entity, &InitOvergrowthTask)>) {
+fn init_overgrowth(mut cmd: Commands, query_task: Query<(Entity, &SpawnOvergrowthTask)>) {
     for (entity, task) in query_task.iter() {
-        cmd.entity(entity).remove::<InitOvergrowthTask>();
+        cmd.entity(entity).remove::<SpawnOvergrowthTask>();
         cmd.entity(entity)
             .and_set(Overgrowth {
                 burn_progress: 0.,
