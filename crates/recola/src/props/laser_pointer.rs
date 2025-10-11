@@ -1,12 +1,13 @@
 use crate::{
-    mechanics::{colliders::*, switch::*},
+    mechanics::{colliders::*, material_swap::*, switch::*},
     player::*,
 };
 use atom::prelude::*;
+use candy::{material::*, prims::*, rng::*, scene_tree::*, time::*};
 use glam::{Vec3, Vec3Swizzles};
 use magi::{
     color::*,
-    gems::{SmoothInputControl, SmoothInputF32},
+    gems::{SmoothInputControl, SmoothInputF32, SmoothInputF32Settings},
     se::SO3,
 };
 
@@ -69,6 +70,7 @@ impl Mocca for LaserPointerMocca {
         deps.depends_on::<CandySceneTreeMocca>();
         deps.depends_on::<CandyTimeMocca>();
         deps.depends_on::<CollidersMocca>();
+        deps.depends_on::<MaterialSwapMocca>();
         deps.depends_on::<PlayerMocca>();
         deps.depends_on::<SwitchMocca>();
     }
@@ -133,8 +135,6 @@ struct LaserPointerTarget {
     is_activated: bool,
     target_is_activated: bool,
     light_entity: Entity,
-    activate_emission_color: LinearColor,
-    inactivate_emission_color: LinearColor,
 }
 
 const MAX_BEAM_LEN: f32 = 100.;
@@ -142,9 +142,6 @@ const BEAM_WIDTH: f32 = 0.0167;
 const INTERACTION_MAX_DISTANCE: f32 = 3.0;
 const LASER_TARGET_HEIGHT: f32 = 4.80;
 const LASER_POINTER_EMIT_HEIGHT: f32 = 1.333;
-const LASER_POINTER_TURN_ACCEL: f32 = 1.0;
-const LASER_POINTER_TURN_DEACCEL: f32 = 15.0;
-const LASER_POINTER_MAX_TURN_SPEED: f32 = 1.5;
 
 fn spawn_laser_pointer(mut cmd: Commands, query: Query<(Entity, &SpawnLaserPointer)>) {
     for (entity, spec) in query.iter() {
@@ -181,13 +178,7 @@ fn spawn_laser_pointer(mut cmd: Commands, query: Query<(Entity, &SpawnLaserPoint
         cmd.entity(entity)
             .and_remove::<SpawnLaserPointer>()
             .and_set(LaserPointerAzimuth {
-                azimuth: SmoothInputF32 {
-                    value: 0.,
-                    velocity: 0.,
-                    max_speed: LASER_POINTER_MAX_TURN_SPEED,
-                    max_accel: LASER_POINTER_TURN_ACCEL,
-                    max_deaccel: LASER_POINTER_TURN_DEACCEL,
-                },
+                azimuth: SmoothInputF32::default(),
                 sensitivity: 1.,
 
                 #[cfg(feature = "disco")]
@@ -219,13 +210,22 @@ fn spawn_laser_target(mut cmd: Commands, query: Query<(Entity, &SpawnLaserTarget
                 is_activated: false,
                 target_is_activated: false,
                 light_entity: spec.indicator_entity,
-                activate_emission_color: spec.activate_emission_color,
-                inactivate_emission_color: spec.inactivate_emission_color,
             })
             .and_set(Switch {
                 name: spec.switch_id.clone(),
             })
             .and_set(SwitchState::Off);
+
+        cmd.entity(spec.indicator_entity)
+            .and_set(MaterialSwap::from_iter([
+                PbrMaterial::diffuse_white()
+                    .with_base_color(colors::BLACK)
+                    .with_emission(spec.inactivate_emission_color),
+                PbrMaterial::diffuse_white()
+                    .with_base_color(colors::BLACK)
+                    .with_emission(spec.activate_emission_color),
+            ]))
+            .and_set(MaterialSwapSelection(0));
     }
 }
 
@@ -245,6 +245,13 @@ fn disco_laser_pointer_azimuth(
         }
     }
 }
+
+const LASER_POINTER_INPUT_SETTINGS: SmoothInputF32Settings = SmoothInputF32Settings {
+    value_range: None,
+    max_speed: 1.5,
+    max_accel: 1.0,
+    max_deaccel: 30.,
+};
 
 fn turn_laser_pointers(
     time: Singleton<SimClock>,
@@ -278,7 +285,12 @@ fn turn_laser_pointers(
     };
 
     // Turn laser pointer
-    lpa.azimuth.update(dt, turn_control, lpa.sensitivity);
+    lpa.azimuth.update(
+        dt,
+        &LASER_POINTER_INPUT_SETTINGS,
+        turn_control,
+        lpa.sensitivity,
+    );
 }
 
 fn point_laser_pointers(
@@ -380,22 +392,8 @@ fn set_laser_target_material(mut cmd: Commands, mut query: Query<&mut LaserPoint
         if laser_target.target_is_activated != laser_target.is_activated {
             laser_target.is_activated = laser_target.target_is_activated;
 
-            let mat = if laser_target.is_activated {
-                Material::Pbr(
-                    PbrMaterial::diffuse_white()
-                        .with_base_color(colors::BLACK)
-                        .with_emission(laser_target.activate_emission_color),
-                )
-            } else {
-                Material::Pbr(
-                    PbrMaterial::diffuse_white()
-                        .with_base_color(colors::BLACK)
-                        .with_emission(laser_target.inactivate_emission_color),
-                )
-            };
             cmd.entity(laser_target.light_entity)
-                .and_set(mat)
-                .and_set(MaterialDirty);
+                .and_set(MaterialSwapSelection::from_bool(laser_target.is_activated));
         }
     }
 }

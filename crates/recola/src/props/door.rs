@@ -1,16 +1,24 @@
-use crate::{custom_properties::*, mechanics::colliders::*, player::*};
+use crate::{
+    custom_properties::*,
+    mechanics::{colliders::*, material_swap::*},
+    player::*,
+    recola_mocca::CRIMSON,
+};
 use atom::prelude::*;
 use candy::{scene_tree::*, time::*};
 use eyre::{Result, eyre};
+use magi::bsdf::PbrMaterial;
 
 #[derive(Component)]
 pub struct SpawnDoorTask {
     pub collider_entity: Entity,
+    pub relief_entity: Entity,
 }
 
 #[derive(Component, Debug, Clone)]
 pub struct Door {
     collider_entity: Entity,
+    relief_entity: Entity,
     lower_progress: f32,
     progress_changed: bool,
     is_lowered: bool,
@@ -28,6 +36,7 @@ impl Mocca for DoorMocca {
         deps.depends_on::<CandyTimeMocca>();
         deps.depends_on::<CollidersMocca>();
         deps.depends_on::<CustomPropertiesMocca>();
+        deps.depends_on::<MaterialSwapMocca>();
         deps.depends_on::<PlayerMocca>();
     }
 
@@ -72,11 +81,19 @@ fn spawn_door(
             .and_set(DynamicTransform)
             .and_set(Door {
                 collider_entity: task.collider_entity,
+                relief_entity: task.relief_entity,
                 lower_progress: 0.,
                 progress_changed: false,
                 is_lowered: false,
             })
             .and_set(key_id);
+
+        cmd.entity(task.relief_entity)
+            .and_set(MaterialSwap::from_iter([
+                PbrMaterial::diffuse(CRIMSON),
+                PbrMaterial::diffuse(CRIMSON).with_emission(CRIMSON.to_linear() * 3.0),
+            ]))
+            .and_set(MaterialSwapSelection(0));
     }
 }
 
@@ -121,18 +138,21 @@ fn lower_door_interaction(
         return;
     };
 
+    // Do not operate open door
+    if door.is_lowered {
+        return;
+    }
+
     // Operate door
-    if !door.is_lowered {
-        if player.keys.contains(key) {
-            door.lower_progress += DOOR_LOWER_SPEED * dt;
-            if door.lower_progress >= DOOR_LOWER_MAX {
-                door.lower_progress = DOOR_LOWER_MAX;
-                door.is_lowered = true;
-            }
-            door.progress_changed = true;
-        } else {
-            log::debug!("missing key {key:?}");
+    if player.keys.contains(key) {
+        door.lower_progress += DOOR_LOWER_SPEED * dt;
+        if door.lower_progress >= DOOR_LOWER_MAX {
+            door.lower_progress = DOOR_LOWER_MAX;
+            door.is_lowered = true;
         }
+        door.progress_changed = true;
+    } else {
+        log::debug!("missing key {key:?}");
     }
 }
 
@@ -142,6 +162,7 @@ fn lower_door(
     mut query_collider: Query<&mut CollisionLayerMask>,
 ) {
     for (door_entity, tf, door) in query_door.iter_mut() {
+        // move door down
         if door.progress_changed {
             tf.translation.z = -door.lower_progress;
 
@@ -152,6 +173,11 @@ fn lower_door(
                     .set(DirtyCollider::default());
             }
         }
+
+        // change material while operating
+        cmd.entity(door.relief_entity)
+            .and_set(MaterialSwapSelection::from_bool(door.progress_changed));
+
         door.progress_changed = false;
     }
 }

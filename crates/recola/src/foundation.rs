@@ -162,8 +162,14 @@ fn load_asset_blueprints(
                 });
             }
             "prop-archway_3x6_door" => {
+                let relief_entity = find_child(&children, &query_name, entity, |name| {
+                    name.ends_with("relief")
+                })
+                .unwrap();
+
                 cmd.entity(entity).set(SpawnDoorTask {
                     collider_entity: colliders[0].0,
+                    relief_entity,
                 });
             }
             "prop-barrier_3x6" => {

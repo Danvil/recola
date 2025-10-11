@@ -728,6 +728,7 @@ dependencies = [
  "log",
  "magi_bsdf",
  "magi_color",
+ "magi_gems",
  "simplecs",
 ]
 
