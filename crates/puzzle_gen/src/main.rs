@@ -8,9 +8,9 @@
 
 use bitmask_enum::bitmask;
 use petgraph::{Graph, graph::UnGraph, visit::EdgeRef};
-use std::fmt;
 use std::{
     collections::{HashMap, HashSet, VecDeque},
+    fmt,
     ops::{Add, Deref, Mul},
 };
 

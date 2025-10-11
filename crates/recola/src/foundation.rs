@@ -6,9 +6,7 @@ use crate::{
     recola_mocca::CRIMSON,
 };
 use atom::prelude::*;
-use candy::can::*;
-use candy::glassworks::*;
-use candy::scene_tree::*;
+use candy::{can::*, glassworks::*, scene_tree::*};
 use eyre::Result;
 use magi::color::colors;
 use serde::{Deserialize, Serialize};

@@ -1,7 +1,6 @@
 use crate::{custom_properties::*, mechanics::colliders::*, player::*};
 use atom::prelude::*;
-use candy::scene_tree::*;
-use candy::time::*;
+use candy::{scene_tree::*, time::*};
 use eyre::{Result, eyre};
 
 #[derive(Component)]

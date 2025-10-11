@@ -1,15 +1,9 @@
 use crate::{custom_properties::*, foundation::*};
 use atom::prelude::*;
-use candy::can::*;
-use candy::glassworks::*;
-use candy::material::*;
-use candy::prims::*;
-use candy::scene_tree::*;
-use candy::sky::*;
+use candy::{can::*, glassworks::*, material::*, prims::*, scene_tree::*, sky::*};
 use eyre::Result;
 use glam::Vec3;
-use magi::prelude::LinearColor;
-use magi::se::SO3;
+use magi::{prelude::LinearColor, se::SO3};
 use serde::Deserialize;
 use std::collections::HashMap;
 

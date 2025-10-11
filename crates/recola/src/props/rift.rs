@@ -6,12 +6,7 @@ use crate::{
     recola_mocca::CRIMSON,
 };
 use atom::prelude::*;
-use candy::glassworks::*;
-use candy::material::*;
-use candy::prims::*;
-use candy::rng::*;
-use candy::scene_tree::*;
-use candy::time::*;
+use candy::{glassworks::*, material::*, prims::*, rng::*, scene_tree::*, time::*};
 use glam::Vec3;
 
 #[derive(Component)]

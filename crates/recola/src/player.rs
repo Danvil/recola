@@ -3,11 +3,13 @@ use crate::{
     props::{door::KeyId, rift::RiftLevel},
 };
 use atom::prelude::*;
-use candy::camera::*;
-use candy::input::*;
-use candy::sky::*;
-use candy::time::*;
-use candy::utils::{CameraLink, ImageLocation, ImageShape, WindowDef, WindowLayout};
+use candy::{
+    camera::*,
+    input::*,
+    sky::*,
+    time::*,
+    utils::{CameraLink, ImageLocation, ImageShape, WindowDef, WindowLayout},
+};
 use glam::{Vec2, Vec3, Vec3Swizzles};
 use std::collections::HashSet;
 

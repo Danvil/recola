@@ -1,10 +1,6 @@
 use crate::props::laser_pointer::*;
 use atom::prelude::*;
-use candy::material::*;
-use candy::prims::*;
-use candy::rng::*;
-use candy::scene_tree::*;
-use candy::time::*;
+use candy::{material::*, prims::*, rng::*, scene_tree::*, time::*};
 use glam::Vec3;
 use magi::color::{LinearColor, SRgbU8Color, colors};
 

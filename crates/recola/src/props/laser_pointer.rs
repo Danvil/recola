@@ -3,11 +3,6 @@ use crate::{
     player::*,
 };
 use atom::prelude::*;
-use candy::material::*;
-use candy::prims::*;
-use candy::rng::*;
-use candy::scene_tree::*;
-use candy::time::*;
 use glam::{Vec3, Vec3Swizzles};
 use magi::{
     color::*,
