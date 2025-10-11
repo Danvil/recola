@@ -7,6 +7,7 @@ use magi::{prelude::LinearColor, se::SO3};
 use serde::Deserialize;
 use std::collections::HashMap;
 
+/// Loads the world of Recola
 pub struct LevelMocca;
 
 impl Mocca for LevelMocca {
@@ -26,34 +27,6 @@ impl Mocca for LevelMocca {
         world.run(spawn_terrain);
         world.run(spawn_levels).unwrap();
         Self
-    }
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Level {
-    pub instances: Vec<Instance>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct Instance {
-    pub name: String,
-    pub asset_id: Option<String>,
-    pub location: [f32; 3],
-    pub rotation: [f32; 4],
-    pub scale: [f32; 3],
-
-    /// Custom properties on the instance object.
-    #[serde(default)]
-    pub custom: HashMap<String, serde_json::Value>,
-}
-
-impl Instance {
-    pub fn transform(&self) -> Transform3 {
-        Transform3 {
-            translation: Vec3::from(self.location),
-            rotation: SO3::from_xyzw_array(self.rotation),
-            scale: Vec3::from(self.scale),
-        }
     }
 }
 
@@ -81,22 +54,30 @@ fn spawn_terrain(mut cmd: Commands) {
     ));
 }
 
-fn spawn_level(cmd: &mut Commands, level_entity: Entity, level: &Level) {
-    for inst in &level.instances {
-        let entity = cmd.spawn((
-            Name::new(inst.name.to_owned()),
-            inst.transform(),
-            (ChildOf, level_entity),
-        ));
+#[derive(Debug, Deserialize)]
+struct Level {
+    pub instances: Vec<Instance>,
+}
 
-        if let Some(asset_id) = inst.asset_id.as_ref() {
-            let ainst = AssetInstance(AssetUid::new(asset_id.to_owned()));
-            cmd.entity(entity).set(ainst);
-        }
+#[derive(Debug, Deserialize)]
+struct Instance {
+    pub name: String,
+    pub asset_id: Option<String>,
+    pub location: [f32; 3],
+    pub rotation: [f32; 4],
+    pub scale: [f32; 3],
 
-        if !inst.custom.is_empty() {
-            let props = CustomProperties::from_json(&inst.custom);
-            cmd.entity(entity).set(props);
+    /// Custom properties on the instance object.
+    #[serde(default)]
+    pub custom: HashMap<String, serde_json::Value>,
+}
+
+impl Instance {
+    pub fn transform(&self) -> Transform3 {
+        Transform3 {
+            translation: Vec3::from(self.location),
+            rotation: SO3::from_xyzw_array(self.rotation),
+            scale: Vec3::from(self.scale),
         }
     }
 }
@@ -105,11 +86,42 @@ fn spawn_levels(assets: Singleton<SharedAssetResolver>, mut cmd: Commands) -> Re
     let path = assets.resolve("recola.json")?;
     let world: Level = assets.parse(&path)?;
 
+    let world_entity = cmd.spawn((Name::new("world"), Transform3::identity()));
+
     for inst in world.instances {
-        let path = assets.resolve(format!("{}.json", &inst.name))?;
-        let level: Level = assets.parse(&path)?;
-        let level_entity = cmd.spawn((Name::new(inst.name.to_owned()), inst.transform()));
-        spawn_level(&mut cmd, level_entity, &level);
+        if let Ok(path) = assets.resolve(format!("{}.json", &inst.name)) {
+            let level: Level = assets.parse(&path)?;
+            let tf = inst.transform();
+            spawn_level(&mut cmd, inst.name, tf, level);
+        } else {
+            spawn_instance(&mut cmd, world_entity, inst);
+        }
     }
+
     Ok(())
+}
+
+fn spawn_level(cmd: &mut Commands, name: String, tf: Transform3, level: Level) {
+    let level_entity = cmd.spawn((Name::new(name), tf));
+    for inst in level.instances {
+        spawn_instance(cmd, level_entity, inst);
+    }
+}
+
+fn spawn_instance(cmd: &mut Commands, parent: Entity, inst: Instance) {
+    let entity = cmd.spawn((
+        Name::new(inst.name.to_owned()),
+        inst.transform(),
+        (ChildOf, parent),
+    ));
+
+    if let Some(asset_id) = inst.asset_id.as_ref() {
+        let ainst = AssetInstance(AssetUid::new(asset_id.to_owned()));
+        cmd.entity(entity).set(ainst);
+    }
+
+    if !inst.custom.is_empty() {
+        let props = CustomProperties::from_json(&inst.custom);
+        cmd.entity(entity).set(props);
+    }
 }
