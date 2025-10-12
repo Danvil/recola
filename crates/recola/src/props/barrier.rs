@@ -6,15 +6,11 @@ use candy::scene_tree::*;
 pub struct SpawnBarrierTask {
     /// This entity is made invisible if the barrier deactivates
     pub force_field_entity: Entity,
-
-    /// The collider entity blocking passage
-    pub collider_entity: Entity,
 }
 
 #[derive(Component, Debug, Clone)]
 pub struct Barrier {
     force_field_entity: Entity,
-    collider_entity: Entity,
     is_on: bool,
 }
 
@@ -48,7 +44,6 @@ fn spawn_barrier(mut cmd: Commands, query_tasks: Query<(Entity, &SpawnBarrierTas
         cmd.entity(door_entity).remove::<SpawnBarrierTask>();
         cmd.entity(door_entity).and_set(Barrier {
             force_field_entity: task.force_field_entity,
-            collider_entity: task.collider_entity,
             is_on: true,
         });
     }
@@ -57,7 +52,6 @@ fn spawn_barrier(mut cmd: Commands, query_tasks: Query<(Entity, &SpawnBarrierTas
 fn activate_barrier(
     mut cmd: Commands,
     mut query: Query<(Entity, &SwitchObserverState, &mut Barrier)>,
-    mut query_collider: Query<&mut CollisionLayerMask>,
 ) {
     for (entity, observer, barrier) in query.iter_mut() {
         let new_on = !observer.as_bool();
@@ -77,10 +71,14 @@ fn activate_barrier(
                     .and_set(Visibility::Hidden);
             }
 
-            query_collider.get_mut(barrier.collider_entity).unwrap().nav = barrier.is_on;
-
-            cmd.entity(barrier.collider_entity)
-                .set(DirtyCollider::default());
+            // Change collision behavior of barrier
+            cmd.entity(entity).set(ChangeCollidersLayerMaskTask {
+                mask: if barrier.is_on {
+                    CollisionLayerMask::only_nav()
+                } else {
+                    CollisionLayerMask::none()
+                },
+            });
         }
     }
 }

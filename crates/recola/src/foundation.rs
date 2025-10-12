@@ -10,6 +10,7 @@ use candy::{can::*, glassworks::*, scene_tree::*};
 use eyre::Result;
 use magi::color::colors;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 
 #[derive(Component)]
 pub struct BlueprintApplied;
@@ -119,6 +120,10 @@ fn load_asset_blueprints(
             }
         }
 
+        cmd.entity(entity).and_set(ColliderSet {
+            collider_entities: HashSet::from_iter(colliders.iter().map(|(e, _)| *e)),
+        });
+
         if let Some(props) = props {
             if let Some(switches) = props.get_string_list("switches") {
                 cmd.entity(entity)
@@ -167,9 +172,32 @@ fn load_asset_blueprints(
                 })
                 .unwrap();
 
-                cmd.entity(entity).set(SpawnDoorTask {
-                    collider_entity: colliders[0].0,
-                    relief_entity,
+                cmd.entity(entity).set(SpawnLevelGateTask { relief_entity });
+            }
+            "prop-gate_door" => {
+                let left_leaf = find_child(&children, &query_name, entity, |name| {
+                    name.ends_with("left")
+                })
+                .unwrap();
+
+                let right_leaf = find_child(&children, &query_name, entity, |name| {
+                    name.ends_with("right")
+                })
+                .unwrap();
+
+                let left_collider = find_child(&children, &query_name, entity, |name| {
+                    name.ends_with("left-COLLIDER")
+                })
+                .unwrap();
+
+                let right_collider = find_child(&children, &query_name, entity, |name| {
+                    name.ends_with("right-COLLIDER")
+                })
+                .unwrap();
+
+                cmd.entity(entity).set(SpawnDoubleDoorTask {
+                    leafes: [(left_leaf, 6.0), (right_leaf, 0.0)],
+                    colliders: [(left_collider, 4.0), (right_collider, 2.0)],
                 });
             }
             "prop-barrier_3x6" => {
@@ -180,10 +208,8 @@ fn load_asset_blueprints(
                     "prop-barrier_3x6.force_field",
                 )
                 .unwrap();
-                cmd.entity(entity).set(SpawnBarrierTask {
-                    force_field_entity,
-                    collider_entity: colliders[0].0,
-                });
+                cmd.entity(entity)
+                    .set(SpawnBarrierTask { force_field_entity });
             }
             "prop-rift" => {
                 cmd.entity(entity).set(SpawnRiftTask);

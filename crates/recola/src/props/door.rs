@@ -1,27 +1,28 @@
 use crate::{
     custom_properties::*,
-    mechanics::{colliders::*, material_swap::*},
+    mechanics::{colliders::*, material_swap::*, switch::*},
     player::*,
     recola_mocca::CRIMSON,
 };
 use atom::prelude::*;
 use candy::{scene_tree::*, time::*};
 use eyre::{Result, eyre};
-use magi::bsdf::PbrMaterial;
+use magi::{
+    bsdf::PbrMaterial,
+    gems::{SmoothInputF32, SmoothInputF32Settings},
+};
 
+/// Creates a new gate which can be lowered by the player if they have the right key
 #[derive(Component)]
-pub struct SpawnDoorTask {
-    pub collider_entity: Entity,
+pub struct SpawnLevelGateTask {
     pub relief_entity: Entity,
 }
 
-#[derive(Component, Debug, Clone)]
-pub struct Door {
-    collider_entity: Entity,
-    relief_entity: Entity,
-    lower_progress: f32,
-    progress_changed: bool,
-    is_lowered: bool,
+/// Crates a new double sliding door which is opened when powered
+#[derive(Component)]
+pub struct SpawnDoubleDoorTask {
+    pub leafes: [(Entity, f32); 2],
+    pub colliders: [(Entity, f32); 2],
 }
 
 #[derive(Component, Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -38,6 +39,7 @@ impl Mocca for DoorMocca {
         deps.depends_on::<CustomPropertiesMocca>();
         deps.depends_on::<MaterialSwapMocca>();
         deps.depends_on::<PlayerMocca>();
+        deps.depends_on::<SwitchMocca>();
     }
 
     fn start(_world: &mut World) -> Self {
@@ -45,29 +47,41 @@ impl Mocca for DoorMocca {
     }
 
     fn register_components(world: &mut World) {
-        world.register_component::<Door>();
+        world.register_component::<DoubleDoor>();
         world.register_component::<KeyId>();
-        world.register_component::<SpawnDoorTask>();
+        world.register_component::<LevelGate>();
+        world.register_component::<SpawnDoubleDoorTask>();
+        world.register_component::<SpawnLevelGateTask>();
     }
 
     fn step(&mut self, world: &mut World) {
-        world.run(spawn_door);
-        world.run(lower_door_interaction);
-        world.run(lower_door);
+        world.run(spawn_level_gate);
+        world.run(leve_gate_interaction);
+        world.run(lower_level_gate);
+        world.run(spawn_double_door);
+        world.run(open_double_door);
     }
 }
 
-const DOOR_INTERACTION_DISTANCE: f32 = 5.;
-const DOOR_LOWER_SPEED: f32 = 1.333;
-const DOOR_LOWER_MAX: f32 = 3.933;
+#[derive(Component, Debug, Clone)]
+struct LevelGate {
+    relief_entity: Entity,
+    lower_progress: f32,
+    progress_changed: bool,
+    is_lowered: bool,
+}
 
-fn spawn_door(
+const LEVEL_GATE_INTERACTION_DISTANCE: f32 = 5.;
+const LEVEL_GATE_LOWER_SPEED: f32 = 1.333;
+const LEVEL_GATE_LOWER_MAX: f32 = 3.933;
+
+fn spawn_level_gate(
     mut cmd: Commands,
-    query_open_door_task: Query<(Entity, &SpawnDoorTask)>,
+    query_open_door_task: Query<(Entity, &SpawnLevelGateTask)>,
     query_props: Query<&CustomProperties>,
 ) {
     for (door_entity, task) in query_open_door_task.iter() {
-        cmd.entity(door_entity).remove::<SpawnDoorTask>();
+        cmd.entity(door_entity).remove::<SpawnLevelGateTask>();
 
         let key_id = match get_key_id(&query_props, door_entity) {
             Ok(key_id) => key_id,
@@ -79,8 +93,7 @@ fn spawn_door(
 
         cmd.entity(door_entity)
             .and_set(DynamicTransform)
-            .and_set(Door {
-                collider_entity: task.collider_entity,
+            .and_set(LevelGate {
                 relief_entity: task.relief_entity,
                 lower_progress: 0.,
                 progress_changed: false,
@@ -109,11 +122,11 @@ fn get_key_id(query_props: &Query<&CustomProperties>, door_entity: Entity) -> Re
     Ok(KeyId(id))
 }
 
-fn lower_door_interaction(
+fn leve_gate_interaction(
     time: Singleton<SimClock>,
     player: Singleton<Player>,
     query_input_raycast: Query<&InputRaycastController>,
-    mut query_door: Query<(&mut Door, &KeyId)>,
+    mut query_door: Query<(&mut LevelGate, &KeyId)>,
 ) {
     let dt = time.sim_dt_f32();
     let input_raycast = &query_input_raycast.single().unwrap();
@@ -129,7 +142,7 @@ fn lower_door_interaction(
     };
 
     // Check we are close enough
-    if distance > DOOR_INTERACTION_DISTANCE {
+    if distance > LEVEL_GATE_INTERACTION_DISTANCE {
         return;
     }
 
@@ -145,9 +158,9 @@ fn lower_door_interaction(
 
     // Operate door
     if player.keys.contains(key) {
-        door.lower_progress += DOOR_LOWER_SPEED * dt;
-        if door.lower_progress >= DOOR_LOWER_MAX {
-            door.lower_progress = DOOR_LOWER_MAX;
+        door.lower_progress += LEVEL_GATE_LOWER_SPEED * dt;
+        if door.lower_progress >= LEVEL_GATE_LOWER_MAX {
+            door.lower_progress = LEVEL_GATE_LOWER_MAX;
             door.is_lowered = true;
         }
         door.progress_changed = true;
@@ -156,10 +169,9 @@ fn lower_door_interaction(
     }
 }
 
-fn lower_door(
+fn lower_level_gate(
     mut cmd: Commands,
-    mut query_door: Query<(Entity, &mut Transform3, &mut Door)>,
-    mut query_collider: Query<&mut CollisionLayerMask>,
+    mut query_door: Query<(Entity, &mut Transform3, &mut LevelGate)>,
 ) {
     for (door_entity, tf, door) in query_door.iter_mut() {
         // move door down
@@ -168,9 +180,10 @@ fn lower_door(
 
             if door.is_lowered {
                 log::debug!("door {door_entity} lowered");
-                query_collider.get_mut(door.collider_entity).unwrap().nav = false;
-                cmd.entity(door.collider_entity)
-                    .set(DirtyCollider::default());
+                cmd.entity(door_entity)
+                    .and_set(ChangeCollidersLayerMaskTask {
+                        mask: CollisionLayerMask::none(),
+                    });
             }
         }
 
@@ -179,5 +192,76 @@ fn lower_door(
             .and_set(MaterialSwapSelection::from_bool(door.progress_changed));
 
         door.progress_changed = false;
+    }
+}
+
+#[derive(Component, Debug, Clone)]
+struct DoubleDoor {
+    leafes: [(Entity, f32); 2],
+    colliders: [(Entity, f32); 2],
+    open_progress: SmoothInputF32,
+}
+
+fn spawn_double_door(
+    mut cmd: Commands,
+    query_open_door_task: Query<(Entity, &SpawnDoubleDoorTask)>,
+) {
+    for (door_entity, task) in query_open_door_task.iter() {
+        cmd.entity(door_entity).remove::<SpawnDoubleDoorTask>();
+
+        cmd.entity(door_entity)
+            .and_set(DynamicTransform)
+            .and_set(DoubleDoor {
+                leafes: task.leafes,
+                colliders: task.colliders,
+                open_progress: SmoothInputF32::default(),
+            });
+
+        log::debug!("spawned double door: {door_entity}");
+    }
+}
+
+const DOUBLE_DOOR_OPEN_SETTINGS: SmoothInputF32Settings = SmoothInputF32Settings {
+    value_range: Some((0., 1.)),
+    max_speed: 1.333,
+    max_accel: 10.,
+    max_deaccel: 10.,
+};
+
+const DOUBLE_DOOR_OPEN_DELTA: f32 = 1.677;
+
+fn open_double_door(
+    mut cmd: Commands,
+    time: Singleton<SimClock>,
+    mut query_door: Query<(Entity, &SwitchObserverState, &mut DoubleDoor)>,
+    mut query_tf: Query<&mut Transform3>,
+) {
+    let dt = time.sim_dt_f32();
+
+    for (door_entity, switch_observer, door) in query_door.iter_mut() {
+        // open door if powered
+        let has_power = switch_observer.as_bool();
+        door.open_progress.update(
+            dt,
+            &DOUBLE_DOOR_OPEN_SETTINGS,
+            magi::gems::SmoothInputControl::from_bool(has_power),
+            1.,
+        );
+        log::trace!(
+            "double door power: {has_power} {}",
+            door.open_progress.value()
+        );
+
+        // slide doors open
+        let delta = DOUBLE_DOOR_OPEN_DELTA * door.open_progress.value();
+        for (&(entity, y0), dir) in door.leafes.iter().zip([1.0, -1.0]) {
+            query_tf.get_mut(entity).unwrap().translation.y = y0 + dir * delta;
+        }
+
+        // update colliders
+        for (&(entity, y0), dir) in door.colliders.iter().zip([1.0, -1.0]) {
+            query_tf.get_mut(entity).unwrap().translation.y = y0 + dir * delta;
+        }
+        cmd.entity(door_entity).and_set(CollidersDirtyTask);
     }
 }

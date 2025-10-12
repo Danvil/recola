@@ -1,9 +1,10 @@
 use atom::prelude::*;
 use candy::scene_tree::*;
 use glam::{Affine3A, Vec3};
-use magi::geo::Ray;
+use magi::geo::{Aabb, Ray};
 use slab::Slab;
 use std::{
+    collections::HashSet,
     ops::Index,
     sync::{Mutex, mpsc},
 };
@@ -21,11 +22,25 @@ pub struct CollisionRouting {
     pub on_raycast_entity: Entity,
 }
 
+/// A set of colliders
+#[derive(Component)]
+pub struct ColliderSet {
+    pub collider_entities: HashSet<Entity>,
+}
+
 #[derive(Singleton)]
 pub struct ColliderWorld {
     pub cuboids: CuboidSet,
     pub on_remove_rx: Mutex<mpsc::Receiver<ColliderId>>,
 }
+
+#[derive(Component)]
+pub struct ChangeCollidersLayerMaskTask {
+    pub mask: CollisionLayerMask,
+}
+
+#[derive(Component)]
+pub struct CollidersDirtyTask;
 
 impl ColliderWorld {
     pub fn raycast(
@@ -142,6 +157,14 @@ impl CollisionLayerMask {
         }
     }
 
+    pub fn none() -> Self {
+        Self {
+            laser: false,
+            interact: false,
+            nav: false,
+        }
+    }
+
     pub fn only_nav() -> Self {
         Self {
             laser: false,
@@ -182,6 +205,31 @@ impl PosedCuboid {
 
     pub fn user(&self) -> Entity {
         self.user
+    }
+
+    pub fn half_size(&self) -> Vec3 {
+        self.half_size
+    }
+
+    pub fn ref_t_cuboid(&self) -> &Affine3A {
+        &self.ref_t_cuboid
+    }
+
+    pub fn aabb(&self) -> Aabb<Vec3> {
+        Aabb::from_points(
+            [
+                Vec3::new(1., 1., 1.),
+                Vec3::new(1., 1., -1.),
+                Vec3::new(1., -1., 1.),
+                Vec3::new(1., -1., -1.),
+                Vec3::new(-1., 1., 1.),
+                Vec3::new(-1., 1., -1.),
+                Vec3::new(-1., -1., 1.),
+                Vec3::new(-1., -1., -1.),
+            ]
+            .iter()
+            .map(|p| self.ref_t_cuboid.transform_point3(p * self.half_size)),
+        )
     }
 }
 
@@ -237,15 +285,20 @@ impl Mocca for CollidersMocca {
     }
 
     fn register_components(world: &mut World) {
+        world.register_component::<ChangeCollidersLayerMaskTask>();
         world.register_component::<Collider>();
+        world.register_component::<ColliderSet>();
         world.register_component::<CollisionLayerMask>();
         world.register_component::<CollisionRouting>();
         world.register_component::<DirtyCollider>();
+        world.register_component::<CollidersDirtyTask>();
     }
 
     fn step(&mut self, world: &mut World) {
-        world.run(update_colliders);
-        world.run(create_colliders);
+        world.run(change_collider_layer_mask_tasks);
+        world.run(colliders_dirty_tasks);
+        world.run(remove_colliders_of_despawned_entities);
+        world.run(update_dirty_colliders);
     }
 
     fn fini(&mut self, world: &mut World) {
@@ -255,17 +308,40 @@ impl Mocca for CollidersMocca {
     }
 }
 
-fn update_colliders(
-    mut collider_world: SingletonMut<ColliderWorld>,
+fn change_collider_layer_mask_tasks(
     mut cmd: Commands,
-    query: Query<(Entity, &Collider), With<DirtyCollider>>,
+    query_tasks: Query<(Entity, &ColliderSet, &ChangeCollidersLayerMaskTask)>,
+    mut query_collider: Query<&mut CollisionLayerMask>,
 ) {
-    // Add new colliders
-    for (entity, collider) in query.iter() {
-        collider_world.cuboids.remove(collider.0);
-        cmd.entity(entity).remove::<Collider>();
+    for (entity, collider_set, task) in query_tasks.iter() {
+        for &collider_entity in &collider_set.collider_entities {
+            if let Some(mask) = query_collider.get_mut(collider_entity) {
+                *mask = task.mask;
+                cmd.entity(collider_entity)
+                    .and_set(DirtyCollider::default());
+            }
+        }
+        cmd.entity(entity).remove::<ChangeCollidersLayerMaskTask>();
     }
+}
 
+fn colliders_dirty_tasks(
+    mut cmd: Commands,
+    query_tasks: Query<(Entity, &ColliderSet), With<CollidersDirtyTask>>,
+    query_dirty: Query<&DirtyCollider>,
+) {
+    for (entity, collider_set) in query_tasks.iter() {
+        for &collider_entity in &collider_set.collider_entities {
+            if query_dirty.get(collider_entity).is_none() {
+                cmd.entity(collider_entity)
+                    .and_set(DirtyCollider::default());
+            }
+        }
+        cmd.entity(entity).remove::<CollidersDirtyTask>();
+    }
+}
+
+fn remove_colliders_of_despawned_entities(mut collider_world: SingletonMut<ColliderWorld>) {
     // Handle removed colliders
     let ids: Vec<_> = {
         let rx = collider_world.on_remove_rx.lock().unwrap();
@@ -277,34 +353,47 @@ fn update_colliders(
     }
 }
 
-fn create_colliders(
+fn update_dirty_colliders(
     mut collider_world: SingletonMut<ColliderWorld>,
     mut cmd: Commands,
     mut query: Query<
         (
             Entity,
             &GlobalTransform3,
+            Option<&mut Collider>,
             &mut DirtyCollider,
             &CollisionLayerMask,
         ),
-        (Without<Collider>, With<DirtyCollider>),
+        With<DirtyCollider>,
     >,
 ) {
-    for (entity, tf, dirty, layer) in query.iter_mut() {
+    for (entity, tf, mut maybe_collider, dirty, layer) in query.iter_mut() {
         // TODO we need to wait one frame for GlobalTransform3 to update ..
-        if dirty.0 < 10 {
+        if dirty.0 < 3 {
             dirty.0 += 1;
             continue;
         }
 
+        // remove old collider
+        if let Some(collider) = maybe_collider.as_mut() {
+            collider_world.cuboids.remove(collider.0);
+        }
+
+        // TODO currently we assume that collider geometry is a unit cube
         let half_size = Vec3::ONE;
 
+        // add new collider
         let id = collider_world
             .cuboids
             .insert(*tf.affine(), half_size, *layer, entity);
 
-        cmd.entity(entity)
-            .and_set(Collider(id))
-            .remove::<DirtyCollider>();
+        if let Some(collider) = maybe_collider {
+            // if we would use set we would trigger a remove and a new dirty
+            *collider = Collider(id);
+        } else {
+            cmd.entity(entity).and_set(Collider(id));
+        }
+
+        cmd.entity(entity).remove::<DirtyCollider>();
     }
 }

@@ -31,7 +31,7 @@ pub struct Switch {
 }
 
 /// The state of a switch
-#[derive(Component, Clone, Copy, PartialEq, Eq)]
+#[derive(Component, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SwitchState {
     On,
     Off,
@@ -89,12 +89,16 @@ fn update_switch_triggers(
     log::trace!("active switches: {:?}", active_switches);
 
     for (entity, observer, state) in query_observers.iter_mut() {
-        log::trace!("Processing observer {:?}: {:?}", entity, observer.switches);
-
         let active = observer
             .switches
             .iter()
             .all(|id| active_switches.contains(id.as_str()));
+
+        log::trace!(
+            "observer {:?} with switches {:?}: {active}",
+            entity,
+            observer.switches
+        );
 
         if active {
             if !state.as_bool() {
