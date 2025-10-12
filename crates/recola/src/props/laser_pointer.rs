@@ -44,7 +44,7 @@ pub struct BeamDetector {
 }
 
 /// Set on entities with BeamHitDetector when hit by a laser beam
-#[derive(Component)]
+#[derive(Component, Debug)]
 pub enum BeamHit {
     On,
     Off,
@@ -126,6 +126,7 @@ struct LaserPointer {
 
     collision_point: Vec3,
     beam_length: f32,
+    collider_height_over_ground: f32,
 
     beam_end_entity: Entity,
 }
@@ -140,7 +141,7 @@ struct LaserPointerTarget {
 const MAX_BEAM_LEN: f32 = 100.;
 const BEAM_WIDTH: f32 = 0.0167;
 const INTERACTION_MAX_DISTANCE: f32 = 3.0;
-const LASER_TARGET_HEIGHT: f32 = 4.80;
+const LASER_TARGET_HEIGHT_REL: f32 = 4.80 / 6.00;
 const LASER_POINTER_EMIT_HEIGHT: f32 = 1.333;
 
 fn spawn_laser_pointer(mut cmd: Commands, query: Query<(Entity, &SpawnLaserPointer)>) {
@@ -191,6 +192,7 @@ fn spawn_laser_pointer(mut cmd: Commands, query: Query<(Entity, &SpawnLaserPoint
                 exclude_collider: spec.collider_entity,
                 collision_point: Vec3::ONE,
                 beam_length: MAX_BEAM_LEN,
+                collider_height_over_ground: 6.0,
                 beam_end_entity,
             });
 
@@ -226,6 +228,8 @@ fn spawn_laser_target(mut cmd: Commands, query: Query<(Entity, &SpawnLaserTarget
                     .with_emission(spec.activate_emission_color),
             ]))
             .and_set(MaterialSwapSelection(0));
+
+        log::debug!("spawned laser_target: {entity}");
     }
 }
 
@@ -248,9 +252,9 @@ fn disco_laser_pointer_azimuth(
 
 const LASER_POINTER_INPUT_SETTINGS: SmoothInputF32Settings = SmoothInputF32Settings {
     value_range: None,
-    max_speed: 1.5,
-    max_accel: 1.0,
-    max_deaccel: 30.,
+    max_speed: 2.5,
+    max_accel: 2.0,
+    max_deaccel: 50.,
 };
 
 fn turn_laser_pointers(
@@ -307,7 +311,8 @@ fn point_laser_pointers(
         let target_dir = Vec3::new(
             radius * acos,
             radius * asin,
-            LASER_TARGET_HEIGHT - LASER_POINTER_EMIT_HEIGHT,
+            LASER_TARGET_HEIGHT_REL * lp.collider_height_over_ground + 0.2
+                - LASER_POINTER_EMIT_HEIGHT,
         )
         .normalize();
 
@@ -339,10 +344,19 @@ fn raycast_laser_beams(
 
         let hit = colliders.raycast(&ray, Some(lp.exclude_collider), CollisionLayer::Laser);
 
-        lp.beam_length = match hit {
-            Some((_, len)) => len,
-            None => MAX_BEAM_LEN,
-        };
+        match hit {
+            Some((cid, len)) => {
+                lp.beam_length = len;
+                // get collider height over ground
+                let hog = colliders[cid].aabb().max.z;
+
+                lp.collider_height_over_ground = hog;
+            }
+            None => {
+                lp.beam_length = MAX_BEAM_LEN;
+                lp.collider_height_over_ground = 6.0;
+            }
+        }
 
         lp.collision_point = tf
             .affine()
@@ -380,9 +394,9 @@ fn activate_laser_target(mut query: Query<(&mut LaserPointerTarget, &BeamHit)>) 
 }
 
 fn activate_laser_target_switch(
-    mut query: Query<(&BeamHit, &mut SwitchState), With<LaserPointerTarget>>,
+    mut query: Query<(Entity, &BeamHit, &mut SwitchState), With<LaserPointerTarget>>,
 ) {
-    for (hit, switch) in query.iter_mut() {
+    for (entity, hit, switch) in query.iter_mut() {
         switch.set_from_bool(hit.as_bool());
     }
 }
