@@ -1,0 +1,190 @@
+{
+  "assets": [
+    {
+      "name": "prop-floor_3x3",
+      "file": "props/props.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/prop-floor_3x3"
+    },
+    {
+      "name": "prop-wall_block_3_3",
+      "file": "props/props.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/prop-wall_block_3_3"
+    },
+    {
+      "name": "prop-wall_archway_3x6",
+      "file": "props/props.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/prop-wall_archway_3x6"
+    },
+    {
+      "name": "prop-beam_target",
+      "file": "props/props.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/prop-beam_target"
+    },
+    {
+      "name": "prop-archway_3x6_door",
+      "file": "props/props.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/prop-archway_3x6_door"
+    },
+    {
+      "name": "prop-rift",
+      "file": "props/props.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/prop-rift"
+    },
+    {
+      "name": "prop-rift_schimmer",
+      "file": "props/props.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/prop-rift_schimmer"
+    },
+    {
+      "name": "prop-laser",
+      "file": "props/props.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/prop-laser"
+    },
+    {
+      "name": "prop-overgrowth-1",
+      "file": "props/overgrowth.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/prop-overgrowth-1"
+    },
+    {
+      "name": "prop-overgrowth-2",
+      "file": "props/overgrowth.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/prop-overgrowth-2"
+    },
+    {
+      "name": "prop-overgrowth-3",
+      "file": "props/overgrowth.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/prop-overgrowth-3"
+    },
+    {
+      "name": "prop-overgrowth_3x3_1",
+      "file": "props/overgrowth.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/prop-overgrowth_3x3_1"
+    },
+    {
+      "name": "prop-barrier_3x6",
+      "file": "props/props.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/prop-barrier_3x6"
+    },
+    {
+      "name": "prop-wall_gate_3x6",
+      "file": "props/props.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/prop-wall_gate_3x6"
+    },
+    {
+      "name": "prop-wall_gate_3x6",
+      "file": "props/props.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/prop-wall_gate_3x6"
+    },
+    {
+      "name": "prop-barrier_switch",
+      "file": "props/props.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/prop-barrier_switch"
+    },
+    {
+      "name": "prop-wall_win_3x6",
+      "file": "props/props.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/prop-wall_win_3x6"
+    },
+    {
+      "name": "cable_corner_in",
+      "file": "props/cable.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/cable_corner_in"
+    },
+    {
+      "name": "cable_corner_out",
+      "file": "props/cable.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/cable_corner_out"
+    },
+    {
+      "name": "cable_straight",
+      "file": "props/cable.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/cable_straight"
+    },
+    {
+      "name": "cable_up_1",
+      "file": "props/cable.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/cable_up_1"
+    },
+    {
+      "name": "cable_up_2",
+      "file": "props/cable.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/cable_up_2"
+    },
+    {
+      "name": "cable_up_3",
+      "file": "props/cable.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/cable_up_3"
+    },
+    {
+      "name": "cable_up_cin_1",
+      "file": "props/cable.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/cable_up_cin_1"
+    },
+    {
+      "name": "cable_up_cin_2",
+      "file": "props/cable.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/cable_up_cin_2"
+    },
+    {
+      "name": "cable_up_cin_3",
+      "file": "props/cable.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/cable_up_cin_3"
+    },
+    {
+      "name": "cable_up_cout_1",
+      "file": "props/cable.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/cable_up_cout_1"
+    },
+    {
+      "name": "cable_up_cout_2",
+      "file": "props/cable.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/cable_up_cout_2"
+    },
+    {
+      "name": "cable_up_cout_3",
+      "file": "props/cable.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/cable_up_cout_3"
+    },
+    {
+      "name": "prop-cable_fixture",
+      "file": "props/cable.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/prop-cable_fixture"
+    },
+    {
+      "name": "prop-gate_door",
+      "file": "props/props.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/prop-gate_door"
+    }
+  ]
+}

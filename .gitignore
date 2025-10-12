@@ -1,7 +1,15 @@
-/assets
-/deploy
-/flecs_toybox
-/steamworks_sdk
-/target
-/toybox
-/tmp
+deploy/
+steamworks_sdk/
+target/
+tmp/
+
+# Houdini backup folders in assets
+assets/**/backup/*.hiplc
+assets/**/backup/*.hdalc
+# Houdini filecaches
+assets/**/*filecache*
+# Houdini exports
+assets/**/cable/*.glb
+assets/**/overgrowth/*.glb
+# Blender backup files
+assets/**/*.blend1
