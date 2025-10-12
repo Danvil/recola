@@ -117,7 +117,7 @@ fn update_player_eye(
     player.eye_position = cam.world_t_camera().transform_point3(Vec3::ZERO);
 }
 
-const HOURS_PER_RIFT_LEVEL: f32 = 1.333;
+const HOURS_PER_RIFT_LEVEL: f32 = 1.000;
 const HOURS_ADVANCE_RATE: f32 = 0.133;
 
 fn advance_time(
