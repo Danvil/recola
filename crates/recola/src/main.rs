@@ -10,11 +10,13 @@ use crate::recola_mocca::RecolaMocca;
 
 pub struct StaticSettings {
     enable_forge: bool,
+    enable_cheats: bool,
     show_colliders: bool,
 }
 
 pub const STATIC_SETTINGS: StaticSettings = StaticSettings {
     enable_forge: false,
+    enable_cheats: true,
     show_colliders: false,
 };
 

@@ -7,6 +7,12 @@ use magi::{prelude::LinearColor, se::SO3};
 use serde::Deserialize;
 use std::collections::HashMap;
 
+/// List of loaded levels
+#[derive(Singleton, Default)]
+pub struct LevelSummary {
+    pub pos: Vec<Vec3>,
+}
+
 /// Loads the world of Recola
 pub struct LevelMocca;
 
@@ -88,15 +94,24 @@ fn spawn_levels(assets: Singleton<SharedAssetResolver>, mut cmd: Commands) -> Re
 
     let world_entity = cmd.spawn((Name::new("world"), Transform3::identity()));
 
+    let mut level_pos_by_name = Vec::new();
+
     for inst in world.instances {
         if let Ok(path) = assets.resolve(format!("{}.json", &inst.name)) {
             let level: Level = assets.parse(&path)?;
             let tf = inst.transform();
+            level_pos_by_name.push((inst.name.clone(), tf.translation));
             spawn_level(&mut cmd, inst.name, tf, level);
         } else {
             spawn_instance(&mut cmd, world_entity, inst);
         }
     }
+
+    level_pos_by_name.sort_by_key(|(name, _)| name.clone());
+
+    cmd.set_singleton(LevelSummary {
+        pos: level_pos_by_name.into_iter().map(|(_, pos)| pos).collect(),
+    });
 
     Ok(())
 }

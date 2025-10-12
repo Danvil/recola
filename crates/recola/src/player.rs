@@ -1,4 +1,6 @@
 use crate::{
+    STATIC_SETTINGS,
+    level::*,
     mechanics::colliders::*,
     props::{door::KeyId, rift::RiftLevel},
 };
@@ -28,7 +30,10 @@ pub struct Player {
     pub hours_target: f32,
 
     /// If enabled collision detection is disabled and speed is 10x
-    pub ghost_mode: bool,
+    pub cheat_ghost_mode: bool,
+
+    /// Used to track cheat teleport
+    pub cheat_teleport: usize,
 }
 
 /// Player camera and basic user input interaction
@@ -42,6 +47,10 @@ impl Mocca for PlayerMocca {
         deps.depends_on::<CandySkyMocca>();
         deps.depends_on::<CandyTimeMocca>();
         deps.depends_on::<CollidersMocca>();
+
+        // FIXME currently not possible because level => foundation => rift => player
+        // deps.depends_on::<LevelMocca>();
+
         deps.depends_on_raw::<BigtalkMocca>();
     }
 
@@ -59,7 +68,8 @@ impl Mocca for PlayerMocca {
             keys: HashSet::new(),
             hours: 12.0,
             hours_target: 12.0,
-            ghost_mode: false,
+            cheat_ghost_mode: false,
+            cheat_teleport: 0,
         });
 
         world.run(setup_window_and_camera);
@@ -73,7 +83,10 @@ impl Mocca for PlayerMocca {
         world.run(restrict_player_movement);
         world.run(update_player_eye);
         world.run(advance_time);
-        world.run(ghost_mode);
+
+        if STATIC_SETTINGS.enable_cheats {
+            world.run(cheats);
+        }
     }
 }
 
@@ -82,7 +95,7 @@ fn restrict_player_movement(
     colliders: Singleton<ColliderWorld>,
     mut query_cam_ctrl: Query<&mut FirstPersonCameraController>,
 ) {
-    if player.ghost_mode {
+    if player.cheat_ghost_mode {
         return;
     }
 
@@ -203,7 +216,8 @@ pub struct InputRaycastController {
     state: InputState,
     raycast_entity_and_distance: Option<(Entity, f32)>,
 
-    ghost_mode: bool,
+    cheat_ghost_mode: bool,
+    cheat_teleport: usize,
 }
 
 impl InputRaycastController {
@@ -211,7 +225,8 @@ impl InputRaycastController {
         Self {
             state: InputState::default(),
             raycast_entity_and_distance: None,
-            ghost_mode: false,
+            cheat_ghost_mode: false,
+            cheat_teleport: 0,
         }
     }
 
@@ -232,7 +247,17 @@ impl InputRaycastController {
                 code: KeyCode::KeyG,
                 ..
             } => {
-                self.ghost_mode = !self.ghost_mode;
+                self.cheat_ghost_mode = !self.cheat_ghost_mode;
+            }
+            _ => {}
+        }
+        match msg.event {
+            InputEvent::KeyboardInput {
+                state: ElementState::Pressed,
+                code: KeyCode::KeyT,
+                ..
+            } => {
+                self.cheat_teleport += 1;
             }
             _ => {}
         }
@@ -276,19 +301,19 @@ fn input_raycast(
     input_raycast.raycast_entity_and_distance = Some((collisiont_routing.on_raycast_entity, lam));
 }
 
-fn ghost_mode(
+fn cheats(
     mut player: SingletonMut<Player>,
+    levels: Singleton<LevelSummary>,
     mut query_input_raycast: Query<&mut InputRaycastController>,
     mut query_cam_ctrl: Query<&mut FirstPersonCameraController>,
 ) {
     let input_raycast = query_input_raycast.single_mut().unwrap();
     let cam_ctrl = query_cam_ctrl.single_mut().unwrap();
 
-    player.ghost_mode = input_raycast.ghost_mode;
-
+    // dev mode: toggle ghost mode
+    player.cheat_ghost_mode = input_raycast.cheat_ghost_mode;
     let settings = cam_ctrl.settings_mut();
-
-    if input_raycast.ghost_mode {
+    if input_raycast.cheat_ghost_mode {
         settings.move_max_speed = 6.0 * 4.;
         settings.move_acceleration = 20.0 * 4.;
         settings.move_deacceleration = 25.0 * 4.;
@@ -296,5 +321,11 @@ fn ghost_mode(
         settings.move_max_speed = 6.0;
         settings.move_acceleration = 20.0;
         settings.move_deacceleration = 25.0;
+    }
+
+    // dev mode: Teleport player to level start
+    if player.cheat_teleport != input_raycast.cheat_teleport {
+        player.cheat_teleport = input_raycast.cheat_teleport;
+        cam_ctrl.set_position_xy(levels.pos[player.cheat_teleport % levels.pos.len()].xy());
     }
 }
