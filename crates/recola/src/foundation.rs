@@ -79,7 +79,7 @@ pub fn load_assets(
     assets: Singleton<SharedAssetResolver>,
     mut asli: SingletonMut<AssetLibrary>,
 ) -> Result<()> {
-    let path = assets.resolve("assets.json")?;
+    let path = assets.resolve("props.json")?;
     let coll: AssetCollection = assets.parse(&path)?;
 
     for entry in coll.assets {

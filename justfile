@@ -20,8 +20,11 @@ recola: recola_package_assets
     #cargo run --release -p recola --features profile-with-tracy
     # cargo run --release -p recola --features disco
 
-recola_package_assets:
-    python .\crates\recola\scripts\package_release.py --package-assets
+recola_export_blend:
+    python .\scripts\blender_export_driver.py
 
-recola_release:
-    python .\crates\recola\scripts\package_release.py --package-assets --create-release
+recola_package_assets: recola_export_blend
+    python .\scripts\package_release.py --package-assets
+
+recola_release: recola_export_blend
+    python .\scripts\package_release.py --package-assets --create-release

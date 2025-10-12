@@ -89,7 +89,7 @@ impl Instance {
 }
 
 fn spawn_levels(assets: Singleton<SharedAssetResolver>, mut cmd: Commands) -> Result<()> {
-    let path = assets.resolve("recola.json")?;
+    let path = assets.resolve("levels/recola.json")?;
     let world: Level = assets.parse(&path)?;
 
     let world_entity = cmd.spawn((Name::new("world"), Transform3::identity()));
@@ -97,7 +97,7 @@ fn spawn_levels(assets: Singleton<SharedAssetResolver>, mut cmd: Commands) -> Re
     let mut level_pos_by_name = Vec::new();
 
     for inst in world.instances {
-        if let Ok(path) = assets.resolve(format!("{}.json", &inst.name)) {
+        if let Ok(path) = assets.resolve(format!("levels/{}.json", &inst.name)) {
             let level: Level = assets.parse(&path)?;
             let tf = inst.transform();
             level_pos_by_name.push((inst.name.clone(), tf.translation));

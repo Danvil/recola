@@ -16,12 +16,16 @@ def package_assets():
     tmp_dir_assets.mkdir(parents=True, exist_ok=True)
 
     # 3.a Copy recola assets
-    assets_dir = repo_root / "assets" / "recola"
-    tmp_asset_dir = tmp_dir_assets / "assets" / "recola"
-    tmp_asset_dir.mkdir(parents=True, exist_ok=True)
-    for ext in ("*.glb", "*.json"):
-        for src in assets_dir.glob(ext):
-            shutil.copy2(src, tmp_asset_dir / src.name)
+    for sub in ["props", "levels"]:
+        assets_dir = repo_root / "tmp" / "export" / "recola" / sub
+        tmp_asset_dir = tmp_dir_assets / "assets" / "recola" / sub
+        tmp_asset_dir.mkdir(parents=True, exist_ok=True)
+        for ext in ("*.glb", "*.json"):
+            for src in assets_dir.glob(ext):
+                shutil.copy2(src, tmp_asset_dir / src.name)
+
+    # 3.a Copy props.json
+    shutil.copy2(repo_root / "assets" / "recola" / "props.json", tmp_dir_assets / "assets" / "recola" / "props.json")
 
     # 3.b Copy candy assets
     assets_dir = Path("I:/Ikabur/atuin/crates/candy/candy_glassworks/shaders")
