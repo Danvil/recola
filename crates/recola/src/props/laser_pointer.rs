@@ -340,10 +340,17 @@ fn point_laser_pointers(
 
         lp.dir = lp.dir.lerp(target_dir, point_speed * dt).normalize();
 
-        tf.rotation = SO3::from_to(Vec3::X, lp.dir);
+        tf.rotation = rotation_from_dir(lp.dir);
 
         lpa.sensitivity = sensitivity_speed / radius;
     }
+}
+
+fn rotation_from_dir(dir: Vec3) -> SO3 {
+    let x = dir.normalize();
+    let y = Vec3::Z.cross(dir).normalize();
+    let z = dir.cross(y).normalize();
+    SO3::from_axes(x, y, z)
 }
 
 fn reset_beam_hit(mut cmd: Commands, query_detector: Query<(Entity, &BeamDetector)>) {
