@@ -3,11 +3,15 @@ use crate::{
     level::*,
     mechanics::colliders::*,
     props::{door::KeyId, rift::RiftLevel},
+    recola_mocca::RecolaAssetsMocca,
 };
 use atom::prelude::*;
 use candy::{
+    audio::*,
     camera::*,
+    can::*,
     input::*,
+    prelude::{DynamicTransform, HierarchyDirty, Transform3},
     sky::*,
     time::*,
     utils::{CameraLink, ImageLocation, ImageShape, WindowDef, WindowLayout},
@@ -34,6 +38,8 @@ pub struct Player {
 
     /// Used to track cheat teleport
     pub cheat_teleport: usize,
+
+    pub listener_entity: Entity,
 }
 
 /// Player camera and basic user input interaction
@@ -41,12 +47,15 @@ pub struct PlayerMocca;
 
 impl Mocca for PlayerMocca {
     fn load(mut deps: MoccaDeps) {
+        deps.depends_on::<CandyAudioMocca>();
         deps.depends_on::<CandyCameraMocca>();
+        deps.depends_on::<CandyCanMocca>();
         deps.depends_on::<CandyInputMocca>();
         deps.depends_on::<CandySkyMocca>();
         deps.depends_on::<CandySkyMocca>();
         deps.depends_on::<CandyTimeMocca>();
         deps.depends_on::<CollidersMocca>();
+        deps.depends_on::<RecolaAssetsMocca>();
 
         // FIXME currently not possible because level => foundation => rift => player
         // deps.depends_on::<LevelMocca>();
@@ -61,6 +70,16 @@ impl Mocca for PlayerMocca {
     }
 
     fn start(world: &mut World) -> Self {
+        world.run(play_welcome_clip);
+
+        let listener_entity = world.spawn((
+            Name::from_str("player listener"),
+            Transform3::identity(),
+            AudioListener::default(),
+            DynamicTransform,
+            HierarchyDirty,
+        ));
+
         world.set_singleton(Player {
             previous_position: Vec2::ZERO,
             eye_position: Vec3::Z,
@@ -70,6 +89,7 @@ impl Mocca for PlayerMocca {
             hours_target: 12.0,
             cheat_ghost_mode: false,
             cheat_teleport: 0,
+            listener_entity,
         });
 
         world.run(setup_window_and_camera);
@@ -83,11 +103,22 @@ impl Mocca for PlayerMocca {
         world.run(restrict_player_movement);
         world.run(update_player_eye);
         world.run(advance_time);
+        world.run(update_player_entity_position);
 
         if STATIC_SETTINGS.enable_cheats {
             world.run(cheats);
         }
     }
+}
+
+fn play_welcome_clip(mut cmd: Commands, asset_resolver: Singleton<SharedAssetResolver>) {
+    let path = asset_resolver.resolve("audio/music/intro-1.wav").unwrap();
+
+    cmd.spawn((
+        Name::from_str("background music"),
+        AudioSource::new(path).with_repeat(AudioRepeatKind::OneShot),
+        NonSpatialAudioSource::default(),
+    ));
 }
 
 fn restrict_player_movement(
@@ -328,4 +359,11 @@ fn cheats(
         player.cheat_teleport = input_raycast.cheat_teleport;
         cam_ctrl.set_position_xy(levels.pos[player.cheat_teleport % levels.pos.len()].xy());
     }
+}
+
+fn update_player_entity_position(player: Singleton<Player>, mut query_tf: Query<&mut Transform3>) {
+    query_tf
+        .get_mut(player.listener_entity)
+        .unwrap()
+        .translation = player.eye_position;
 }

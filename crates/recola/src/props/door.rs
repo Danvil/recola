@@ -5,11 +5,11 @@ use crate::{
     recola_mocca::CRIMSON,
 };
 use atom::prelude::*;
-use candy::{scene_tree::*, time::*};
+use candy::{audio::*, can::*, scene_tree::*, time::*};
 use eyre::{Result, eyre};
 use magi::{
     bsdf::PbrMaterial,
-    gems::{SmoothInputF32, SmoothInputF32Settings},
+    gems::{IntervalF32, SmoothInputControl, SmoothInputF32, SmoothInputF32Settings},
 };
 
 /// Creates a new gate which can be lowered by the player if they have the right key
@@ -33,6 +33,8 @@ pub struct DoorMocca;
 
 impl Mocca for DoorMocca {
     fn load(mut deps: MoccaDeps) {
+        deps.depends_on::<CandyAudioMocca>();
+        deps.depends_on::<CandyCanMocca>();
         deps.depends_on::<CandySceneTreeMocca>();
         deps.depends_on::<CandyTimeMocca>();
         deps.depends_on::<CollidersMocca>();
@@ -48,6 +50,7 @@ impl Mocca for DoorMocca {
 
     fn register_components(world: &mut World) {
         world.register_component::<DoubleDoor>();
+        world.register_component::<GlowOnKey>();
         world.register_component::<KeyId>();
         world.register_component::<LevelGate>();
         world.register_component::<SpawnDoubleDoorTask>();
@@ -56,8 +59,10 @@ impl Mocca for DoorMocca {
 
     fn step(&mut self, world: &mut World) {
         world.run(spawn_level_gate);
+        world.run(level_gate_glow_on_key);
         world.run(leve_gate_interaction);
         world.run(lower_level_gate);
+
         world.run(spawn_double_door);
         world.run(open_double_door);
     }
@@ -65,21 +70,27 @@ impl Mocca for DoorMocca {
 
 #[derive(Component, Debug, Clone)]
 struct LevelGate {
-    relief_entity: Entity,
     lower_progress: f32,
     progress_changed: bool,
     is_lowered: bool,
 }
 
 const LEVEL_GATE_INTERACTION_DISTANCE: f32 = 5.;
-const LEVEL_GATE_LOWER_SPEED: f32 = 1.333;
 const LEVEL_GATE_LOWER_MAX: f32 = 3.933;
+const LEVEL_GATE_LOWER_DURATION: f32 = 5.5; // TODO should match audio clip length!
+const LEVEL_GATE_LOWER_SPEED: f32 = LEVEL_GATE_LOWER_MAX / LEVEL_GATE_LOWER_DURATION;
+const LEVEL_GATE_LOWER_SPEED_SOUND_RANGE: [f32; 2] = [1.000, 20.000];
 
 fn spawn_level_gate(
     mut cmd: Commands,
+    asset_resolver: Singleton<SharedAssetResolver>,
     query_open_door_task: Query<(Entity, &SpawnLevelGateTask)>,
     query_props: Query<&CustomProperties>,
 ) {
+    let door_open_clip = asset_resolver
+        .resolve("audio/effects/sfx-level_gate.wav")
+        .unwrap();
+
     for (door_entity, task) in query_open_door_task.iter() {
         cmd.entity(door_entity).remove::<SpawnLevelGateTask>();
 
@@ -94,19 +105,32 @@ fn spawn_level_gate(
         cmd.entity(door_entity)
             .and_set(DynamicTransform)
             .and_set(LevelGate {
-                relief_entity: task.relief_entity,
                 lower_progress: 0.,
                 progress_changed: false,
                 is_lowered: false,
             })
-            .and_set(key_id);
+            .and_set(key_id)
+            .and_set(GlowOnKey {
+                relief_entity: task.relief_entity,
+            })
+            .and_set(AudioSource {
+                path: door_open_clip.clone(),
+                volume: 0.85,
+                state: AudioPlaybackState::Stop,
+                repeat: AudioRepeatKind::Stop,
+                volume_auto_play: false,
+            })
+            .and_set(SpatialAudioSource {
+                range: IntervalF32::from_array(LEVEL_GATE_LOWER_SPEED_SOUND_RANGE),
+                ..Default::default()
+            });
 
         cmd.entity(task.relief_entity)
             .and_set(MaterialSwap::from_iter([
                 PbrMaterial::diffuse(CRIMSON),
-                PbrMaterial::diffuse(CRIMSON).with_emission(CRIMSON.to_linear() * 3.0),
+                PbrMaterial::diffuse(CRIMSON).with_emission(CRIMSON.to_linear() * 3.33),
             ]))
-            .and_set(MaterialSwapSelection(0));
+            .and_set(MaterialSwapTransition::ZERO);
     }
 }
 
@@ -169,11 +193,36 @@ fn leve_gate_interaction(
     }
 }
 
+#[derive(Component)]
+pub struct GlowOnKey {
+    relief_entity: Entity,
+}
+
+fn level_gate_glow_on_key(
+    mut cmd: Commands,
+    player: Singleton<Player>,
+    mut query_door: Query<(Entity, &mut GlowOnKey, &KeyId)>,
+) {
+    for (door_entity, glow, key) in query_door.iter_mut() {
+        if player.keys.contains(key) {
+            // initiate material transition
+            cmd.entity(glow.relief_entity)
+                .and_set(MaterialSwapTransition {
+                    index: 1,
+                    speed: 0.133,
+                });
+
+            // and remove component
+            cmd.entity(door_entity).remove::<GlowOnKey>();
+        }
+    }
+}
+
 fn lower_level_gate(
     mut cmd: Commands,
-    mut query_door: Query<(Entity, &mut Transform3, &mut LevelGate)>,
+    mut query_door: Query<(Entity, &mut Transform3, &mut LevelGate, &mut AudioSource)>,
 ) {
-    for (door_entity, tf, door) in query_door.iter_mut() {
+    for (door_entity, tf, door, audio) in query_door.iter_mut() {
         // move door down
         if door.progress_changed {
             tf.translation.z = -door.lower_progress;
@@ -187,9 +236,12 @@ fn lower_level_gate(
             }
         }
 
-        // change material while operating
-        cmd.entity(door.relief_entity)
-            .and_set(MaterialSwapSelection::from_bool(door.progress_changed));
+        // play audio while operating
+        audio.state = if door.progress_changed {
+            AudioPlaybackState::Play
+        } else {
+            AudioPlaybackState::Pause
+        };
 
         door.progress_changed = false;
     }
@@ -202,10 +254,25 @@ struct DoubleDoor {
     open_progress: SmoothInputF32,
 }
 
+const DOUBLE_DOOR_OPEN_DELTA: f32 = 1.677;
+const DOUBLE_DOOR_OPEN_DURATION: f32 = 3.000;
+const DOUBLE_DOOR_OPEN_SETTINGS: SmoothInputF32Settings = SmoothInputF32Settings {
+    value_range: Some((0., 1.)),
+    max_speed: DOUBLE_DOOR_OPEN_DELTA / DOUBLE_DOOR_OPEN_DURATION,
+    max_accel: 1.,
+    max_deaccel: 1.,
+};
+const DOUBLE_DOOR_SOUND_RANGE: [f32; 2] = [1.000, 20.000];
+
 fn spawn_double_door(
     mut cmd: Commands,
+    asset_resolver: Singleton<SharedAssetResolver>,
     query_open_door_task: Query<(Entity, &SpawnDoubleDoorTask)>,
 ) {
+    let door_open_clip = asset_resolver
+        .resolve("audio/effects/sfx-double_door.wav")
+        .unwrap();
+
     for (door_entity, task) in query_open_door_task.iter() {
         cmd.entity(door_entity).remove::<SpawnDoubleDoorTask>();
 
@@ -215,36 +282,47 @@ fn spawn_double_door(
                 leafes: task.leafes,
                 colliders: task.colliders,
                 open_progress: SmoothInputF32::default(),
+            })
+            .and_set(AudioSource {
+                path: door_open_clip.clone(),
+                volume: 0.95,
+                state: AudioPlaybackState::Stop,
+                repeat: AudioRepeatKind::Loop,
+                volume_auto_play: true,
+            })
+            .and_set(SpatialAudioSource {
+                range: IntervalF32::from_array(DOUBLE_DOOR_SOUND_RANGE),
+                ..Default::default()
             });
 
         log::debug!("spawned double door: {door_entity}");
     }
 }
 
-const DOUBLE_DOOR_OPEN_SETTINGS: SmoothInputF32Settings = SmoothInputF32Settings {
-    value_range: Some((0., 1.)),
-    max_speed: 1.333,
-    max_accel: 10.,
-    max_deaccel: 10.,
-};
-
-const DOUBLE_DOOR_OPEN_DELTA: f32 = 1.677;
-
 fn open_double_door(
     mut cmd: Commands,
     time: Singleton<SimClock>,
-    mut query_door: Query<(Entity, &SwitchObserverState, &mut DoubleDoor)>,
+    mut query_door: Query<(
+        Entity,
+        &SwitchObserverState,
+        &mut DoubleDoor,
+        &mut AudioSource,
+    )>,
     mut query_tf: Query<&mut Transform3>,
 ) {
     let dt = time.sim_dt_f32();
 
-    for (door_entity, switch_observer, door) in query_door.iter_mut() {
+    for (door_entity, switch_observer, door, audio) in query_door.iter_mut() {
         // open door if powered
         let has_power = switch_observer.as_bool();
         door.open_progress.update(
             dt,
             &DOUBLE_DOOR_OPEN_SETTINGS,
-            magi::gems::SmoothInputControl::from_bool(has_power),
+            if has_power {
+                SmoothInputControl::Increase
+            } else {
+                SmoothInputControl::Decrease
+            },
             1.,
         );
         log::trace!(
@@ -263,5 +341,9 @@ fn open_double_door(
             query_tf.get_mut(entity).unwrap().translation.y = y0 + dir * delta;
         }
         cmd.entity(door_entity).and_set(CollidersDirtyTask);
+
+        // update audio
+        audio.volume = IntervalF32::from_min_max(0.01, 0.3)
+            .rescale_unit_clamped(door.open_progress.velocity.abs());
     }
 }

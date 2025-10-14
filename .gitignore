@@ -13,3 +13,7 @@ assets/**/cable/*.glb
 assets/**/overgrowth/*.glb
 # Blender backup files
 assets/**/*.blend1
+# Raw audio assets
+assets/recola/audio/raw/
+# Ableton backup files
+assets/recola/audio/**/Backup/

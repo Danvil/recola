@@ -1,6 +1,7 @@
 use crate::mechanics::{colliders::*, switch::*};
 use atom::prelude::*;
-use candy::scene_tree::*;
+use candy::{audio::*, can::*, scene_tree::*};
+use magi::gems::IntervalF32;
 
 #[derive(Component)]
 pub struct SpawnBarrierTask {
@@ -19,6 +20,8 @@ pub struct BarrierMocca;
 
 impl Mocca for BarrierMocca {
     fn load(mut deps: MoccaDeps) {
+        deps.depends_on::<CandyAudioMocca>();
+        deps.depends_on::<CandyCanMocca>();
         deps.depends_on::<CandySceneTreeMocca>();
         deps.depends_on::<SwitchMocca>();
         deps.depends_on::<CollidersMocca>();
@@ -39,13 +42,36 @@ impl Mocca for BarrierMocca {
     }
 }
 
-fn spawn_barrier(mut cmd: Commands, query_tasks: Query<(Entity, &SpawnBarrierTask)>) {
+const BARRIER_SOUND_RANGE: [f32; 2] = [0.5, 5.000];
+
+fn spawn_barrier(
+    mut cmd: Commands,
+    asset_resolver: Singleton<SharedAssetResolver>,
+    query_tasks: Query<(Entity, &SpawnBarrierTask)>,
+) {
     for (door_entity, task) in query_tasks.iter() {
         cmd.entity(door_entity).remove::<SpawnBarrierTask>();
-        cmd.entity(door_entity).and_set(Barrier {
-            force_field_entity: task.force_field_entity,
-            is_on: true,
-        });
+
+        let audio_path = asset_resolver
+            .resolve("audio/effects/sfx-barrier.wav")
+            .unwrap();
+
+        cmd.entity(door_entity)
+            .and_set(Barrier {
+                force_field_entity: task.force_field_entity,
+                is_on: true,
+            })
+            .and_set(AudioSource {
+                path: audio_path,
+                volume: 1.00,
+                state: AudioPlaybackState::Play,
+                repeat: AudioRepeatKind::Loop,
+                volume_auto_play: false,
+            })
+            .and_set(SpatialAudioSource {
+                range: IntervalF32::from_array(BARRIER_SOUND_RANGE),
+                ..Default::default()
+            });
     }
 }
 

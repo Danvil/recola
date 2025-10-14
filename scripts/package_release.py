@@ -25,7 +25,18 @@ def package_assets():
                 shutil.copy2(src, tmp_asset_dir / src.name)
 
     # 3.a Copy props.json
-    shutil.copy2(repo_root / "assets" / "recola" / "props.json", tmp_dir_assets / "assets" / "recola" / "props.json")
+    shutil.copy2(
+        repo_root / "assets" / "recola" / "props.json",
+        tmp_dir_assets / "assets" / "recola" / "props.json")
+
+    # 3. audio
+    for sub in ["effects", "music"]:
+        assets_dir = repo_root / "assets" / "recola" / "audio" / sub
+        tmp_asset_dir = tmp_dir_assets / "assets" / "recola" / "audio" / sub
+        tmp_asset_dir.mkdir(parents=True, exist_ok=True)
+        for ext in ("*.wav",):
+            for src in assets_dir.glob(ext):
+                shutil.copy2(src, tmp_asset_dir / src.name)
 
     # 3.b Copy candy assets
     assets_dir = Path("I:/Ikabur/atuin/crates/candy/candy_glassworks/shaders")

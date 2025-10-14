@@ -1,5 +1,6 @@
 use crate::{STATIC_SETTINGS, level::*, player::*};
 use atom::prelude::*;
+use candy::can::*;
 use candy::forge::*;
 use magi::prelude::SRgbU8Color;
 
@@ -24,4 +25,28 @@ impl Mocca for RecolaMocca {
     fn fini(&mut self, _world: &mut World) {
         log::info!("terminated.");
     }
+}
+
+pub struct RecolaAssetsMocca;
+
+impl Mocca for RecolaAssetsMocca {
+    fn load(mut deps: MoccaDeps) {
+        deps.depends_on::<CandyCanMocca>();
+    }
+
+    fn start(world: &mut World) -> Self {
+        world.run(setup_asset_resolver);
+        Self
+    }
+}
+
+fn setup_asset_resolver(asset_resolver: SingletonMut<SharedAssetResolver>) {
+    if asset_resolver.add_pack("recola.candy").is_err() {
+        asset_resolver
+            .add_pack("I:/Ikabur/recola/tmp/recola/release/recola.candy")
+            .unwrap();
+    }
+    asset_resolver.add_prefix("assets/recola").unwrap();
+    asset_resolver.add_prefix("assets/shaders").unwrap();
+    asset_resolver.add_prefix("assets/candy").unwrap();
 }

@@ -22,11 +22,22 @@ impl MaterialSwap {
 
 /// Indicates the desired material used by material swap
 #[derive(Component, Debug)]
-pub struct MaterialSwapSelection(pub usize);
+pub struct MaterialSwapTransition {
+    pub index: usize,
+    pub speed: f32,
+}
 
-impl MaterialSwapSelection {
+impl MaterialSwapTransition {
+    pub const ZERO: Self = MaterialSwapTransition {
+        index: 0,
+        speed: 1.,
+    };
+
     pub fn from_bool(flag: bool) -> Self {
-        Self(flag as usize)
+        Self {
+            index: flag as usize,
+            speed: 1.0,
+        }
     }
 }
 
@@ -52,7 +63,7 @@ impl Mocca for MaterialSwapMocca {
 
     fn register_components(world: &mut World) {
         world.register_component::<MaterialSwap>();
-        world.register_component::<MaterialSwapSelection>();
+        world.register_component::<MaterialSwapTransition>();
         world.register_component::<MaterialSwapState>();
     }
 
@@ -64,12 +75,12 @@ impl Mocca for MaterialSwapMocca {
 
 fn init_current_id(
     mut cmd: Commands,
-    query: Query<(Entity, &MaterialSwapSelection), Without<MaterialSwapState>>,
+    query: Query<(Entity, &MaterialSwapTransition), Without<MaterialSwapState>>,
 ) {
     for (entity, id) in query.iter() {
         cmd.entity(entity).and_set(MaterialSwapState {
-            previous: id.0,
-            target: id.0,
+            previous: id.index,
+            target: id.index,
             interp: Smoothstep::default(),
         });
     }
@@ -81,25 +92,25 @@ fn swap_materials(
     mut query: Query<(
         Entity,
         &MaterialSwap,
-        &MaterialSwapSelection,
+        &MaterialSwapTransition,
         &mut MaterialSwapState,
     )>,
 ) {
     let dt = time.sim_dt_f32();
 
-    for (entity, mats, id, state) in query.iter_mut() {
-        if id.0 >= mats.materials.len() {
-            log::error!("invalid MaterialSwapId: {id:?}");
+    for (entity, mats, transition, state) in query.iter_mut() {
+        if transition.index >= mats.materials.len() {
+            log::error!("invalid MaterialSwapId: index={}", transition.index);
             continue;
         }
 
-        if state.target != id.0 {
+        if state.target != transition.index {
             state.previous = state.target;
-            state.target = id.0;
+            state.target = transition.index;
             state.interp.invert_progress();
         }
 
-        state.interp.step(dt);
+        state.interp.step(dt * transition.speed);
         if state.interp.is_max() {
             state.previous = state.target;
         }

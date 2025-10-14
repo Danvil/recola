@@ -3,11 +3,11 @@ use crate::{
     player::*,
 };
 use atom::prelude::*;
-use candy::{material::*, prims::*, rng::*, scene_tree::*, time::*};
+use candy::{audio::*, can::*, material::*, prims::*, rng::*, scene_tree::*, time::*};
 use glam::{Vec3, Vec3Swizzles};
 use magi::{
     color::*,
-    gems::{SmoothInputControl, SmoothInputF32, SmoothInputF32Settings},
+    gems::{IntervalF32, SmoothInputControl, SmoothInputF32, SmoothInputF32Settings},
     se::SO3,
 };
 
@@ -64,6 +64,8 @@ pub struct LaserPointerMocca;
 
 impl Mocca for LaserPointerMocca {
     fn load(mut deps: MoccaDeps) {
+        deps.depends_on::<CandyAudioMocca>();
+        deps.depends_on::<CandyCanMocca>();
         deps.depends_on::<CandyMaterialMocca>();
         deps.depends_on::<CandyPrimsMocca>();
         deps.depends_on::<CandyRngMocca>();
@@ -143,9 +145,18 @@ const BEAM_WIDTH: f32 = 0.0167;
 const INTERACTION_MAX_DISTANCE: f32 = 3.0;
 const LASER_TARGET_HEIGHT_REL: f32 = 4.80 / 6.00;
 const LASER_POINTER_EMIT_HEIGHT: f32 = 1.333;
+const LASER_POINTER_SOUND_RANGE: [f32; 2] = [1.333, 5.000];
 
-fn spawn_laser_pointer(mut cmd: Commands, query: Query<(Entity, &SpawnLaserPointer)>) {
+fn spawn_laser_pointer(
+    mut cmd: Commands,
+    asset_resolver: Singleton<SharedAssetResolver>,
+    query: Query<(Entity, &SpawnLaserPointer)>,
+) {
     for (entity, spec) in query.iter() {
+        let audio_path = asset_resolver
+            .resolve("audio/effects/sfx-laser_pointer.wav")
+            .unwrap();
+
         let beam_entity = cmd.spawn((
             Transform3::identity()
                 .with_scale_xyz(MAX_BEAM_LEN, BEAM_WIDTH, BEAM_WIDTH)
@@ -194,6 +205,17 @@ fn spawn_laser_pointer(mut cmd: Commands, query: Query<(Entity, &SpawnLaserPoint
                 beam_length: MAX_BEAM_LEN,
                 collider_height_over_ground: 6.0,
                 beam_end_entity,
+            })
+            .and_set(AudioSource {
+                path: audio_path,
+                volume: 0.75,
+                state: AudioPlaybackState::Play,
+                repeat: AudioRepeatKind::Loop,
+                volume_auto_play: false,
+            })
+            .and_set(SpatialAudioSource {
+                range: IntervalF32::from_array(LASER_POINTER_SOUND_RANGE),
+                ..Default::default()
             });
 
         cmd.entity(spec.collider_entity).set(CollisionRouting {
@@ -227,7 +249,7 @@ fn spawn_laser_target(mut cmd: Commands, query: Query<(Entity, &SpawnLaserTarget
                     .with_base_color(colors::BLACK)
                     .with_emission(spec.activate_emission_color),
             ]))
-            .and_set(MaterialSwapSelection(0));
+            .and_set(MaterialSwapTransition::ZERO);
 
         log::debug!("spawned laser_target: {entity}");
     }
@@ -407,7 +429,7 @@ fn set_laser_target_material(mut cmd: Commands, mut query: Query<&mut LaserPoint
             laser_target.is_activated = laser_target.target_is_activated;
 
             cmd.entity(laser_target.light_entity)
-                .and_set(MaterialSwapSelection::from_bool(laser_target.is_activated));
+                .and_set(MaterialSwapTransition::from_bool(laser_target.is_activated));
         }
     }
 }

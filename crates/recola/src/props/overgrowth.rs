@@ -1,8 +1,9 @@
 use crate::props::laser_pointer::*;
 use atom::prelude::*;
-use candy::{material::*, prims::*, rng::*, scene_tree::*, time::*};
+use candy::{audio::*, can::*, material::*, prims::*, rng::*, scene_tree::*, time::*};
 use glam::Vec3;
 use magi::color::{LinearColor, SRgbU8Color, colors};
+use magi::gems::{IntervalF32, SmoothInputControl, SmoothInputF32, SmoothInputF32Settings};
 
 #[derive(Component)]
 pub struct SpawnOvergrowthTask {
@@ -14,6 +15,7 @@ pub struct Overgrowth {
     pub burn_progress: f32,
     pub burn_particle_gen: f32,
     pub change_mat_entity: Entity,
+    pub is_burning: bool,
 }
 
 const OVERGROWTH_BURN_DURATION: f32 = 3.33;
@@ -23,6 +25,8 @@ pub struct OvergrowthMocca;
 
 impl Mocca for OvergrowthMocca {
     fn load(mut deps: MoccaDeps) {
+        deps.depends_on::<CandyAudioMocca>();
+        deps.depends_on::<CandyCanMocca>();
         deps.depends_on::<CandyMaterialMocca>();
         deps.depends_on::<CandyMaterialMocca>();
         deps.depends_on::<CandyPrimsMocca>();
@@ -38,29 +42,55 @@ impl Mocca for OvergrowthMocca {
     }
 
     fn register_components(world: &mut World) {
-        world.register_component::<SpawnOvergrowthTask>();
         world.register_component::<Overgrowth>();
         world.register_component::<OvergrowthBurnParticle>();
+        world.register_component::<SmoothVolumeFromBoolControl>();
+        world.register_component::<SpawnOvergrowthTask>();
     }
 
     fn step(&mut self, world: &mut World) {
         world.run(init_overgrowth);
         world.run(burn_overgrowth);
+        world.run(play_burning_audio);
         world.run(spawn_overgrowth_burn_particles);
         world.run(animate_overgrowth_burn_particles);
     }
 }
 
-fn init_overgrowth(mut cmd: Commands, query_task: Query<(Entity, &SpawnOvergrowthTask)>) {
+fn init_overgrowth(
+    mut cmd: Commands,
+    asset_resolver: Singleton<SharedAssetResolver>,
+    query_task: Query<(Entity, &SpawnOvergrowthTask)>,
+) {
     for (entity, task) in query_task.iter() {
         cmd.entity(entity).remove::<SpawnOvergrowthTask>();
+
+        let fire_burning_audio_path = asset_resolver
+            .resolve("audio/effects/sfx-fire.wav")
+            .unwrap();
+
         cmd.entity(entity)
             .and_set(Overgrowth {
                 burn_progress: 0.,
                 burn_particle_gen: 0.,
                 change_mat_entity: task.change_mat_entity,
+                is_burning: false,
             })
-            .and_set(BeamDetector { latch: false });
+            .and_set(BeamDetector { latch: false })
+            .and_set(AudioSource {
+                path: fire_burning_audio_path,
+                volume: 0.,
+                state: AudioPlaybackState::Stop,
+                repeat: AudioRepeatKind::Loop,
+                volume_auto_play: true,
+            })
+            .and_set(SpatialAudioSource {
+                range: IntervalF32::from_min_max(1., 30.),
+                ..Default::default()
+            })
+            .and_set(SmoothVolumeFromBoolControl {
+                smooth: SmoothInputF32::default(),
+            });
     }
 }
 
@@ -74,7 +104,9 @@ fn burn_overgrowth(
 
     let dt = time.sim_dt_f32();
     for (entity, overgrowth, hit) in query.iter_mut() {
-        if hit.as_bool() {
+        overgrowth.is_burning = hit.as_bool();
+
+        if overgrowth.is_burning {
             overgrowth.burn_particle_gen += dt;
 
             overgrowth.burn_progress += dt;
@@ -134,6 +166,35 @@ fn spawn_overgrowth_burn_particles(
                 HierarchyDirty,
             ));
         }
+    }
+}
+
+#[derive(Component)]
+struct SmoothVolumeFromBoolControl {
+    smooth: SmoothInputF32,
+}
+
+fn play_burning_audio(
+    clock: Singleton<SimClock>,
+    mut query: Query<(
+        &Overgrowth,
+        &mut AudioSource,
+        &mut SmoothVolumeFromBoolControl,
+    )>,
+) {
+    let settings = SmoothInputF32Settings {
+        value_range: Some((0.0, 1.0)),
+        max_speed: 0.333,
+        max_accel: 0.667,
+        max_deaccel: 0.667,
+    };
+
+    let dt = clock.sim_dt_f32();
+
+    for (overgrowth, audio_src, volume_control) in query.iter_mut() {
+        let ctrl = SmoothInputControl::from_bool(overgrowth.is_burning);
+        let volume = volume_control.smooth.update(dt, &settings, ctrl, 1.0);
+        audio_src.volume = volume;
     }
 }
 

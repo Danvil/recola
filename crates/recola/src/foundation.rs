@@ -3,7 +3,7 @@ use crate::{
     custom_properties::*,
     mechanics::{colliders::*, switch::*},
     props::{barrier::*, door::*, laser_pointer::*, overgrowth::*, rift::*},
-    recola_mocca::CRIMSON,
+    recola_mocca::{CRIMSON, RecolaAssetsMocca},
 };
 use atom::prelude::*;
 use candy::{can::*, glassworks::*, scene_tree::*};
@@ -28,6 +28,7 @@ impl Mocca for FoundationMocca {
         deps.depends_on::<DoorMocca>();
         deps.depends_on::<LaserPointerMocca>();
         deps.depends_on::<OvergrowthMocca>();
+        deps.depends_on::<RecolaAssetsMocca>();
         deps.depends_on::<RiftMocca>();
         deps.depends_on::<SwitchMocca>();
     }
@@ -37,7 +38,6 @@ impl Mocca for FoundationMocca {
     }
 
     fn start(world: &mut World) -> Self {
-        world.run(setup_asset_resolver);
         world.run(load_assets).unwrap();
         Self
     }
@@ -49,17 +49,6 @@ impl Mocca for FoundationMocca {
     fn fini(&mut self, _world: &mut World) {
         log::info!("terminated.");
     }
-}
-
-fn setup_asset_resolver(asset_resolver: SingletonMut<SharedAssetResolver>) {
-    if asset_resolver.add_pack("recola.candy").is_err() {
-        asset_resolver
-            .add_pack("I:/Ikabur/recola/tmp/recola/release/recola.candy")
-            .unwrap();
-    }
-    asset_resolver.add_prefix("assets/recola").unwrap();
-    asset_resolver.add_prefix("assets/shaders").unwrap();
-    asset_resolver.add_prefix("assets/candy").unwrap();
 }
 
 #[derive(Serialize, Deserialize)]

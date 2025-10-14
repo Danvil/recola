@@ -6,7 +6,9 @@ use crate::{
     recola_mocca::CRIMSON,
 };
 use atom::prelude::*;
-use candy::{glassworks::*, material::*, prims::*, rng::*, scene_tree::*, time::*};
+use candy::{
+    audio::*, can::*, glassworks::*, material::*, prims::*, rng::*, scene_tree::*, time::*,
+};
 use glam::Vec3;
 
 #[derive(Component)]
@@ -20,6 +22,8 @@ pub struct RiftMocca;
 
 impl Mocca for RiftMocca {
     fn load(mut deps: MoccaDeps) {
+        deps.depends_on::<CandyAudioMocca>();
+        deps.depends_on::<CandyCanMocca>();
         deps.depends_on::<CandyGlassworksMocca>();
         deps.depends_on::<CandyMaterialMocca>();
         deps.depends_on::<CandyPrimsMocca>();
@@ -247,6 +251,7 @@ const RIFT_DECHARGE_RATE: f32 = 0.333;
 
 fn consume_rift(
     mut cmd: Commands,
+    asset_resolver: Singleton<SharedAssetResolver>,
     time: Singleton<SimClock>,
     mut player: SingletonMut<Player>,
     mut query_rift_consume: Query<(Entity, &mut Transform3, &mut RiftConsume, &RiftLevel)>,
@@ -266,6 +271,18 @@ fn consume_rift(
             player.keys.insert(key);
 
             cmd.entity(entity).set(Visibility::Hidden);
+
+            // play audio
+            cmd.spawn((
+                AudioSource {
+                    path: asset_resolver.resolve("audio/music/consume.wav").unwrap(),
+                    volume: 1.00,
+                    state: AudioPlaybackState::Play,
+                    repeat: AudioRepeatKind::OneShot,
+                    volume_auto_play: false,
+                },
+                NonSpatialAudioSource::default(),
+            ));
         }
 
         rift_consume.charge = (rift_consume.charge - RIFT_DECHARGE_RATE * dt).max(0.);
