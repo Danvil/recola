@@ -77,9 +77,9 @@ fn spawn_barrier(
 
 fn activate_barrier(
     mut cmd: Commands,
-    mut query: Query<(Entity, &SwitchObserverState, &mut Barrier)>,
+    mut query: Query<(Entity, &SwitchObserverState, &mut Barrier, &mut AudioSource)>,
 ) {
-    for (entity, observer, barrier) in query.iter_mut() {
+    for (entity, observer, barrier, audio) in query.iter_mut() {
         let new_on = !observer.as_bool();
 
         if new_on != barrier.is_on {
@@ -105,6 +105,9 @@ fn activate_barrier(
                     CollisionLayerMask::none()
                 },
             });
+
+            // toggle audio playback
+            audio.volume = if new_on { 1. } else { 0. };
         }
     }
 }
