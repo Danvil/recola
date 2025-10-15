@@ -153,12 +153,10 @@ fn restrict_player_movement(
 
     // initial conditions
     let mut position = player.previous_position;
-    println!("player: {position} -> {target}");
-
-    let capsule = capsule_f(position);
 
     // If player is inside a collider, cast a ray in the opposite direction and move the player
     // out.
+    let capsule = capsule_f(position);
     if let Some(_) = colliders.closest_exit_multi_ball(&capsule, None, CollisionLayer::Nav) {
         // note that we cannot move to the exit point because that might be up or down ..
 
@@ -207,8 +205,6 @@ fn restrict_player_movement(
 
             // Allow sliding parallel to the collider
             remaining = remaining - remaining.dot(hit.normal.xy()) * hit.normal.xy();
-            println!("hit: {hit:?}");
-            println!("collision: {position},  {remaining}");
         }
     }
 
