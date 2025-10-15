@@ -578,6 +578,7 @@ dependencies = [
  "glam 0.30.5",
  "log",
  "magi_gems",
+ "magi_geo",
  "mocca",
  "rodio",
  "serde",

@@ -8,7 +8,7 @@ use candy::{audio::*, can::*, material::*, prims::*, rng::*, scene_tree::*, time
 use glam::{Vec3, Vec3Swizzles};
 use magi::{
     color::*,
-    gems::{IntervalF32, SmoothInputControl, SmoothInputF32, SmoothInputF32Settings},
+    gems::{SmoothInputControl, SmoothInputF32, SmoothInputF32Settings},
     se::SO3,
 };
 
@@ -20,6 +20,9 @@ pub const LASER_BEAM_COLOR: SRgbU8Color = SRgbU8Color::from_rgb(205, 127, 50);
 pub struct SpawnLaserPointer {
     /// Collider entity of the laser pointer
     pub collider_entity: Entity,
+
+    /// Audio emit body
+    pub audio_entity: Entity,
 }
 
 /// Spawns a laser target on an entity
@@ -146,7 +149,6 @@ const BEAM_WIDTH: f32 = 0.0167;
 const INTERACTION_MAX_DISTANCE: f32 = 3.0;
 const LASER_TARGET_HEIGHT_REL: f32 = 4.80 / 6.00;
 const LASER_POINTER_EMIT_HEIGHT: f32 = 1.333;
-const LASER_POINTER_SOUND_RANGE: [f32; 2] = [1.333, 5.000];
 
 fn spawn_laser_pointer(
     mut cmd: Commands,
@@ -206,18 +208,15 @@ fn spawn_laser_pointer(
                 beam_length: MAX_BEAM_LEN,
                 collider_height_over_ground: 6.0,
                 beam_end_entity,
-            })
-            .and_set(AudioSource {
-                path: audio_path,
-                volume: 0.75,
-                state: AudioPlaybackState::Play,
-                repeat: AudioRepeatKind::Loop,
-                volume_auto_play: false,
-            })
-            .and_set(SpatialAudioSource {
-                range: IntervalF32::from_array(LASER_POINTER_SOUND_RANGE),
-                ..Default::default()
             });
+
+        cmd.entity(spec.audio_entity).and_set(AudioSource {
+            path: audio_path,
+            volume: 1.0,
+            state: AudioPlaybackState::Play,
+            repeat: AudioRepeatKind::Loop,
+            volume_auto_play: false,
+        });
 
         cmd.entity(spec.collider_entity).set(CollisionRouting {
             on_raycast_entity: entity,
@@ -425,9 +424,9 @@ fn activate_laser_target(mut query: Query<(&mut LaserPointerTarget, &BeamHit)>) 
 }
 
 fn activate_laser_target_switch(
-    mut query: Query<(Entity, &BeamHit, &mut SwitchState), With<LaserPointerTarget>>,
+    mut query: Query<(&BeamHit, &mut SwitchState), With<LaserPointerTarget>>,
 ) {
-    for (entity, hit, switch) in query.iter_mut() {
+    for (hit, switch) in query.iter_mut() {
         switch.set_from_bool(hit.as_bool());
     }
 }

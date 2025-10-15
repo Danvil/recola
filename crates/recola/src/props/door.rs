@@ -80,7 +80,6 @@ const LEVEL_GATE_INTERACTION_DISTANCE: f32 = 5.;
 const LEVEL_GATE_LOWER_MAX: f32 = 3.933;
 const LEVEL_GATE_LOWER_DURATION: f32 = 5.5; // TODO should match audio clip length!
 const LEVEL_GATE_LOWER_SPEED: f32 = LEVEL_GATE_LOWER_MAX / LEVEL_GATE_LOWER_DURATION;
-const LEVEL_GATE_LOWER_SPEED_SOUND_RANGE: [f32; 2] = [1.000, 20.000];
 
 fn spawn_level_gate(
     mut cmd: Commands,
@@ -120,10 +119,6 @@ fn spawn_level_gate(
                 state: AudioPlaybackState::Stop,
                 repeat: AudioRepeatKind::Stop,
                 volume_auto_play: false,
-            })
-            .and_set(SpatialAudioSource {
-                range: IntervalF32::from_array(LEVEL_GATE_LOWER_SPEED_SOUND_RANGE),
-                ..Default::default()
             });
 
         cmd.entity(task.relief_entity)
@@ -263,7 +258,6 @@ const DOUBLE_DOOR_OPEN_SETTINGS: SmoothInputF32Settings = SmoothInputF32Settings
     max_accel: 1.,
     max_deaccel: 1.,
 };
-const DOUBLE_DOOR_SOUND_RANGE: [f32; 2] = [1.000, 20.000];
 
 fn spawn_double_door(
     mut cmd: Commands,
@@ -290,10 +284,6 @@ fn spawn_double_door(
                 state: AudioPlaybackState::Stop,
                 repeat: AudioRepeatKind::Loop,
                 volume_auto_play: true,
-            })
-            .and_set(SpatialAudioSource {
-                range: IntervalF32::from_array(DOUBLE_DOOR_SOUND_RANGE),
-                ..Default::default()
             });
 
         log::debug!("spawned double door: {door_entity}");

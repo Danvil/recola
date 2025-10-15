@@ -278,7 +278,7 @@ fn consume_rift(
                     repeat: AudioRepeatKind::OneShot,
                     volume_auto_play: false,
                 },
-                NonSpatialAudioSource::default(),
+                GlobalAudioEmitter,
             ));
         }
 

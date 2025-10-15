@@ -1,7 +1,6 @@
 use crate::{collision::*, mechanics::switch::*};
 use atom::prelude::*;
 use candy::{audio::*, can::*, scene_tree::*};
-use magi::gems::IntervalF32;
 
 #[derive(Component)]
 pub struct SpawnBarrierTask {
@@ -42,8 +41,6 @@ impl Mocca for BarrierMocca {
     }
 }
 
-const BARRIER_SOUND_RANGE: [f32; 2] = [0.5, 5.000];
-
 fn spawn_barrier(
     mut cmd: Commands,
     asset_resolver: Singleton<SharedAssetResolver>,
@@ -67,10 +64,6 @@ fn spawn_barrier(
                 state: AudioPlaybackState::Play,
                 repeat: AudioRepeatKind::Loop,
                 volume_auto_play: false,
-            })
-            .and_set(SpatialAudioSource {
-                range: IntervalF32::from_array(BARRIER_SOUND_RANGE),
-                ..Default::default()
             });
     }
 }

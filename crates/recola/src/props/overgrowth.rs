@@ -2,8 +2,10 @@ use crate::props::laser_pointer::*;
 use atom::prelude::*;
 use candy::{audio::*, can::*, material::*, prims::*, rng::*, scene_tree::*, time::*};
 use glam::Vec3;
-use magi::color::{LinearColor, SRgbU8Color, colors};
-use magi::gems::{IntervalF32, SmoothInputControl, SmoothInputF32, SmoothInputF32Settings};
+use magi::{
+    color::{LinearColor, SRgbU8Color, colors},
+    gems::{SmoothInputControl, SmoothInputF32, SmoothInputF32Settings},
+};
 
 #[derive(Component)]
 pub struct SpawnOvergrowthTask {
@@ -83,10 +85,6 @@ fn init_overgrowth(
                 state: AudioPlaybackState::Stop,
                 repeat: AudioRepeatKind::Loop,
                 volume_auto_play: true,
-            })
-            .and_set(SpatialAudioSource {
-                range: IntervalF32::from_min_max(1., 30.),
-                ..Default::default()
             })
             .and_set(SmoothVolumeFromBoolControl {
                 smooth: SmoothInputF32::default(),

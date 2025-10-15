@@ -7,9 +7,14 @@ use crate::{
     recola_mocca::{CRIMSON, RecolaAssetsMocca},
 };
 use atom::prelude::*;
-use candy::{can::*, glassworks::*, scene_tree::*};
+use candy::{
+    audio::{AudioEmitterBody, SpatialAudioEmitter},
+    can::*,
+    glassworks::*,
+    scene_tree::*,
+};
 use eyre::Result;
-use magi::color::colors;
+use magi::{color::colors, geo::Aabb};
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
@@ -93,9 +98,11 @@ fn load_asset_blueprints(
         (With<AssetLoaded>, Without<BlueprintApplied>),
     >,
     children: Relation<ChildOf>,
+    query_tf: Query<&Transform3>,
     query_name: Query<&Name>,
 ) {
     for (entity, ainst, props) in query.iter() {
+        // Setup colliders
         let colliders = find_colliders(&children, &query_name, entity);
         for &(collider_entity, collision_layer_mask) in &colliders {
             cmd.entity(collider_entity)
@@ -115,6 +122,30 @@ fn load_asset_blueprints(
             })
             .and_set(CollidersDirtyTask);
 
+        // Setup audio emitter
+        let audio_emitter_entity = find_child(&children, &query_name, entity, |name| {
+            name.ends_with("AUDIO_EMITTER")
+        });
+        if let Some(audio_emitter_entity) = audio_emitter_entity {
+            let tf = query_tf.get(audio_emitter_entity).unwrap();
+
+            if tf.rotation.to_axis_angle().1.abs() > 1.0f32.to_radians() {
+                log::warn!("Audio emitter rotation is not aligned with the world axes");
+            }
+
+            // Assuming the collider is a unit cube
+            let aabb = Aabb::from_centroid_size(tf.translation, tf.scale);
+
+            cmd.entity(entity).and_set(SpatialAudioEmitter {
+                body: AudioEmitterBody::Aabb(aabb),
+            });
+
+            if !STATIC_SETTINGS.show_audio_emitters {
+                cmd.entity(audio_emitter_entity).set(Visibility::Hidden)
+            }
+        };
+
+        // Setup switch
         if let Some(props) = props {
             if let Some(switches) = props.get_string_list("switches") {
                 cmd.entity(entity)
@@ -133,6 +164,7 @@ fn load_asset_blueprints(
                         .unwrap();
 
                 cmd.entity(pointer).set(SpawnLaserPointer {
+                    audio_entity: entity,
                     collider_entity: colliders[0].0,
                 });
             }

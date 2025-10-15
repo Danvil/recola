@@ -17,6 +17,7 @@ use candy::{
     utils::{CameraLink, ImageLocation, ImageShape, WindowDef, WindowLayout},
 };
 use glam::{Vec2, Vec3, Vec3Swizzles};
+use magi::geo::PosBall3;
 use std::collections::HashSet;
 
 #[derive(Component)]
@@ -117,12 +118,11 @@ fn play_welcome_clip(mut cmd: Commands, asset_resolver: Singleton<SharedAssetRes
     cmd.spawn((
         Name::from_str("background music"),
         AudioSource::new(path).with_repeat(AudioRepeatKind::OneShot),
-        NonSpatialAudioSource::default(),
+        GlobalAudioEmitter,
     ));
 }
 
 const PLAYER_SPAWN: Vec2 = Vec2::new(-4.5, -4.5);
-const PLAYER_SPHERE_HEIGHT: f32 = 1.667;
 const PLAYER_SPHERE_RADIUS: f32 = 0.333;
 const PLAYER_SPHERE_COUNT: usize = 5; // first sphere at height = radius/2, step = radius
 
