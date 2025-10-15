@@ -1,3 +1,4 @@
+pub mod collision;
 pub mod custom_properties;
 pub mod foundation;
 pub mod level;

@@ -1,8 +1,5 @@
 use crate::{
-    custom_properties::*,
-    mechanics::{colliders::*, switch::*},
-    player::*,
-    props::door::KeyId,
+    collision::*, custom_properties::*, mechanics::switch::*, player::*, props::door::KeyId,
     recola_mocca::CRIMSON,
 };
 use atom::prelude::*;

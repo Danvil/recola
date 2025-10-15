@@ -1,7 +1,7 @@
 use crate::{
     STATIC_SETTINGS,
+    collision::*,
     level::*,
-    mechanics::colliders::*,
     props::{door::KeyId, rift::RiftLevel},
     recola_mocca::RecolaAssetsMocca,
 };
@@ -81,7 +81,7 @@ impl Mocca for PlayerMocca {
         ));
 
         world.set_singleton(Player {
-            previous_position: Vec2::ZERO,
+            previous_position: PLAYER_SPAWN,
             eye_position: Vec3::Z,
             rift_charges: HashSet::new(),
             keys: HashSet::new(),
@@ -121,36 +121,100 @@ fn play_welcome_clip(mut cmd: Commands, asset_resolver: Singleton<SharedAssetRes
     ));
 }
 
+const PLAYER_SPAWN: Vec2 = Vec2::new(-4.5, -4.5);
+const PLAYER_SPHERE_HEIGHT: f32 = 1.667;
+const PLAYER_SPHERE_RADIUS: f32 = 0.333;
+const PLAYER_SPHERE_COUNT: usize = 5; // first sphere at height = radius/2, step = radius
+
 fn restrict_player_movement(
     mut player: SingletonMut<Player>,
     colliders: Singleton<ColliderWorld>,
     mut query_cam_ctrl: Query<&mut FirstPersonCameraController>,
 ) {
-    if player.cheat_ghost_mode {
-        return;
-    }
-
     let cam_ctrl = query_cam_ctrl
         .single_mut()
         .expect("must have FirstPersonCameraController");
 
-    // shoot rays from eye downwards
-    const TEST_RAY_RADIUS: f32 = 0.333;
-    const TEST_RAY_ANGLES_DEG: [f32; 8] = [0.0_f32, 45., 90., 135., 180., 225., 270., 315.];
-    let new_pos = cam_ctrl.position();
-    let is_colliding = TEST_RAY_ANGLES_DEG.iter().any(|angle_deg| {
-        let delta = TEST_RAY_RADIUS * Vec2::from_angle(angle_deg.to_radians());
-        let origin = new_pos + Vec3::new(delta.x, delta.y, 1.7);
-        let ray = Ray3::from_origin_direction(origin, -Vec3::Z).unwrap();
-        colliders.raycast(&ray, None, CollisionLayer::Nav).is_some()
-    });
+    let target = cam_ctrl.position().xy();
 
-    // If there is an obstacle set back position
-    if is_colliding {
-        cam_ctrl.set_position_xy(player.previous_position);
-    } else {
-        player.previous_position = new_pos.xy();
+    // ombit collision detection in ghost mode
+    if player.cheat_ghost_mode {
+        player.previous_position = target;
+        return;
     }
+
+    // player collision shape is an approximate capsule reprsented by a set of balls
+    let capsule_f = |pos: Vec2| -> [PosBall3; PLAYER_SPHERE_COUNT] {
+        core::array::from_fn(|i| PosBall3 {
+            position: Vec3::new(pos.x, pos.y, (0.5 + i as f32) * PLAYER_SPHERE_RADIUS),
+            radius: PLAYER_SPHERE_RADIUS,
+        })
+    };
+
+    // initial conditions
+    let mut position = player.previous_position;
+    println!("player: {position} -> {target}");
+
+    let capsule = capsule_f(position);
+
+    // If player is inside a collider, cast a ray in the opposite direction and move the player
+    // out.
+    if let Some(_) = colliders.closest_exit_multi_ball(&capsule, None, CollisionLayer::Nav) {
+        // note that we cannot move to the exit point because that might be up or down ..
+
+        if let Some(direction) = (position - target).try_normalize() {
+            if let Some(hit) = colliders.cast_multi_ball(
+                &capsule,
+                Vec3::new(direction.x, direction.y, 0.),
+                None,
+                CollisionLayer::Nav,
+            ) {
+                position = (hit.point + hit.normal * 0.01).xy();
+            }
+        }
+    } else {
+        let mut remaining = target - position;
+
+        // Now perform normal collision-aware movement toward target
+        for _ in 0..2 {
+            let remaining_len = remaining.length();
+            if remaining_len < 0.001 {
+                break;
+            }
+            let direction = Vec3::new(remaining.x, remaining.y, 0.) / remaining_len;
+
+            // reuse capsule from exit check on first iteration
+            let capsule = capsule_f(position);
+
+            // Check for collision when moving the remaining distance
+            let Some(hit) =
+                colliders.cast_multi_ball(&capsule, direction, None, CollisionLayer::Nav)
+            else {
+                // If there is no collision we are done
+                position += remaining;
+                break;
+            };
+
+            // If collision is out of range we are done
+            if remaining_len < hit.distance {
+                position += remaining;
+                break;
+            }
+
+            // Move up to collision point (with small epsilon back to avoid penetration)
+            let safe_distance = (hit.distance - 0.001).max(0.0);
+            position = position + direction.xy() * safe_distance;
+
+            // Allow sliding parallel to the collider
+            remaining = remaining - remaining.dot(hit.normal.xy()) * hit.normal.xy();
+            println!("hit: {hit:?}");
+            println!("collision: {position},  {remaining}");
+        }
+    }
+
+    // Write final collision-free position
+    cam_ctrl.set_position_xy(position);
+    player.previous_position = position;
 }
 
 fn update_player_eye(
@@ -230,7 +294,7 @@ fn setup_window_and_camera(clock: Singleton<SimClock>, mut cmd: Commands) {
         eye_height_clearance: 1.7,
     };
     let mut cam_ctrl = FirstPersonCameraController::new(cam_ctrl_settings);
-    cam_ctrl.set_position_xy(Vec2::new(-4.5, -4.5));
+    cam_ctrl.set_position_xy(PLAYER_SPAWN);
     cam_ctrl.set_yaw(90.0_f32.to_radians());
     let cam_ctrl_agent = spawn_agent(&mut cmd, cam_ctrl);
     add_route::<CameraCommand, _>(&mut cmd, cam_ctrl_agent, cam);
@@ -317,9 +381,9 @@ fn input_raycast(
     let ray = cam.center_pixel_ray();
 
     // Find collider along ray
-    let Some((hit_entity, lam)) = colliders
-        .raycast(&ray, None, CollisionLayer::Interact)
-        .map(|(id, lam)| (colliders[id].user(), lam))
+    let Some((hit_entity, distance)) = colliders
+        .raycast(&ray, 0.10, None, CollisionLayer::Interact)
+        .map(|hit| (colliders[hit.id].user, hit.distance))
     else {
         return;
     };
@@ -329,7 +393,8 @@ fn input_raycast(
         return;
     };
 
-    input_raycast.raycast_entity_and_distance = Some((collisiont_routing.on_raycast_entity, lam));
+    input_raycast.raycast_entity_and_distance =
+        Some((collisiont_routing.on_raycast_entity, distance));
 }
 
 fn cheats(

@@ -1,4 +1,4 @@
-use crate::mechanics::{colliders::*, switch::*};
+use crate::{collision::*, mechanics::switch::*};
 use atom::prelude::*;
 use candy::{audio::*, can::*, scene_tree::*};
 use magi::gems::IntervalF32;

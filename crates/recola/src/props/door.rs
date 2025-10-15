@@ -1,6 +1,7 @@
 use crate::{
+    collision::*,
     custom_properties::*,
-    mechanics::{colliders::*, material_swap::*, switch::*},
+    mechanics::{material_swap::*, switch::*},
     player::*,
     recola_mocca::CRIMSON,
 };

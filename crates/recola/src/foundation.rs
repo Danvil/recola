@@ -1,7 +1,8 @@
 use crate::{
     STATIC_SETTINGS,
+    collision::*,
     custom_properties::*,
-    mechanics::{colliders::*, switch::*},
+    mechanics::switch::*,
     props::{barrier::*, door::*, laser_pointer::*, overgrowth::*, rift::*},
     recola_mocca::{CRIMSON, RecolaAssetsMocca},
 };
@@ -101,17 +102,18 @@ fn load_asset_blueprints(
                 .and_set(CollisionRouting {
                     on_raycast_entity: entity,
                 })
-                .and_set(collision_layer_mask)
-                .and_set(DirtyCollider::default());
+                .and_set(collision_layer_mask);
 
             if !STATIC_SETTINGS.show_colliders {
                 cmd.entity(collider_entity).set(Visibility::Hidden)
             }
         }
 
-        cmd.entity(entity).and_set(ColliderSet {
-            collider_entities: HashSet::from_iter(colliders.iter().map(|(e, _)| *e)),
-        });
+        cmd.entity(entity)
+            .and_set(ColliderSet {
+                collider_entities: HashSet::from_iter(colliders.iter().map(|(e, _)| *e)),
+            })
+            .and_set(CollidersDirtyTask);
 
         if let Some(props) = props {
             if let Some(switches) = props.get_string_list("switches") {

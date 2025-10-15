@@ -1,5 +1,6 @@
 use crate::{
-    mechanics::{colliders::*, material_swap::*, switch::*},
+    collision::*,
+    mechanics::{material_swap::*, switch::*},
     player::*,
 };
 use atom::prelude::*;
@@ -371,13 +372,14 @@ fn raycast_laser_beams(
     for (tf, lp) in query_laser_pointer.iter_mut() {
         let ray = Ray3::from_origin_direction(tf.translation(), tf.x_axis.into()).unwrap();
 
-        let hit = colliders.raycast(&ray, Some(lp.exclude_collider), CollisionLayer::Laser);
+        let maybe_hit =
+            colliders.raycast(&ray, 0.01, Some(lp.exclude_collider), CollisionLayer::Laser);
 
-        match hit {
-            Some((cid, len)) => {
-                lp.beam_length = len;
+        match maybe_hit {
+            Some(hit) => {
+                lp.beam_length = hit.distance;
                 // get collider height over ground
-                let hog = colliders[cid].aabb().max.z;
+                let hog = colliders[hit.id].aabb().max.z;
 
                 lp.collider_height_over_ground = hog;
             }
@@ -392,8 +394,8 @@ fn raycast_laser_beams(
             .inverse()
             .transform_point3(ray.point(lp.beam_length));
 
-        if let Some((hit_id, _)) = hit {
-            let hit_entity = colliders[hit_id].user();
+        if let Some(hit) = maybe_hit {
+            let hit_entity = colliders[hit.id].user;
             if let Some(recv_entity) = query_collision_routing.get(hit_entity) {
                 if let Some(_) = query_beam_detector.get(recv_entity.on_raycast_entity) {
                     cmd.entity(recv_entity.on_raycast_entity).set(BeamHit::On);
