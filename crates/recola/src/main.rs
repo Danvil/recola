@@ -1,5 +1,6 @@
 pub mod collision;
 pub mod custom_properties;
+pub mod forge_gui;
 pub mod foundation;
 pub mod level;
 pub mod mechanics;
@@ -17,7 +18,7 @@ pub struct StaticSettings {
 }
 
 pub const STATIC_SETTINGS: StaticSettings = StaticSettings {
-    enable_forge: false,
+    enable_forge: true,
     enable_cheats: true,
     show_colliders: false,
     show_audio_emitters: false,
