@@ -19,6 +19,7 @@ use candy::{
 use glam::{Vec2, Vec3, Vec3Swizzles};
 use magi::geo::PosBall3;
 use std::collections::HashSet;
+use std::time::Instant;
 
 #[derive(Component)]
 pub struct MainCamera;
@@ -99,15 +100,51 @@ impl Mocca for PlayerMocca {
     }
 
     fn step(&mut self, world: &mut World) {
-        world.run(atom::tick_agents::<InputRaycastController, _>);
-        world.run(input_raycast);
-        world.run(restrict_player_movement);
-        world.run(update_player_eye);
-        world.run(advance_time);
-        world.run(update_player_entity_position);
+        profiling::scope!("PlayerMocca::step");
+        let step_start = Instant::now();
+        
+        {
+            profiling::scope!("tick_agents");
+            world.run(atom::tick_agents::<InputRaycastController, _>);
+        }
+        
+        {
+            profiling::scope!("input_raycast");
+            world.run(input_raycast);
+        }
+        
+        {
+            profiling::scope!("restrict_player_movement");
+            world.run(restrict_player_movement);
+        }
+        
+        {
+            profiling::scope!("update_player_eye");
+            world.run(update_player_eye);
+        }
+        
+        {
+            profiling::scope!("advance_time");
+            world.run(advance_time);
+        }
+        
+        {
+            profiling::scope!("update_player_entity_position");
+            world.run(update_player_entity_position);
+        }
 
         if STATIC_SETTINGS.enable_cheats {
+            profiling::scope!("cheats");
             world.run(cheats);
+        }
+        
+        // Track frame timing in InputRaycastController
+        let step_time = step_start.elapsed().as_secs_f32() * 1000.0; // Convert to ms
+        if let Ok(mut input_raycast) = world.query::<&mut InputRaycastController>().single_mut() {
+            if input_raycast.frame_times.len() >= 60 {
+                input_raycast.frame_times.remove(0);
+            }
+            input_raycast.frame_times.push(step_time);
         }
     }
 }
@@ -283,10 +320,12 @@ fn setup_window_and_camera(clock: Singleton<SimClock>, mut cmd: Commands) {
         move_max_speed: 6.0,
         move_acceleration: 20.0,
         move_deacceleration: 25.0,
-        yaw_sensitivity: 0.0012,
-        pitch_sensitivity: 0.0012,
+        // Increased sensitivity for more responsive mouse input
+        yaw_sensitivity: 0.0015,   // Increased from 0.0012 (25% more sensitive)
+        pitch_sensitivity: 0.0015, // Increased from 0.0012 (25% more sensitive)
         pitch_range: (-85.0_f32.to_radians())..(85.0_f32.to_radians()),
-        height_smoothing_halflife: 0.15,
+        // Reduced smoothing for more immediate response
+        height_smoothing_halflife: 0.08, // Reduced from 0.15 (nearly 2x faster)
         eye_height_clearance: 1.7,
     };
     let mut cam_ctrl = FirstPersonCameraController::new(cam_ctrl_settings);
@@ -309,6 +348,17 @@ pub struct InputRaycastController {
 
     cheat_ghost_mode: bool,
     cheat_teleport: usize,
+    
+    // Caching for input lag optimization
+    last_camera_position: Vec3,
+    last_camera_direction: Vec3,
+    cached_raycast_result: Option<(Entity, f32)>,
+    raycast_cache_valid: bool,
+    
+    // Performance monitoring
+    last_input_time: Option<Instant>,
+    frame_times: Vec<f32>,
+    raycast_times: Vec<f32>,
 }
 
 impl InputRaycastController {
@@ -318,6 +368,13 @@ impl InputRaycastController {
             raycast_entity_and_distance: None,
             cheat_ghost_mode: false,
             cheat_teleport: 0,
+            last_camera_position: Vec3::ZERO,
+            last_camera_direction: Vec3::ZERO,
+            cached_raycast_result: None,
+            raycast_cache_valid: false,
+            last_input_time: None,
+            frame_times: Vec::with_capacity(60), // Store last 60 frame times
+            raycast_times: Vec::with_capacity(60),
         }
     }
 
@@ -331,6 +388,12 @@ impl InputRaycastController {
 
     pub fn on_input_event(&mut self, msg: InputEventMessage) {
         self.state = msg.state;
+        
+        // Track input timing for lag analysis
+        self.last_input_time = Some(Instant::now());
+        
+        // Invalidate raycast cache when input changes (especially mouse movement)
+        self.raycast_cache_valid = false;
 
         match msg.event {
             InputEvent::KeyboardInput {
@@ -339,6 +402,14 @@ impl InputRaycastController {
                 ..
             } => {
                 self.cheat_ghost_mode = !self.cheat_ghost_mode;
+            }
+            InputEvent::KeyboardInput {
+                state: ElementState::Pressed,
+                code: KeyCode::KeyP,
+                ..
+            } => {
+                // Debug: Print performance stats
+                self.print_performance_stats();
             }
             _ => {}
         }
@@ -352,6 +423,29 @@ impl InputRaycastController {
             }
             _ => {}
         }
+    }
+    
+    fn print_performance_stats(&self) {
+        if !self.frame_times.is_empty() {
+            let avg_frame_time = self.frame_times.iter().sum::<f32>() / self.frame_times.len() as f32;
+            let max_frame_time = self.frame_times.iter().fold(0.0f32, |a, &b| a.max(b));
+            let fps = 1000.0 / avg_frame_time; // Convert ms to FPS
+            
+            log::info!("=== INPUT LAG PERFORMANCE STATS ===");
+            log::info!("Average frame time: {:.2}ms ({:.1} FPS)", avg_frame_time, fps);
+            log::info!("Max frame time: {:.2}ms", max_frame_time);
+        }
+        
+        if !self.raycast_times.is_empty() {
+            let avg_raycast_time = self.raycast_times.iter().sum::<f32>() / self.raycast_times.len() as f32;
+            let max_raycast_time = self.raycast_times.iter().fold(0.0f32, |a, &b| a.max(b));
+            
+            log::info!("Average raycast time: {:.3}ms", avg_raycast_time);
+            log::info!("Max raycast time: {:.3}ms", max_raycast_time);
+        }
+        
+        log::info!("Raycast cache valid: {}", self.raycast_cache_valid);
+        log::info!("===================================");
     }
 }
 
@@ -367,30 +461,65 @@ fn input_raycast(
     query_cam: Query<&CameraMatrices, With<MainCamera>>,
     query_routing: Query<&CollisionRouting>,
 ) {
+    profiling::scope!("input_raycast_detailed");
+    
     let input_raycast = query_input_raycast.single_mut().unwrap();
-    input_raycast.raycast_entity_and_distance = None;
 
     // Ray through center pixel
     let Some(cam) = query_cam.single() else {
+        input_raycast.raycast_entity_and_distance = None;
         return;
     };
+    
     let ray = cam.center_pixel_ray();
-
-    // Find collider along ray
-    let Some((hit_entity, distance)) = colliders
-        .raycast(&ray, 0.10, None, CollisionLayer::Interact)
-        .map(|hit| (colliders[hit.id].user, hit.distance))
-    else {
+    let current_camera_pos = ray.origin;
+    let current_camera_dir = ray.direction();
+    
+    // Check if we can use cached result
+    const POSITION_THRESHOLD: f32 = 0.001; // 1mm movement threshold
+    const DIRECTION_THRESHOLD: f32 = 0.0001; // Small angle threshold
+    
+    let position_changed = (current_camera_pos - input_raycast.last_camera_position).length() > POSITION_THRESHOLD;
+    let direction_changed = (current_camera_dir - input_raycast.last_camera_direction).length() > DIRECTION_THRESHOLD;
+    
+    if input_raycast.raycast_cache_valid && !position_changed && !direction_changed {
+        profiling::scope!("using_cached_raycast");
+        // Use cached result
+        input_raycast.raycast_entity_and_distance = input_raycast.cached_raycast_result;
         return;
-    };
-
-    // Find attached collider
-    let Some(collisiont_routing) = query_routing.get(hit_entity) else {
-        return;
-    };
-
-    input_raycast.raycast_entity_and_distance =
-        Some((collisiont_routing.on_raycast_entity, distance));
+    }
+    
+    // Perform new raycast
+    {
+        profiling::scope!("performing_raycast");
+        let raycast_start = Instant::now();
+        
+        // Update cache tracking
+        input_raycast.last_camera_position = current_camera_pos;
+        input_raycast.last_camera_direction = current_camera_dir;
+        
+        // Find collider along ray
+        let raycast_result = colliders
+            .raycast(&ray, 0.10, None, CollisionLayer::Interact)
+            .and_then(|hit| {
+                let hit_entity = colliders[hit.id].user;
+                query_routing.get(hit_entity).map(|routing| {
+                    (routing.on_raycast_entity, hit.distance)
+                })
+            });
+        
+        // Track raycast timing
+        let raycast_time = raycast_start.elapsed().as_secs_f32() * 1000.0; // Convert to ms
+        if input_raycast.raycast_times.len() >= 60 {
+            input_raycast.raycast_times.remove(0);
+        }
+        input_raycast.raycast_times.push(raycast_time);
+        
+        // Cache and set result
+        input_raycast.cached_raycast_result = raycast_result;
+        input_raycast.raycast_entity_and_distance = raycast_result;
+        input_raycast.raycast_cache_valid = true;
+    }
 }
 
 fn cheats(
