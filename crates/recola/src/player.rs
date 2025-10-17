@@ -14,7 +14,7 @@ use candy::{
     prelude::{DynamicTransform, HierarchyDirty, Transform3},
     sky::*,
     time::*,
-    utils::{CameraLink, ImageLocation, ImageShape, WindowDef, WindowLayout},
+    utils::{CameraLink, ImageLocation, ImageShape, WindowDef, WindowLayout, WindowMode},
 };
 use glam::{Vec2, Vec3, Vec3Swizzles};
 use magi::geo::PosBall3;
@@ -270,6 +270,7 @@ fn setup_window_and_camera(clock: Singleton<SimClock>, mut cmd: Commands) {
                 shape: ImageShape::from_width_height(1920, 1080),
                 position: ImageLocation::from_horizontal_vertical(200., 200.),
             },
+            mode: WindowMode::BorderlessFullscreen,
             cursor_visible: false,
             confine_cursor: true,
         },
