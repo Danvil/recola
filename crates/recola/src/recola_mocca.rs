@@ -1,4 +1,4 @@
-use crate::{STATIC_SETTINGS, level::*, player::*};
+use crate::{STATIC_SETTINGS, level::*, player::*, style::*};
 use atom::prelude::*;
 use candy::{can::*, forge::*};
 use magi::prelude::SRgbU8Color;
@@ -11,6 +11,7 @@ impl Mocca for RecolaMocca {
     fn load(mut deps: MoccaDeps) {
         deps.depends_on::<LevelMocca>();
         deps.depends_on::<PlayerMocca>();
+        deps.depends_on::<StyleMocca>();
 
         if STATIC_SETTINGS.enable_forge {
             deps.depends_on::<CandyForgeMocca>();

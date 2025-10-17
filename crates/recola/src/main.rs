@@ -5,6 +5,7 @@ pub mod level;
 pub mod mechanics;
 pub mod player;
 pub mod props;
+pub mod style;
 
 mod recola_mocca;
 use crate::recola_mocca::RecolaMocca;
