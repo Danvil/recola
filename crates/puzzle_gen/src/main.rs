@@ -990,7 +990,7 @@ impl fmt::Display for Puzzle {
         writeln!(f, "Puzzle[rooms:{rooms}, gates:{gates}, entities:{ents}]")?;
 
         // Rooms with their entity lists.
-        for (idx, room) in g.node_indices().enumerate() {
+        for (_idx, room) in g.node_indices().enumerate() {
             let r = &g[room];
             write!(f, "  R{}: [", room.index())?;
             for (i, eid) in r.entities.iter().enumerate() {
