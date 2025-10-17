@@ -4,7 +4,10 @@ use crate::{
     player::*,
 };
 use atom::prelude::*;
-use candy::{audio::*, can::*, material::*, prims::*, rng::*, scene_tree::*, time::*};
+use candy::{
+    audio::*, can::*, material::*, prelude::DisableShadowCasting, prims::*, rng::*, scene_tree::*,
+    time::*,
+};
 use glam::{Vec3, Vec3Swizzles};
 use magi::{
     color::*,
@@ -172,6 +175,7 @@ fn spawn_laser_pointer(
                     .with_base_color(LASER_BEAM_COLOR)
                     .with_emission(LASER_BEAM_COLOR.to_linear() * 15.0),
             ),
+            DisableShadowCasting,
             (ChildOf, entity),
         ));
 
@@ -187,6 +191,7 @@ fn spawn_laser_pointer(
                     .with_base_color(LASER_BEAM_COLOR)
                     .with_emission(LASER_BEAM_COLOR.to_linear() * 20.0),
             ),
+            DisableShadowCasting,
             (ChildOf, entity),
         ));
 
