@@ -47,7 +47,7 @@ def package_assets():
         for src in assets_dir.glob(ext):
             shutil.copy2(src, tmp_asset_dir / src.name)
 
-    for folder in ["bloom", "fxaa", "screen_space_quad", "sky", "tonemap"]:
+    for folder in ["bloom", "cocktail", "fxaa", "screen_space_quad", "sky", "tonemap"]:
         assets_dir = (
             Path("I:/Ikabur/atuin/crates/candy/candy_render_nodes/src") / folder
         )

@@ -543,6 +543,7 @@ dependencies = [
  "candy_audio",
  "candy_camera",
  "candy_can",
+ "candy_cocktail",
  "candy_dev_gui",
  "candy_fim",
  "candy_forge",
@@ -622,6 +623,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "candy_cocktail"
+version = "0.1.0"
+dependencies = [
+ "atom",
+ "candy_mesh",
+ "candy_scene_tree",
+ "glam 0.30.5",
+ "magi_color",
+]
+
+[[package]]
 name = "candy_dev_gui"
 version = "0.1.0"
 dependencies = [
@@ -692,6 +704,7 @@ dependencies = [
  "bytemuck",
  "candy_camera",
  "candy_can",
+ "candy_cocktail",
  "candy_dev_gui",
  "candy_fim",
  "candy_gizmos",
@@ -824,6 +837,7 @@ dependencies = [
  "candy_camera",
  "candy_can",
  "candy_fim",
+ "candy_mesh",
  "candy_render_elements",
  "candy_utils",
  "eyre",
