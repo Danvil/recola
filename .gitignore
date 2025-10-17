@@ -17,3 +17,6 @@ assets/**/*.blend1
 assets/recola/audio/raw/
 # Ableton backup files
 assets/recola/audio/**/Backup/
+
+# Some more Houdini
+assets/recola/intro_vid/geo/
