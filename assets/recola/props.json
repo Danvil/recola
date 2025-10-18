@@ -185,6 +185,12 @@
       "file": "props/props.glb",
       "scene": "Scene",
       "node": "Scene Collection/prop-gate_door"
+    },
+    {
+      "name": "prop-text_pedestal",
+      "file": "props/props.glb",
+      "scene": "Scene",
+      "node": "Scene Collection/prop-text_pedestal"
     }
   ]
 }
